@@ -365,3 +365,10 @@ pub fn remove(player: &mut Player, args: &[&str]) -> String {
         _ => "you really need to pick one thing".to_string(),
     }
 }
+
+pub fn make_fn<F>(player: &mut Player, messages: (String, String), f: F) -> CmdFunc
+    where F: Fn(&str) -> String
+{
+    let (too_low, too_high) = messages;
+
+}
