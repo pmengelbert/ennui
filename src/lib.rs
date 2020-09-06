@@ -9,7 +9,7 @@ struct ItemList(HashMap<String, Item>);
 
 impl Deref for ItemList {
     type Target = HashMap<String, Item>;
-    
+
     fn deref(&self) -> &Self::Target {
         &self.0
     }
@@ -28,13 +28,25 @@ impl fmt::Display for ItemList {
             _ => self
                 .values()
                 .map(|v| format!("\n - {}", v.name))
-                .collect::<Vec<_>>()
-                .join("\n"),
+                .collect::<String>()
 
         };
 
         write!(f, "{}", item_string)
     }
+}
+
+impl Item {
+    pub fn wearable(&self) -> bool {
+        self.kind == ItemType::Wearable
+    }
+}
+
+#[derive(PartialEq, Eq)]
+enum ItemType {
+    Wearable,
+    Edible,
+    Normal,
 }
 
 enum Status {
@@ -56,9 +68,11 @@ pub struct Player {
     location: Room,
     meters: MeterGroup,
     items: ItemList,
+    clothing: ItemList,
 }
 
 struct Item {
+    kind: ItemType,
     name: String,
     description: String,
 }
@@ -119,7 +133,7 @@ impl Player {
         let mut mg = MeterGroup::new();
 
         let meters = [MeterType::Hit, MeterType::Mana, MeterType::Movement];
-        
+
         mg.set(MeterType::Hit, (100, 100));
         mg.set(MeterType::Mana, (50, 50));
         mg.set(MeterType::Movement, (200, 200));
@@ -132,8 +146,19 @@ impl Player {
 
         let mut room = Room::new(room_name, description);
 
-        let item = Item { name: "a book".to_string(), description: "a nice book".to_string() };
+        let item = Item {
+            kind: ItemType::Normal,
+            name: "a book".to_string(),
+            description: "a nice book".to_string()
+        };
         room.items.insert("book".to_string(), item);
+
+        let item = Item {
+            kind: ItemType::Wearable,
+            name: "a shirt".to_string(),
+            description: "a nice book".to_string()
+        };
+        room.items.insert("shirt".to_string(), item);
 
         Player {
             name: String::from(name),
@@ -141,6 +166,7 @@ impl Player {
             meters: mg,
             location: room,
             items: ItemList(HashMap::new()),
+            clothing: ItemList(HashMap::new()),
         }
     }
 
@@ -162,6 +188,34 @@ impl Player {
 
         self.location.items.insert(item_name.to_string(), item);
         Ok(item_name.to_string())
+    }
+
+    pub fn wear(&mut self, item_name: &str) -> Result<(), String> {
+        match self.items.get(item_name) {
+            Some(i) => {
+                if !i.wearable() { return Err("you can't wear that!".to_string()); }
+
+                let item = self.items.remove(item_name).unwrap();
+                self.clothing.insert(item_name.to_string(), item);
+                Ok(())
+            },
+            None => { return Err(format!("you're not holding a {}", item_name)); },
+        }
+
+
+    }
+
+    pub fn remove(&mut self, item_name: &str) -> Result<(), String> {
+        let (clothing, items) = (&mut self.clothing, &mut self.items);
+
+        match clothing.get(item_name) {
+            Some(i) => {
+                let item = clothing.remove(item_name).unwrap();
+                items.insert(item_name.to_string(), item);
+                Ok(())
+            },
+            None => { return Err(format!("you're not holding a {}", item_name)); },
+        }
     }
 }
 
@@ -287,4 +341,27 @@ pub fn random_insult() -> String {
 pub fn quit(player: &mut Player, args: &[&str]) -> String {
     println!("goodbye");
     std::process::exit(0);
+}
+
+pub fn wear(player: &mut Player, args: &[&str]) -> String {
+    match args.len() {
+        0 => "what do you want to wear?".to_string(),
+        1 => match player.wear(args[0]) {
+            Ok(_) => format!("you put on the {}", args[0]),
+            Err(msg) => msg,
+        },
+        _ => "you really need to pick one thing".to_string(),
+    }
+}
+
+pub fn remove(player: &mut Player, args: &[&str]) -> String {
+    match args.len() {
+        0 => "while I won't complain that you want to take off \
+            your clothes, you need to tell me what you want to take off first.".to_string(),
+        1 => match player.remove(args[0]) {
+            Ok(_) => format!("you take off the {}", args[0]),
+            Err(msg) => msg,
+        },
+        _ => "you really need to pick one thing".to_string(),
+    }
 }

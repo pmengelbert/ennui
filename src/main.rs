@@ -12,6 +12,8 @@ fn main() -> Result<(), std::io::Error> {
     c.set("inventory", inventory);
     c.set("drop", drop);
     c.set("quit", quit);
+    c.set("wear", wear);
+    c.set("remove", remove);
 
     loop {
         let mut user_input = String::new();
