@@ -1,5 +1,8 @@
 use std::io;
 use std::collections::HashMap;
+
+type CmdFunc = fn(&mut Player, &[&str]) -> String;
+
 enum Status {
     Dead,
     Alive,
@@ -7,7 +10,7 @@ enum Status {
 }
 
 #[derive(Eq, PartialEq, Hash)]
-enum Point {
+enum MeterType {
     Hit,
     Mana,
     Movement,
@@ -25,7 +28,7 @@ struct Item {
     description: String,
 }
 
-#[derive(Eq, PartialEq, Debug)]
+#[derive(Debug)]
 struct Meter {
     current: isize,
     max: isize,
@@ -42,16 +45,37 @@ impl Room {
         let items = HashMap::new();
         Room { name, description, items }
     }
+
+    pub fn to_string(&self) -> String {
+        let mut builder = format!("\
+            {}\n\
+            ---------------------------------------\n\
+            {}\n\
+            ",
+            self.name,
+            self.description,
+        );
+
+        let items = self.items
+            .values()
+            .map(|v| format!(" - {}", v.name))
+            .collect::<Vec<String>>()
+            .join("\n");
+
+        builder.push_str(&items);
+
+        builder
+    }
 }
 
-struct MeterGroup(HashMap<Point, Meter>);
+struct MeterGroup(HashMap<MeterType, Meter>);
 
 #[test]
 fn test_metergroup() {
     let mut mg = MeterGroup::new();
-    mg.set(Point::Hit, (100, 100));
+    mg.set(MeterType::Hit, (100, 100));
 
-    mg.get(Point::Hit);
+    mg.get(MeterType::Hit);
 }
 
 impl MeterGroup {
@@ -59,14 +83,14 @@ impl MeterGroup {
         MeterGroup(HashMap::new())
     }
 
-    pub fn set(&mut self, p: Point, curmax: (isize, isize)) {
+    pub fn set(&mut self, p: MeterType, points: (isize, isize)) {
         let h = &mut self.0;
 
-        let (current, max) = curmax;
+        let (current, max) = points;
         h.insert(p, Meter { current, max });
     }
 
-    pub fn get(&self, p: Point) -> Option<&Meter> {
+    pub fn get(&self, p: MeterType) -> Option<&Meter> {
         let h = &self.0;
         h.get(&p)
     }
@@ -76,18 +100,22 @@ impl Player {
     pub fn new(name: &str) -> Player {
         let mut mg = MeterGroup::new();
 
-        let meters = [Point::Hit, Point::Mana, Point::Movement];
+        let meters = [MeterType::Hit, MeterType::Mana, MeterType::Movement];
         
-        mg.set(Point::Hit, (100, 100));
-        mg.set(Point::Mana, (50, 50));
-        mg.set(Point::Movement, (200, 200));
+        mg.set(MeterType::Hit, (100, 100));
+        mg.set(MeterType::Mana, (50, 50));
+        mg.set(MeterType::Movement, (200, 200));
 
-        let mut room = Room::new("name".to_string(), r#"
- you walk into the kitchen. it's dirty.
- you stay here, but you want to leave.
- "#.to_string());
+        let (room_name, description) = (
+            "kitchen".to_string(),
+            "you walk into the kitchen. it's dirty. \
+             you stay here, but you want to leave.".to_string()
+         );
 
-        room.items.insert("book".to_string(), Item { name: "book".to_string(), description: "a nice book".to_string() });
+        let mut room = Room::new(room_name, description);
+
+        let item = Item { name: "a book".to_string(), description: "a nice book".to_string() };
+        room.items.insert("book".to_string(), item);
 
         Player {
             name: String::from(name),
@@ -99,32 +127,31 @@ impl Player {
 }
 
 pub struct Interpreter {
-    cmd: HashMap<String, fn(&mut Player, &[String]) -> String>,
+    cmd: HashMap<String, CmdFunc>,
 }
 
 impl Interpreter {
     pub fn new() -> Interpreter {
-        let mut h: HashMap<String, fn(&mut Player, &[String]) -> String> = HashMap::new();
+        let mut h: HashMap<String, CmdFunc> = HashMap::new();
         Interpreter {
             cmd: h,
         }
     }
 
-    pub fn set(&mut self, name: &str, func: fn(&mut Player, &[String]) -> String) {
+    pub fn set(&mut self, name: &str, func: CmdFunc) {
         self.cmd.insert(name.to_string(), func);
     }
 
-    pub fn get(&self, name: &str) -> Option<fn(&mut Player, &[String]) -> String> {
+    fn get(&self, name: &str) -> Option<fn(&mut Player, &[&str]) -> String> {
         match self.cmd.get(name) {
             Some(&func) => Some(func),
             None => None,
         }
     }
 
-    pub fn execute_string(&self, player: &mut Player, cmd: &String) -> String {
-        let args: Vec<String> = cmd
+    pub fn execute_string(&self, player: &mut Player, cmd: &str) -> String {
+        let args: Vec<&str> = cmd
             .split_whitespace()
-            .map(|x| x.to_string())
             .collect();
 
         let name = match args.get(0) {
@@ -135,7 +162,7 @@ impl Interpreter {
         self.execute_string_and_args(player, name, &args[1..])
     }
 
-    fn execute_string_and_args(&self, player: &mut Player, name: &str, args: &[String]) -> String {
+    fn execute_string_and_args(&self, player: &mut Player, name: &str, args: &[&str]) -> String {
         match self.get(name) {
             Some(func) => func(player, args),
             None => "i'll have to ask my lawyer about that".to_string(),
@@ -143,28 +170,29 @@ impl Interpreter {
     }
 }
 
-pub fn look(player: &mut Player, args: &[String]) -> String {
+pub fn look(player: &mut Player, args: &[&str]) -> String {
     match args.len() {
-        0 => player.location.description.clone(),
+        0 => player.location.to_string(),
         1 => {
-            match player.location.items.get(&args[0]) {
+            match player.location.items.get(args[0]) {
                 Some(item) => item.description.clone(),
                 None => format!("you don't see a {} here", args[0]),
             }
         }
-        _ => String::from("you need to be specific. give me a one-word identification of the thing you want to look at. ok?")
+        _ => String::from("you need to be specific. give me a one-word identification of the \
+                          thing you want to look at. ok?")
     }
 }
 
-pub fn say(player: &mut Player, args: &[String]) -> String {
+pub fn say(player: &mut Player, args: &[&str]) -> String {
     format!(r#"you say "{}""#, args.join(" "))
 }
 
-pub fn status(player: &mut Player, args: &[String]) -> String {
+pub fn status(player: &mut Player, args: &[&str]) -> String {
     let (hit, mana, movement) = (
-            player.meters.get(Point::Hit).unwrap(),
-            player.meters.get(Point::Mana).unwrap(),
-            player.meters.get(Point::Movement).unwrap(),
+            player.meters.get(MeterType::Hit).unwrap(),
+            player.meters.get(MeterType::Mana).unwrap(),
+            player.meters.get(MeterType::Movement).unwrap(),
         );
     format!(r#"
             Hit Points: {} / {},

@@ -20,7 +20,7 @@ fn main() -> Result<(), std::io::Error> {
 
         let s = user_input.trim_end();
 
-        let result = c.execute_string(&mut bill, &s.to_string());
+        let result = c.execute_string(&mut bill, &s);
         println!("{}", result);
     }
 
