@@ -5,10 +5,9 @@ use std::process;
 use rand::Rng;
 
 type CmdFunc = fn(&mut Player, &[&str]) -> String;
-type ItemList = HashMap<String, Item>;
-struct ItemList2(HashMap<String, Item>);
+struct ItemList(HashMap<String, Item>);
 
-impl Deref for ItemList2 {
+impl Deref for ItemList {
     type Target = HashMap<String, Item>;
     
     fn deref(&self) -> &Self::Target {
@@ -16,13 +15,13 @@ impl Deref for ItemList2 {
     }
 }
 
-impl DerefMut for ItemList2 {
+impl DerefMut for ItemList {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.0
     }
 }
 
-impl fmt::Display for ItemList2 {
+impl fmt::Display for ItemList {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let item_string = match self.len() {
             0 => "".to_string(),
@@ -56,7 +55,7 @@ pub struct Player {
     status: Vec<Status>,
     location: Room,
     meters: MeterGroup,
-    items: ItemList2,
+    items: ItemList,
 }
 
 struct Item {
@@ -72,12 +71,12 @@ struct Meter {
 struct Room {
     name: String,
     description: String,
-    items: ItemList2,
+    items: ItemList,
 }
 
 impl Room {
     pub fn new(name: String, description: String) -> Room {
-        let items = ItemList2(HashMap::new());
+        let items = ItemList(HashMap::new());
         Room { name, description, items }
     }
 
@@ -141,7 +140,7 @@ impl Player {
             status: vec![Status::Alive],
             meters: mg,
             location: room,
-            items: ItemList2(HashMap::new()),
+            items: ItemList(HashMap::new()),
         }
     }
 
