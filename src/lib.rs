@@ -366,9 +366,16 @@ pub fn remove(player: &mut Player, args: &[&str]) -> String {
     }
 }
 
-pub fn make_fn<F>(player: &mut Player, messages: (String, String), f: F) -> CmdFunc
-    where F: Fn(&str) -> String
+pub fn make_fn<F>(f: F) -> impl Fn(&mut Player, &[&str]) -> String
+    where F: Fn(&str) -> String,
 {
-    let (too_low, too_high) = messages;
+    let x = f("lol");
+    |x, y| f("look book")
+}
 
+#[test]
+fn test_make_fn() {
+    let mut p = Player::new("bill");
+    let s = vec!["look", "book"];
+    assert_ne!(make_fn(|s| s.to_string())(&mut p, &s), "NO".to_string())
 }
