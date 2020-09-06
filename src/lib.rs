@@ -1,7 +1,42 @@
-use std::io;
+use std::ops::{DerefMut, Deref};
+use std::fmt;
 use std::collections::HashMap;
+use std::process;
+use rand::Rng;
 
 type CmdFunc = fn(&mut Player, &[&str]) -> String;
+type ItemList = HashMap<String, Item>;
+struct ItemList2(HashMap<String, Item>);
+
+impl Deref for ItemList2 {
+    type Target = HashMap<String, Item>;
+    
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl DerefMut for ItemList2 {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
+impl fmt::Display for ItemList2 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let item_string = match self.len() {
+            0 => "".to_string(),
+            _ => self
+                .values()
+                .map(|v| format!("\n - {}", v.name))
+                .collect::<Vec<_>>()
+                .join("\n"),
+
+        };
+
+        write!(f, "{}", item_string)
+    }
+}
 
 enum Status {
     Dead,
@@ -21,6 +56,7 @@ pub struct Player {
     status: Vec<Status>,
     location: Room,
     meters: MeterGroup,
+    items: ItemList2,
 }
 
 struct Item {
@@ -28,7 +64,6 @@ struct Item {
     description: String,
 }
 
-#[derive(Debug)]
 struct Meter {
     current: isize,
     max: isize,
@@ -37,12 +72,12 @@ struct Meter {
 struct Room {
     name: String,
     description: String,
-    items: HashMap<String, Item>,
+    items: ItemList2,
 }
 
 impl Room {
     pub fn new(name: String, description: String) -> Room {
-        let items = HashMap::new();
+        let items = ItemList2(HashMap::new());
         Room { name, description, items }
     }
 
@@ -50,33 +85,17 @@ impl Room {
         let mut builder = format!("\
             {}\n\
             ---------------------------------------\n\
-            {}\n\
-            ",
+            {}{}",
             self.name,
             self.description,
+            self.items,
         );
-
-        let items = self.items
-            .values()
-            .map(|v| format!(" - {}", v.name))
-            .collect::<Vec<String>>()
-            .join("\n");
-
-        builder.push_str(&items);
 
         builder
     }
 }
 
 struct MeterGroup(HashMap<MeterType, Meter>);
-
-#[test]
-fn test_metergroup() {
-    let mut mg = MeterGroup::new();
-    mg.set(MeterType::Hit, (100, 100));
-
-    mg.get(MeterType::Hit);
-}
 
 impl MeterGroup {
     pub fn new() -> MeterGroup {
@@ -122,7 +141,28 @@ impl Player {
             status: vec![Status::Alive],
             meters: mg,
             location: room,
+            items: ItemList2(HashMap::new()),
         }
+    }
+
+    pub fn take(&mut self, item_name: &str) -> Result<String, String> {
+        let item = match self.location.items.remove(item_name) {
+            Some(item) => item,
+            None => { return Err(item_name.to_string()); }
+        };
+
+        self.items.insert(item_name.to_string(), item);
+        Ok(item_name.to_string())
+    }
+
+    pub fn drop(&mut self, item_name: &str) -> Result<String, String> {
+        let item = match self.items.remove(item_name) {
+            Some(item) => item,
+            None => { return Err(item_name.to_string()); }
+        };
+
+        self.location.items.insert(item_name.to_string(), item);
+        Ok(item_name.to_string())
     }
 }
 
@@ -142,7 +182,7 @@ impl Interpreter {
         self.cmd.insert(name.to_string(), func);
     }
 
-    fn get(&self, name: &str) -> Option<fn(&mut Player, &[&str]) -> String> {
+    fn get(&self, name: &str) -> Option<CmdFunc> {
         match self.cmd.get(name) {
             Some(&func) => Some(func),
             None => None,
@@ -165,7 +205,7 @@ impl Interpreter {
     fn execute_string_and_args(&self, player: &mut Player, name: &str, args: &[&str]) -> String {
         match self.get(name) {
             Some(func) => func(player, args),
-            None => "i'll have to ask my lawyer about that".to_string(),
+            None => random_insult(),
         }
     }
 }
@@ -202,4 +242,50 @@ pub fn status(player: &mut Player, args: &[&str]) -> String {
             hit.current, hit.max,
             mana.current, mana.max,
             movement.current, movement.max)
+}
+
+pub fn take(player: &mut Player, args: &[&str]) -> String {
+    match args.len() {
+        0 => "what do you want to take?".to_string(),
+        1 => match player.take(args[0]) {
+            Ok(item) => format!("you take the {}", item),
+            Err(err) => format!("you don't see a {} here", err),
+        }
+        _ => "i'm not sure what you want to take".to_string()
+    }
+}
+
+pub fn inventory(player: &mut Player, args: &[&str]) -> String {
+     match player.items.len() {
+         0 => "you don't own anything".to_string(),
+         _ => {
+             format!("you have the following items:{}", player.items)
+         }
+    }
+}
+
+pub fn drop(player: &mut Player, args: &[&str]) -> String {
+    match args.len() {
+        0 => "drop what now?".to_string(),
+        1 => match player.drop(args[0]) {
+            Ok(item) => format!("you drop the {}", item),
+            Err(item) => format!("you don't have a {} to drop", item),
+        },
+        _ => "you're confusing me!".to_string(),
+    }
+}
+
+pub fn random_insult() -> String {
+    match rand::thread_rng().gen_range(1, 6) {
+        1 => "dude wtf".to_string(),
+        2 => "i think you should leave".to_string(),
+        3 => "i'll have to ask my lawyer about that".to_string(),
+        4 => "that's ... uncommon".to_string(),
+        _ => "that's an interesting theory... but will it hold up in the laboratory?".to_string()
+    }
+}
+
+pub fn quit(player: &mut Player, args: &[&str]) -> String {
+    println!("goodbye");
+    std::process::exit(0);
 }

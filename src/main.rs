@@ -8,11 +8,15 @@ fn main() -> Result<(), std::io::Error> {
     c.set("look", look);
     c.set("say", say);
     c.set("status", status);
+    c.set("take", take);
+    c.set("inventory", inventory);
+    c.set("drop", drop);
+    c.set("quit", quit);
 
     loop {
         let mut user_input = String::new();
 
-        print!("> ");
+        print!("\n> ");
         io::stdout().flush();
 
         io::stdin()
