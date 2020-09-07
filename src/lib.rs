@@ -214,7 +214,7 @@ impl Player {
                 items.insert(item_name.to_string(), item);
                 Ok(())
             },
-            None => { return Err(format!("you're not holding a {}", item_name)); },
+            None => { return Err(format!("you're not wearing a {}", item_name)); },
         }
     }
 }
@@ -366,16 +366,30 @@ pub fn remove(player: &mut Player, args: &[&str]) -> String {
     }
 }
 
-pub fn make_fn<F>(f: F) -> impl Fn(&mut Player, &[&str]) -> String
-    where F: Fn(&str) -> String,
-{
-    let x = f("lol");
-    |x, y| f("look book")
+macro_rules! make_fn {
+    ($function_name:ident,
+     too few:$too_little:expr,
+     too many:$too_much:expr,
+     $( $other_name:tt ).+,
+     $bl:tt) => {
+        pub fn $function_name(player: &mut Player, args: &[&str]) -> String {
+            match args.len() {
+                0 => $too_little.to_string(),
+                1 => match $( $other_name ).+(args[0]) $bl,
+                _ => $too_much.to_string(),
+            }
+        }
+    }
 }
 
-#[test]
-fn test_make_fn() {
-    let mut p = Player::new("bill");
-    let s = vec!["look", "book"];
-    assert_ne!(make_fn(|s| s.to_string())(&mut p, &s), "NO".to_string())
+make_fn!{
+    rm,
+    too few: "while I won't complain that you want to take off \
+            your clothes, you need to tell me what you want to take off first.",
+    too many: "stop it please",
+    player.remove,
+    {
+        Ok(_) => "you take it off".to_string(),
+        Err(msg) => msg,
+    }
 }

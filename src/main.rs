@@ -14,6 +14,7 @@ fn main() -> Result<(), std::io::Error> {
     c.set("quit", quit);
     c.set("wear", wear);
     c.set("remove", remove);
+    c.set("rm", rm);
 
     loop {
         let mut user_input = String::new();
