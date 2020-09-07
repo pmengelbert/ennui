@@ -1,20 +1,30 @@
 use ennui::*;
 use std::io::{self, Write};
 
+macro_rules! interpreter {
+    ( $( $name:ident ),* ) => {
+        {
+            let mut i = Interpreter::new();
+            $( i.set(stringify!($name), $name); )*
+            i
+        }
+    }
+}
+
 fn main() -> Result<(), std::io::Error> {
     let mut bill = Player::new("bill");
 
-    let mut c = Interpreter::new();
-    c.set("look", look);
-    c.set("say", say);
-    c.set("status", status);
-    c.set("take", take);
-    c.set("inventory", inventory);
-    c.set("drop", drop);
-    c.set("quit", quit);
-    c.set("wear", wear);
-    c.set("remove", remove);
-    c.set("rm", rm);
+    let mut c = interpreter![
+        look, 
+        say,
+        status,
+        take,
+        inventory,
+        drop,
+        quit,
+        wear,
+        remove
+    ];
 
     loop {
         let mut user_input = String::new();
