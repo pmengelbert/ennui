@@ -1,4 +1,5 @@
 use ennui::*;
+use std::collections::HashMap;
 use std::io::{self, Write};
 
 macro_rules! interpreter {
@@ -12,7 +13,6 @@ macro_rules! interpreter {
 }
 
 fn main() -> Result<(), std::io::Error> {
-    let mut bill = Player::new("bill");
 
     let mut c = interpreter![
         look, 
@@ -25,6 +25,33 @@ fn main() -> Result<(), std::io::Error> {
         wear,
         remove
     ];
+
+    let mut m = Map {
+        map: HashMap::new()
+    };
+
+    let mut room = Room::new("kitchen".to_string(), "this is the kitchen".to_string());
+
+    let item = Item {
+        kind: ItemType::Normal,
+        name: "a book".to_string(),
+        description: "a nice book".to_string()
+    };
+    room.items.insert("book".to_string(), item);
+
+    let item = Item {
+        kind: ItemType::Wearable,
+        name: "a shirt".to_string(),
+        description: "a nice book".to_string()
+    };
+    room.items.insert("shirt".to_string(), item);
+
+    let mut other = Room::new("other".to_string(), "this is the other".to_string());
+
+    m.map.insert(Coord(0, 0), room);
+    m.map.insert(Coord(0, 1), other);
+    let r = m.map.get_mut(&Coord(0, 0)).unwrap();
+    let mut bill = Player::new("bill", r);
 
     loop {
         let mut user_input = String::new();

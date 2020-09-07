@@ -5,7 +5,7 @@ use std::process;
 use rand::Rng;
 
 type CmdFunc = fn(&mut Player, &[&str]) -> String;
-struct ItemList(HashMap<String, Item>);
+pub struct ItemList(pub HashMap<String, Item>);
 
 impl Deref for ItemList {
     type Target = HashMap<String, Item>;
@@ -42,50 +42,48 @@ impl Item {
     }
 }
 
+#[derive(Eq, PartialEq, Hash)]
+pub struct Coord(pub i32, pub i32);
+
+pub struct Map {
+    pub map: HashMap<Coord, Room>
+}
+
 #[derive(PartialEq, Eq)]
-enum ItemType {
+pub enum ItemType {
     Wearable,
     Edible,
     Normal,
 }
 
-enum Status {
+pub enum Status {
     Dead,
     Alive,
     Poisoned,
 }
 
 #[derive(Eq, PartialEq, Hash)]
-enum MeterType {
+pub enum MeterType {
     Hit,
     Mana,
     Movement,
 }
 
-pub struct Player {
-    name: String,
-    status: Vec<Status>,
-    location: Room,
-    meters: MeterGroup,
-    items: ItemList,
-    clothing: ItemList,
+pub struct Item {
+    pub kind: ItemType,
+    pub name: String,
+    pub description: String,
 }
 
-struct Item {
-    kind: ItemType,
-    name: String,
-    description: String,
-}
-
-struct Meter {
+pub struct Meter {
     current: isize,
     max: isize,
 }
 
-struct Room {
-    name: String,
-    description: String,
-    items: ItemList,
+pub struct Room {
+    pub name: String,
+    pub description: String,
+    pub items: ItemList,
 }
 
 impl Room {
@@ -108,7 +106,7 @@ impl Room {
     }
 }
 
-struct MeterGroup(HashMap<MeterType, Meter>);
+pub struct MeterGroup(HashMap<MeterType, Meter>);
 
 impl MeterGroup {
     pub fn new() -> MeterGroup {
@@ -128,8 +126,17 @@ impl MeterGroup {
     }
 }
 
-impl Player {
-    pub fn new(name: &str) -> Player {
+pub struct Player<'a> {
+    pub name: String,
+    pub status: Vec<Status>,
+    pub location: &'a mut Map,
+    pub meters: MeterGroup,
+    pub items: ItemList,
+    pub clothing: ItemList,
+}
+
+impl<'a> Player<'a> {
+    pub fn new(name: &str, room: &'a mut Map) -> Player<'a> {
         let mut mg = MeterGroup::new();
 
         let meters = [MeterType::Hit, MeterType::Mana, MeterType::Movement];
@@ -144,22 +151,6 @@ impl Player {
              you stay here, but you want to leave.".to_string()
          );
 
-        let mut room = Room::new(room_name, description);
-
-        let item = Item {
-            kind: ItemType::Normal,
-            name: "a book".to_string(),
-            description: "a nice book".to_string()
-        };
-        room.items.insert("book".to_string(), item);
-
-        let item = Item {
-            kind: ItemType::Wearable,
-            name: "a shirt".to_string(),
-            description: "a nice book".to_string()
-        };
-        room.items.insert("shirt".to_string(), item);
-
         Player {
             name: String::from(name),
             status: vec![Status::Alive],
@@ -170,8 +161,12 @@ impl Player {
         }
     }
 
+    pub fn location(&self) -> &'a mut Room {
+        self.location.get_mut(&Coord(0, 0)).unwrap()
+    }
+
     pub fn take(&mut self, item_name: &str) -> Result<String, String> {
-        let item = match self.location.items.remove(item_name) {
+        let item = match self.location().items.remove(item_name) {
             Some(item) => item,
             None => { return Err(item_name.to_string()); }
         };
@@ -186,7 +181,7 @@ impl Player {
             None => { return Err(item_name.to_string()); }
         };
 
-        self.location.items.insert(item_name.to_string(), item);
+        self.location().items.insert(item_name.to_string(), item);
         Ok(item_name.to_string())
     }
 
@@ -265,9 +260,9 @@ impl Interpreter {
 
 // pub fn look(player: &mut Player, args: &[&str]) -> String {
 //     match args.len() {
-//         0 => player.location.to_string(),
+//         0 => player.location().to_string(),
 //         1 => {
-//             match player.location.items.get(args[0]) {
+//             match player.location().items.get(args[0]) {
 //                 Some(item) => item.description.clone(),
 //                 None => format!("you don't see a {} here", args[0]),
 //             }
@@ -367,10 +362,10 @@ gen_func! {
 
 gen_func! {
     look (player, args):
-        player.location.to_string(),
+        player.location().to_string(),
         "you need to be specific. give me a one-word identification of the \
               thing you want to look at. ok?",
-        match player.location.items.get(args[0]) {
+        match player.location().items.get(args[0]) {
             Some(item) => item.description.clone(),
             None => match player.items.get(args[0]) {
                 Some(item) => item.description.clone(),
@@ -398,5 +393,9 @@ gen_func! {
             Ok(item) => format!("you drop the {}", item),
             Err(item) => format!("you don't have a {} to drop", item),
         }
+
+}
+
+pub fn north(player: &mut Player, args: &[&str]) -> String {
 
 }
