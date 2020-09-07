@@ -162,7 +162,7 @@ impl<'a> Player<'a> {
     }
 
     pub fn location(&self) -> &'a mut Room {
-        self.location.get_mut(&Coord(0, 0)).unwrap()
+        self.location.map.get_mut(&Coord(0, 0)).unwrap()
     }
 
     pub fn take(&mut self, item_name: &str) -> Result<String, String> {
@@ -397,5 +397,5 @@ gen_func! {
 }
 
 pub fn north(player: &mut Player, args: &[&str]) -> String {
-
+    "lol".to_string()
 }
