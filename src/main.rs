@@ -23,7 +23,8 @@ fn main() -> Result<(), std::io::Error> {
         drop,
         quit,
         wear,
-        remove
+        remove,
+        north
     ];
 
     let mut m = Map {
@@ -51,7 +52,7 @@ fn main() -> Result<(), std::io::Error> {
     m.map.insert(Coord(0, 0), room);
     m.map.insert(Coord(0, 1), other);
     let r = m.map.get_mut(&Coord(0, 0)).unwrap();
-    let mut bill = Player::new("bill", r);
+    let mut bill = Player::new("bill", &mut m);
 
     loop {
         let mut user_input = String::new();

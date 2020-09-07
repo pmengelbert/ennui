@@ -44,6 +44,11 @@ impl Item {
 
 #[derive(Eq, PartialEq, Hash)]
 pub struct Coord(pub i32, pub i32);
+impl Coord {
+    pub fn north(&self) -> Coord {
+        Coord(self.0, self.0 + 1)
+    }
+}
 
 pub struct Map {
     pub map: HashMap<Coord, Room>
@@ -129,6 +134,7 @@ impl MeterGroup {
 pub struct Player<'a> {
     pub name: String,
     pub status: Vec<Status>,
+    pub coord: Coord,
     pub location: &'a mut Map,
     pub meters: MeterGroup,
     pub items: ItemList,
@@ -151,18 +157,20 @@ impl<'a> Player<'a> {
              you stay here, but you want to leave.".to_string()
          );
 
+        let coord = Coord(0, 0);
         Player {
             name: String::from(name),
             status: vec![Status::Alive],
             meters: mg,
+            coord: coord,
             location: room,
             items: ItemList(HashMap::new()),
             clothing: ItemList(HashMap::new()),
         }
     }
 
-    pub fn location(&self) -> &'a mut Room {
-        self.location.map.get_mut(&Coord(0, 0)).unwrap()
+    pub fn location(&mut self) -> &mut Room {
+        self.location.map.get_mut(&self.coord).unwrap()
     }
 
     pub fn take(&mut self, item_name: &str) -> Result<String, String> {
@@ -397,5 +405,6 @@ gen_func! {
 }
 
 pub fn north(player: &mut Player, args: &[&str]) -> String {
-    "lol".to_string()
+    player.coord = player.coord.north();
+    "you go north".to_string()
 }
