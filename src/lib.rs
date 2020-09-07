@@ -23,14 +23,10 @@ impl DerefMut for ItemList {
 
 impl fmt::Display for ItemList {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let item_string = match self.len() {
-            0 => "".to_string(),
-            _ => self
-                .values()
-                .map(|v| format!("\n - {}", v.name))
-                .collect::<String>()
-
-        };
+        let item_string = self
+            .values()
+            .map(|v| format!("\n - {}", v.name))
+            .collect::<String>();
 
         write!(f, "{}", item_string)
     }
@@ -156,7 +152,7 @@ impl Player {
         let item = Item {
             kind: ItemType::Wearable,
             name: "a shirt".to_string(),
-            description: "a nice book".to_string()
+            description: "a nice shirt".to_string()
         };
         room.items.insert("shirt".to_string(), item);
 
@@ -205,14 +201,14 @@ impl Player {
 
     }
 
-    pub fn remove(&mut self, item_name: &str) -> Result<(), String> {
+    pub fn remove(&mut self, item_name: &str) -> Result<String, String> {
         let (clothing, items) = (&mut self.clothing, &mut self.items);
 
         match clothing.get(item_name) {
             Some(i) => {
                 let item = clothing.remove(item_name).unwrap();
                 items.insert(item_name.to_string(), item);
-                Ok(())
+                Ok(item_name.to_string())
             },
             None => { return Err(format!("you're not wearing a {}", item_name)); },
         }
@@ -263,20 +259,6 @@ impl Interpreter {
     }
 }
 
-pub fn look(player: &mut Player, args: &[&str]) -> String {
-    match args.len() {
-        0 => player.location.to_string(),
-        1 => {
-            match player.location.items.get(args[0]) {
-                Some(item) => item.description.clone(),
-                None => format!("you don't see a {} here", args[0]),
-            }
-        }
-        _ => String::from("you need to be specific. give me a one-word identification of the \
-                          thing you want to look at. ok?")
-    }
-}
-
 pub fn say(player: &mut Player, args: &[&str]) -> String {
     format!(r#"you say "{}""#, args.join(" "))
 }
@@ -297,34 +279,12 @@ pub fn status(player: &mut Player, args: &[&str]) -> String {
             movement.current, movement.max)
 }
 
-pub fn take(player: &mut Player, args: &[&str]) -> String {
-    match args.len() {
-        0 => "what do you want to take?".to_string(),
-        1 => match player.take(args[0]) {
-            Ok(item) => format!("you take the {}", item),
-            Err(err) => format!("you don't see a {} here", err),
-        }
-        _ => "i'm not sure what you want to take".to_string()
-    }
-}
-
 pub fn inventory(player: &mut Player, args: &[&str]) -> String {
      match player.items.len() {
          0 => "you don't own anything".to_string(),
          _ => {
              format!("you have the following items:{}", player.items)
          }
-    }
-}
-
-pub fn drop(player: &mut Player, args: &[&str]) -> String {
-    match args.len() {
-        0 => "drop what now?".to_string(),
-        1 => match player.drop(args[0]) {
-            Ok(item) => format!("you drop the {}", item),
-            Err(item) => format!("you don't have a {} to drop", item),
-        },
-        _ => "you're confusing me!".to_string(),
     }
 }
 
@@ -343,53 +303,80 @@ pub fn quit(player: &mut Player, args: &[&str]) -> String {
     std::process::exit(0);
 }
 
-pub fn wear(player: &mut Player, args: &[&str]) -> String {
-    match args.len() {
-        0 => "what do you want to wear?".to_string(),
-        1 => match player.wear(args[0]) {
-            Ok(_) => format!("you put on the {}", args[0]),
-            Err(msg) => msg,
-        },
-        _ => "you really need to pick one thing".to_string(),
-    }
-}
-
-pub fn remove(player: &mut Player, args: &[&str]) -> String {
-    match args.len() {
-        0 => "while I won't complain that you want to take off \
-            your clothes, you need to tell me what you want to take off first.".to_string(),
-        1 => match player.remove(args[0]) {
-            Ok(_) => format!("you take off the {}", args[0]),
-            Err(msg) => msg,
-        },
-        _ => "you really need to pick one thing".to_string(),
-    }
-}
-
-macro_rules! make_fn {
-    ($function_name:ident,
-     too few:$too_little:expr,
-     too many:$too_much:expr,
-     $( $other_name:tt ).+,
-     $bl:tt) => {
-        pub fn $function_name(player: &mut Player, args: &[&str]) -> String {
-            match args.len() {
-                0 => $too_little.to_string(),
-                1 => match $( $other_name ).+(args[0]) $bl,
-                _ => $too_much.to_string(),
-            }
+macro_rules! gen_body {
+    ($too_few:expr,
+     $too_many:expr,
+     $mtch:expr,
+     $bl:expr) => {
+        match $mtch {
+            0 => $too_few.to_string(),
+            1 => $bl,
+            _ => $too_many.to_string()
         }
     }
 }
 
-make_fn!{
-    rm,
-    too few: "while I won't complain that you want to take off \
-            your clothes, you need to tell me what you want to take off first.",
-    too many: "stop it please",
-    player.remove,
-    {
-        Ok(_) => "you take it off".to_string(),
-        Err(msg) => msg,
+macro_rules! gen_func {
+    ($fn_name:ident ($p:ident, $a:ident):
+     $too_few:expr,
+     $too_many:expr,
+     $closure:expr) => {
+        pub fn $fn_name($p: &mut Player, $a: &[&str]) -> String {
+            gen_body!($too_few, $too_many, $a.len(), $closure)
+        }
     }
+}
+
+gen_func! { 
+    remove (player, args):
+        "i won't object to you taking off your clothes. but where to start?",
+        "can you be more specific?",
+        match player.remove(args[0]) {
+            Ok(_) => format!("you take off the {}", args[0]),
+            Err(msg) => msg,
+        }
+}
+
+gen_func! {
+    wear (player, args):
+        "what do you want to put on?",
+        "pick one or the other...",
+        match player.wear(args[0]) {
+            Ok(_) => format!("you put on the {}", args[0]),
+            Err(msg) => msg,
+        }
+}
+
+gen_func! {
+    look (player, args):
+        player.location.to_string(),
+        "you need to be specific. give me a one-word identification of the \
+              thing you want to look at. ok?",
+        match player.location.items.get(args[0]) {
+            Some(item) => item.description.clone(),
+            None => match player.items.get(args[0]) {
+                Some(item) => item.description.clone(),
+                None => format!("you don't see a {} here", args[0]),
+            }
+        }
+}
+
+gen_func! {
+    take (player, args):
+        "what do you want to take?",
+        "you can only take one thing. pick one already",
+        match player.take(args[0]) {
+            Ok(item) => format!("you take the {}", item),
+            Err(err) => format!("you don't see a {} here", err),
+        }
+}
+
+gen_func! {
+    drop (player, args):
+        "drop what now?",
+        "you have to stop doing this.",
+        match player.drop(args[0]) {
+            Ok(item) => format!("you drop the {}", item),
+            Err(item) => format!("you don't have a {} to drop", item),
+        }
 }
