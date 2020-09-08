@@ -4,6 +4,8 @@ use std::collections::HashMap;
 use std::process;
 use rand::Rng;
 
+mod game;
+
 type CmdFunc = fn(&mut Player, &[&str]) -> String;
 pub struct ItemList(pub HashMap<String, Item>);
 
@@ -46,7 +48,11 @@ impl Item {
 pub struct Coord(pub i32, pub i32);
 impl Coord {
     pub fn north(&self) -> Coord {
-        Coord(self.0, self.0 + 1)
+        Coord(self.0, self.1 + 1)
+    }
+
+    pub fn south(&self) -> Coord {
+        Coord(self.0, self.1 - 1)
     }
 }
 
@@ -349,7 +355,7 @@ macro_rules! gen_func {
 }
 
 gen_func! { 
-    remove (player, args):
+    remove(player, args):
         "i won't object to you taking off your clothes. but where to start?",
         "can you be more specific?",
         match player.remove(args[0]) {
@@ -359,7 +365,7 @@ gen_func! {
 }
 
 gen_func! {
-    wear (player, args):
+    wear(player, args):
         "what do you want to put on?",
         "pick one or the other...",
         match player.wear(args[0]) {
@@ -369,7 +375,7 @@ gen_func! {
 }
 
 gen_func! {
-    look (player, args):
+    look(player, args):
         player.location().to_string(),
         "you need to be specific. give me a one-word identification of the \
               thing you want to look at. ok?",
@@ -383,7 +389,7 @@ gen_func! {
 }
 
 gen_func! {
-    take (player, args):
+    take(player, args):
         "what do you want to take?",
         "you can only take one thing. pick one already",
         match player.take(args[0]) {
@@ -394,7 +400,7 @@ gen_func! {
 }
 
 gen_func! {
-    drop (player, args):
+    drop(player, args):
         "drop what now?",
         "you have to stop doing this.",
         match player.drop(args[0]) {
@@ -407,4 +413,9 @@ gen_func! {
 pub fn north(player: &mut Player, args: &[&str]) -> String {
     player.coord = player.coord.north();
     "you go north".to_string()
+}
+
+pub fn south(player: &mut Player, args: &[&str]) -> String {
+    player.coord = player.coord.south();
+    "you go south".to_string()
 }

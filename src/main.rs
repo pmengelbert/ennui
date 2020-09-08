@@ -24,7 +24,8 @@ fn main() -> Result<(), std::io::Error> {
         quit,
         wear,
         remove,
-        north
+        north,
+        south
     ];
 
     let mut m = Map {
