@@ -4,8 +4,13 @@ use std::collections::HashMap;
 use std::process;
 use rand::Rng;
 
+mod game;
+mod map;
+
+use crate::map::map::{Map, Coord};
+
 type CmdFunc = fn(&mut Player, &[&str]) -> String;
-struct ItemList(HashMap<String, Item>);
+pub struct ItemList(HashMap<String, Item>);
 
 impl Deref for ItemList {
     type Target = HashMap<String, Item>;
@@ -39,7 +44,7 @@ impl Item {
 }
 
 #[derive(PartialEq, Eq)]
-enum ItemType {
+pub enum ItemType {
     Wearable,
     Edible,
     Normal,
@@ -61,13 +66,14 @@ enum MeterType {
 pub struct Player {
     name: String,
     status: Vec<Status>,
+    coord: Coord,
     location: Room,
     meters: MeterGroup,
     items: ItemList,
     clothing: ItemList,
 }
 
-struct Item {
+pub struct Item {
     kind: ItemType,
     name: String,
     description: String,
@@ -78,10 +84,10 @@ struct Meter {
     max: isize,
 }
 
-struct Room {
-    name: String,
-    description: String,
-    items: ItemList,
+pub struct Room {
+    pub name: String,
+    pub description: String,
+    pub items: ItemList,
 }
 
 impl Room {
@@ -160,6 +166,7 @@ impl Player {
             name: String::from(name),
             status: vec![Status::Alive],
             meters: mg,
+            coord: Coord(0, 0),
             location: room,
             items: ItemList(HashMap::new()),
             clothing: ItemList(HashMap::new()),
