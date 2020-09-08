@@ -1,6 +1,21 @@
 use crate::*;
 use std::collections::HashMap;
-use map::map::{Map, Coord};
+
+#[derive(Eq, PartialEq, Hash)]
+pub struct Coord(pub i32, pub i32);
+impl Coord {
+    pub fn north(&self) -> Coord {
+        Coord(self.0, self.1 + 1)
+    }
+
+    pub fn south(&self) -> Coord {
+        Coord(self.0, self.1 - 1)
+    }
+}
+
+pub struct Map {
+    pub map: HashMap<Coord, Room>
+}
 
 macro_rules! interpreter {
     ( $( $name:ident ),* ) => {
@@ -13,8 +28,8 @@ macro_rules! interpreter {
 }
 
 pub struct Game {
-    interpreter: Interpreter,
-    map: Map,
+    pub interpreter: Interpreter,
+    pub map: Map,
 }
 
 impl Game {

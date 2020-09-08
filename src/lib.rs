@@ -7,8 +7,6 @@ use rand::Rng;
 mod game;
 mod map;
 
-use crate::map::map::{Map, Coord};
-
 type CmdFunc = fn(&mut Player, &[&str]) -> String;
 pub struct ItemList(HashMap<String, Item>);
 
@@ -66,7 +64,7 @@ enum MeterType {
 pub struct Player {
     name: String,
     status: Vec<Status>,
-    coord: Coord,
+    coord: game::Coord,
     location: Room,
     meters: MeterGroup,
     items: ItemList,
@@ -74,9 +72,9 @@ pub struct Player {
 }
 
 pub struct Item {
-    kind: ItemType,
-    name: String,
-    description: String,
+    pub kind: ItemType,
+    pub name: String,
+    pub description: String,
 }
 
 struct Meter {
@@ -166,7 +164,7 @@ impl Player {
             name: String::from(name),
             status: vec![Status::Alive],
             meters: mg,
-            coord: Coord(0, 0),
+            coord: game::Coord(0, 0),
             location: room,
             items: ItemList(HashMap::new()),
             clothing: ItemList(HashMap::new()),
