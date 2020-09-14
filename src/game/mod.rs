@@ -1,13 +1,18 @@
-use super::player::Player;
+use super::player::{UUID, Player, PlayerType, PlayerType::*};
+use super::map::{Map};
+use std::collections::HashMap;
 
 pub struct Game {
-    x: i32,
+    players: HashMap<UUID, Player>,
+    map: Map,
 }
 
 impl Game {
     pub fn new() -> Self {
+        let map = Map::new_test();
         Game {
-            x: 6,
+            players: HashMap::new(),
+            map: map,
         }
     }
 }
