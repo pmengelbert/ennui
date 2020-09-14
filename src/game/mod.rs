@@ -15,4 +15,10 @@ impl Game {
             map: map,
         }
     }
+
+    pub fn add_player(&mut self, p: Player) -> Option<Player> {
+        let uuid = p.uuid();
+
+        self.players.insert(uuid, p)
+    }
 }
