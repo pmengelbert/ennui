@@ -119,7 +119,7 @@ impl Game {
         self.map.get_mut(c)
     }
 
-    pub fn player_takes_item(&mut self, uuid: UUID, item_name: &str, dir: Direction) -> Result<String, String> {
+    pub fn player_takes_item(&mut self, uuid: UUID, item_hook: &str, dir: Direction) -> Result<String, String> {
         let map = &mut self.map;
         let players = &mut self.players;
 
@@ -145,8 +145,8 @@ impl Game {
             Direction::From => (room, hands, "take"),
         };
 
-        match to.transfer_item(item_name, from) {
-            Ok(_) => Ok(format!("you {} the {}", verb, item_name)),
+        match to.transfer_item(item_hook, from) {
+            Ok(_) => Ok(format!("you {} the {}", verb, item_hook)),
             e => e
         }
    }

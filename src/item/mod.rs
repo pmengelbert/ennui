@@ -39,7 +39,7 @@ impl ItemType<Item> {
         match self.container() {
             Some(c) => {
                 c.iter()
-                    .map(|i| format!("\n - {}", i.item().unwrap().description()))
+                    .map(|i| format!("\n - {}", i.item().unwrap().name()))
                     .collect::<String>()
             },
             None => {
@@ -48,17 +48,17 @@ impl ItemType<Item> {
         }
     }
 
-    pub fn transfer_item(&mut self, item_name: &str, to: &mut ItemType<Item>) -> Result<String, String> {
+    pub fn transfer_item(&mut self, item_hook: &str, to: &mut ItemType<Item>) -> Result<String, String> {
         match (self, to) {
             (&mut Container(ref mut c),
                     &mut Container(ref mut d)) => {
 
                 let index = c.iter()
-                    .take_while(|&x| x.item().unwrap().name() != item_name)
+                    .take_while(|&x| x.item().unwrap().hook() != item_hook)
                     .count();
 
                 if index == c.len() {
-                    return Err(format!("you don't see a {}", item_name));
+                    return Err(format!("you don't see a {}", item_hook));
                 }
 
                 let item = c.remove(index);
@@ -74,21 +74,28 @@ impl ItemType<Item> {
 #[derive(Debug)]
 pub struct Item {
     name: String,
+    hook: String,
     description: String,
 }
 
 impl Item {
-    pub fn new(n: &str, d: &str) -> Self {
-        let (name, description) = (n.to_string(), d.to_string());
+    pub fn new(n: &str, h: &str, d: &str) -> Self {
+        let (name, hook, description) = 
+            (n.to_string(), h.to_string(), d.to_string());
 
         Self {
             name,
+            hook,
             description,
         }
     }
 
     pub fn name(&self) -> &String {
         &self.name
+    }
+
+    pub fn hook(&self) -> &String {
+        &self.hook
     }
 
     pub fn description(&self) -> &String {
