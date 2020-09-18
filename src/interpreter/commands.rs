@@ -86,3 +86,10 @@ gen_func! {
         std::process::exit(0);
     }
 }
+
+gen_func! {
+    say(g, uuid, args) {
+        format!(r#"you say "{}""#, args.join(" "))
+    }
+}
+

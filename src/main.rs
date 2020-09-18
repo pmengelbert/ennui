@@ -48,7 +48,8 @@ fn main() -> Result<(), String> {
         loc,
         drop,
         quit,
-        inventory
+        inventory,
+        say
     ];
 
     g.add_player(Human(p));
