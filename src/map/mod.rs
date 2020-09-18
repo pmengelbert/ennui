@@ -4,7 +4,7 @@ pub mod room;
 use room::*;
 use super::item::{ItemType, Item, ItemType::*};
 
-#[derive(Hash, Eq, PartialEq, Copy, Clone)]
+#[derive(Hash, Eq, PartialEq, Copy, Clone, Debug)]
 pub struct Coord(pub i32, pub i32);
 
 pub struct Map {

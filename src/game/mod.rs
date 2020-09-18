@@ -119,35 +119,36 @@ impl Game {
         self.map.get_mut(c)
     }
 
-   pub fn player_takes_item(&mut self, uuid: UUID, item_name: &str, dir: Direction) -> Result<String, String> {
-       let map = &mut self.map;
-       let players = &mut self.players;
+    pub fn player_takes_item(&mut self, uuid: UUID, item_name: &str, dir: Direction) -> Result<String, String> {
+        let map = &mut self.map;
+        let players = &mut self.players;
 
-       let (c, hands) = {
-          let p =  players.get_mut(&uuid)
-              .unwrap_or(return Err(format!("unable to find player")))
-              .player_mut();
-           let c = p.location();
-           let hands = p.hands_mut();
-           (c, hands)
-       };
+        let (c, hands) = match players.get_mut(&uuid) {
+            Some(p) => {
+                let p = p.player_mut();
+                let c = p.location();
+                let hands = p.hands_mut();
+                (c, hands)
+            },
+            None => {
+                return Err(format!("unable to find player"));
+            }
+        };
 
-       let room = {
-           let r = map.get_mut(c)
-               .unwrap_or(return Err(format!("unable to find map coordinate")))
-               .items();
-           r
-       };
+        let room = match map.get_mut(c) {
+            Some(rm) => rm.items(),
+            None => { return Err(format!("unable to find room")); },
+        };
 
-       let (to, from, verb) = match dir {
-           Direction::To => (hands, room, "drop"),
-           Direction::From => (room, hands, "take"),
-       };
+        let (to, from, verb) = match dir {
+            Direction::To => (hands, room, "drop"),
+            Direction::From => (room, hands, "take"),
+        };
 
-       match to.transfer_item(item_name, from) {
-           Ok(_) => Ok(format!("you {} the {}", verb, item_name)),
-           e => e
-       }
+        match to.transfer_item(item_name, from) {
+            Ok(_) => Ok(format!("you {} the {}", verb, item_name)),
+            e => e
+        }
    }
 
     pub fn list_items_for_player(&mut self, uuid: UUID) -> String {

@@ -12,7 +12,7 @@ fn test_uuid() {
     assert_ne!(my_uuid, my_uuid2);
 }
 
-#[derive(Copy, Eq, PartialEq, Clone, Hash)]
+#[derive(Copy, Eq, PartialEq, Clone, Hash, Debug)]
 pub struct UUID(u128);
 
 impl UUID {
@@ -21,6 +21,7 @@ impl UUID {
     }
 }
 
+#[derive(Debug)]
 pub enum PlayerType<T> {
     Human(T),
     NPC(T),
@@ -41,11 +42,13 @@ impl PlayerType<Player> {
     }
 }
 
+#[derive(Debug)]
 pub enum Status {
     Alive,
     Dead,
 }
 
+#[derive(Debug)]
 pub struct Player {
     name: String,
     status: Vec<Status>,

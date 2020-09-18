@@ -1,6 +1,7 @@
 use super::super::item::{ItemType::*, ItemType, Item};
 use super::super::player::{UUID, Player, PlayerType, PlayerType::*};
 
+#[derive(Debug)]
 pub struct Room {
     pub name: String,
     pub description: String,
