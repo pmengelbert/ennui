@@ -1,7 +1,7 @@
-use super::player::{UUID, Player, PlayerType, PlayerType::*};
-use super::map::{Map, Coord, room::Room};
+use super::map::{room::Room, Coord, Map};
+use super::player::{Player, PlayerType, PlayerType::*, UUID};
+use crate::item::{Item, ItemType, ItemType::*};
 use std::collections::HashMap;
-use crate::item::{ItemType, Item, ItemType::*};
 
 pub struct Game {
     players: HashMap<UUID, PlayerType<Player>>,
@@ -36,9 +36,11 @@ impl Game {
     }
 
     pub fn place_player_in_room(&mut self, uuid: UUID, c: Coord) -> Result<String, String> {
-        let mut player = match self.players.get_mut(&uuid){
+        let mut player = match self.players.get_mut(&uuid) {
             Some(q) => q.player_mut(),
-            None => { return Err(format!("somehow, player not found")); }
+            None => {
+                return Err(format!("somehow, player not found"));
+            }
         };
         let old_coord = player.location();
 
@@ -51,7 +53,7 @@ impl Game {
                 player.set_location(c);
                 r.add_player(uuid);
                 Ok(self.room_to_string_for_player(uuid))
-            },
+            }
             None => Err("room does not exist".to_string()),
         }
     }
@@ -69,8 +71,7 @@ impl Game {
                         let (name, items) = room.to_string();
                         s.push_str(&name);
 
-                        for u in room.players.iter()
-                                    .filter(|&u| *u != uuid) {
+                        for u in room.players.iter().filter(|&u| *u != uuid) {
                             if let Some((name, _, items)) = self.get_player_info_strings(*u) {
                                 s.push_str(&format!("\n ---> {}", name))
                             }
@@ -86,6 +87,25 @@ impl Game {
         }
     }
 
+    pub fn look_at_item(&self, uuid: UUID, item_hook: &str) -> String {
+        let location = match self.players.get(&uuid) {
+            Some(p) => p.player().location(),
+            None => {
+                return format!("unable to find player");
+            }
+        };
+
+        match self.map.get(location) {
+            Some(room) => match room.items_not_mut().find_by_hook(item_hook) {
+                Some(i) => i.description().clone(),
+                None => format!("you don't see a {} here", item_hook),
+            },
+            None => {
+                return format!("unable to find room");
+            }
+        }
+    }
+
     pub fn get_player_info_strings(&self, uuid: UUID) -> Option<(String, String, String)> {
         let mut s = String::new();
         match self.players.get(&uuid) {
@@ -93,10 +113,8 @@ impl Game {
                 let p = o.player();
                 s.push_str(&p.hands().to_string());
                 Some((p.name().clone(), p.description().clone(), s))
-            },
-            None => {
-                None
-            },
+            }
+            None => None,
         }
     }
 
@@ -106,8 +124,7 @@ impl Game {
 
     pub fn get_player_mut(&mut self, uuid: UUID) -> &mut Player {
         match self.players.get_mut(&uuid).unwrap() {
-            Human(ref mut p) | NPC(ref mut p) |
-                Admin(ref mut p) => p
+            Human(ref mut p) | NPC(ref mut p) | Admin(ref mut p) => p,
         }
     }
 
@@ -119,7 +136,12 @@ impl Game {
         self.map.get_mut(c)
     }
 
-    pub fn player_takes_item(&mut self, uuid: UUID, item_hook: &str, dir: Direction) -> Result<String, String> {
+    pub fn player_takes_item(
+        &mut self,
+        uuid: UUID,
+        item_hook: &str,
+        dir: Direction,
+    ) -> Result<String, String> {
         let map = &mut self.map;
         let players = &mut self.players;
 
@@ -129,7 +151,7 @@ impl Game {
                 let c = p.location();
                 let hands = p.hands_mut();
                 (c, hands)
-            },
+            }
             None => {
                 return Err(format!("unable to find player"));
             }
@@ -137,7 +159,9 @@ impl Game {
 
         let room = match map.get_mut(c) {
             Some(rm) => rm.items(),
-            None => { return Err(format!("unable to find room")); },
+            None => {
+                return Err(format!("unable to find room"));
+            }
         };
 
         let (to, from, verb) = match dir {
@@ -147,9 +171,9 @@ impl Game {
 
         match to.transfer_item(item_hook, from) {
             Ok(_) => Ok(format!("you {} the {}", verb, item_hook)),
-            e => e
+            e => e,
         }
-   }
+    }
 
     pub fn list_items_for_player(&mut self, uuid: UUID) -> String {
         let p = self.get_player(uuid);

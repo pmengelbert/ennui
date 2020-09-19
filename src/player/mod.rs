@@ -1,7 +1,7 @@
+use self::PlayerType::*;
 use self::Status::{Alive, Dead};
-use self::{PlayerType::*};
 use super::item::{Item, ItemType, ItemType::*};
-use super::map::{Coord};
+use super::map::Coord;
 use uuid;
 
 #[test]

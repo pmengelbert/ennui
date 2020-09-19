@@ -1,5 +1,5 @@
-use super::super::item::{ItemType::*, ItemType, Item};
-use super::super::player::{UUID, Player, PlayerType, PlayerType::*};
+use super::super::item::{Item, ItemType, ItemType::*};
+use super::super::player::{Player, PlayerType, PlayerType::*, UUID};
 
 #[derive(Debug)]
 pub struct Room {
@@ -40,7 +40,7 @@ impl Room {
             Some(ref mut c) => {
                 c.push(i);
                 Ok(())
-            },
+            }
             None => Err("Item not found".to_string()),
         }
     }
@@ -50,7 +50,8 @@ impl Room {
     }
 
     pub fn remove_player(&mut self, uuid: UUID) -> Result<(), String> {
-        self.players = self.players
+        self.players = self
+            .players
             .split(|&u| u == uuid)
             .flatten()
             .map(|x| *x)
@@ -61,5 +62,9 @@ impl Room {
 
     pub fn items(&mut self) -> &mut ItemType<Item> {
         &mut self.items
+    }
+
+    pub fn items_not_mut(&self) -> &ItemType<Item> {
+        &self.items
     }
 }

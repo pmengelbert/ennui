@@ -1,18 +1,23 @@
-use crate::game::{Game, Direction};
-use crate::player::UUID;
+use crate::game::{Direction, Game};
 use crate::map::Coord;
+use crate::player::UUID;
 
 macro_rules! gen_func {
     ($name:ident ($g:ident, $uuid:ident, $args:ident) $bl:block ) => {
         pub fn $name($g: &mut Game, $uuid: UUID, $args: &[&str]) -> String {
             $bl
         }
-    }
+    };
 }
 
 gen_func! {
     look(g, uuid, args) {
-        g.room_to_string_for_player(uuid)
+        match args.len() {
+            0 => g.room_to_string_for_player(uuid),
+            1 => g.look_at_item(uuid, args[0]),
+            _ => format!("tell me ONE thing to look at, not a whole bunch at once"),
+        }
+
     }
 }
 
@@ -27,13 +32,13 @@ macro_rules! dir_func {
                 Err(s) => format!("you can't go that way!"),
             }
         }}
-    }
+    };
 }
 
-dir_func!{north: ( 0,  1)}
-dir_func!{south: ( 0, -1)}
-dir_func!{east:  ( 1,  0)}
-dir_func!{west:  (-1,  0)}
+dir_func! {north: ( 0,  1)}
+dir_func! {south: ( 0, -1)}
+dir_func! {east:  ( 1,  0)}
+dir_func! {west:  (-1,  0)}
 
 gen_func! {
     loc(g, uuid, args) {
@@ -92,4 +97,3 @@ gen_func! {
         format!(r#"you say "{}""#, args.join(" "))
     }
 }
-

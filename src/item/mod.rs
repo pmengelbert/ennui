@@ -15,8 +15,7 @@ pub enum ItemType<T> {
 impl ItemType<Item> {
     pub fn item(&self) -> Option<&Item> {
         match &self {
-            Weapon(ref t) | Armor(ref t) | Food(ref t) |
-                Drink(ref t) | Inert(ref t) => Some(t),
+            Weapon(ref t) | Armor(ref t) | Food(ref t) | Drink(ref t) | Inert(ref t) => Some(t),
             _ => None,
         }
     }
@@ -37,23 +36,30 @@ impl ItemType<Item> {
 
     pub fn to_string(&self) -> String {
         match self.container() {
-            Some(c) => {
-                c.iter()
-                    .map(|i| format!("\n - {}", i.item().unwrap().name()))
-                    .collect::<String>()
-            },
-            None => {
-                self.item().unwrap().description().to_string()
-            }
+            Some(c) => c
+                .iter()
+                .map(|i| format!("\n - {}", i.item().unwrap().name()))
+                .collect::<String>(),
+            None => self.item().unwrap().description().to_string(),
         }
     }
 
-    pub fn transfer_item(&mut self, item_hook: &str, to: &mut ItemType<Item>) -> Result<String, String> {
-        match (self, to) {
-            (&mut Container(ref mut c),
-                    &mut Container(ref mut d)) => {
+    pub fn hook(&self) -> String {
+        match self.item() {
+            Some(i) => i.hook().to_string(),
+            None => unreachable!(),
+        }
+    }
 
-                let index = c.iter()
+    pub fn transfer_item(
+        &mut self,
+        item_hook: &str,
+        to: &mut ItemType<Item>,
+    ) -> Result<String, String> {
+        match (self, to) {
+            (&mut Container(ref mut c), &mut Container(ref mut d)) => {
+                let index = c
+                    .iter()
                     .take_while(|&x| x.item().unwrap().hook() != item_hook)
                     .count();
 
@@ -65,8 +71,24 @@ impl ItemType<Item> {
                 d.push(item);
 
                 Ok(format!(""))
-            },
-            _ => Err(format!("must be two containers"))
+            }
+            _ => Err(format!("must be two containers")),
+        }
+    }
+
+    pub fn find_by_hook(&self, item_hook: &str) -> Option<&Item> {
+        match self.container() {
+            None => None,
+            Some(c) => {
+                for i in c {
+                    let itm = i.item().unwrap();
+                    if itm.hook() == item_hook {
+                        return Some(itm);
+                    }
+                }
+
+                return None;
+            }
         }
     }
 }
@@ -80,8 +102,7 @@ pub struct Item {
 
 impl Item {
     pub fn new(n: &str, h: &str, d: &str) -> Self {
-        let (name, hook, description) = 
-            (n.to_string(), h.to_string(), d.to_string());
+        let (name, hook, description) = (n.to_string(), h.to_string(), d.to_string());
 
         Self {
             name,

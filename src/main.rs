@@ -1,12 +1,11 @@
 use ennui::game::Game;
-use ennui::player::{PlayerType::*, Player};
-use ennui::map::{Coord};
-use std::io;
-use ennui::interpreter::Interpreter;
 use ennui::interpreter::commands;
-use std::io::Write;
+use ennui::interpreter::Interpreter;
+use ennui::map::Coord;
+use ennui::player::{Player, PlayerType::*};
 use rand::Rng;
-
+use std::io;
+use std::io::Write;
 
 pub fn random_insult() -> String {
     match rand::thread_rng().gen_range(1, 6) {
@@ -14,7 +13,7 @@ pub fn random_insult() -> String {
         2 => "i think you should leave".to_string(),
         3 => "i'll have to ask my lawyer about that".to_string(),
         4 => "that's ... uncommon".to_string(),
-        _ => "that's an interesting theory... but will it hold up in the laboratory?".to_string()
+        _ => "that's an interesting theory... but will it hold up in the laboratory?".to_string(),
     }
 }
 
@@ -38,8 +37,7 @@ fn main() -> Result<(), String> {
     let mut g = Game::new();
 
     let c = interpreter![
-        commands::
-        look,
+        commands::look,
         north,
         south,
         east,
@@ -69,15 +67,13 @@ fn main() -> Result<(), String> {
             .expect("failed to read input");
 
         let s = user_input.trim_end();
-        let x = s.split_whitespace()
-            .collect::<Vec<&str>>();
+        let x = s.split_whitespace().collect::<Vec<&str>>();
 
         if let Some(cf) = c.get(&x[0]) {
             println!("{}", cf(&mut g, uuid, &x[1..]));
         } else {
             println!("{}", random_insult());
         }
-
     }
 
     Ok(())

@@ -1,7 +1,7 @@
-use std::collections::HashMap;
-use super::game::{Game};
-use crate::player::UUID;
+use super::game::Game;
 use crate::map::Coord;
+use crate::player::UUID;
+use std::collections::HashMap;
 
 pub mod commands;
 
@@ -11,7 +11,7 @@ pub struct Interpreter {
     commands: HashMap<String, CommandFunc>,
 }
 
-impl Interpreter{
+impl Interpreter {
     pub fn new() -> Self {
         Interpreter {
             commands: HashMap::new(),
@@ -30,19 +30,18 @@ impl Interpreter{
         match command {
             "north" => {
                 let Coord(x, y) = g.get_player(uuid).location();
-                let new_coord = Coord(x, y+1);
+                let new_coord = Coord(x, y + 1);
 
                 match g.place_player_in_room(uuid, new_coord) {
                     Ok(msg) => format!("you go north\n{}", msg),
                     Err(s) => format!("you can't go that way!"),
                 }
-
-            },
+            }
             "loc" => {
                 let Coord(x, y) = g.get_player(uuid).location();
                 format!("you are standing at coordinate {},{}", x, y)
             }
-            _ => format!("i'll have to ask my lawyer about that")
+            _ => format!("i'll have to ask my lawyer about that"),
         }
     }
 }
