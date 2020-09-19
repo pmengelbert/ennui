@@ -88,8 +88,8 @@ impl Game {
     }
 
     pub fn look_at_item(&self, uuid: UUID, item_hook: &str) -> String {
-        let location = match self.players.get(&uuid) {
-            Some(p) => p.player().location(),
+        let (p, location) = match self.players.get(&uuid) {
+            Some(p) => (p.player(), p.player().location()),
             None => {
                 return format!("unable to find player");
             }
@@ -98,7 +98,12 @@ impl Game {
         match self.map.get(location) {
             Some(room) => match room.items_not_mut().find_by_hook(item_hook) {
                 Some(i) => i.description().clone(),
-                None => format!("you don't see a {} here", item_hook),
+                None => {
+                    match p.hands().find_by_hook(item_hook) {
+                        Some(i) => i.description().clone(),
+                        None => format!("you don't see a {} here", item_hook),
+                    }
+                }
             },
             None => {
                 return format!("unable to find room");
