@@ -52,7 +52,8 @@ pub enum Status {
 pub struct Player {
     name: String,
     status: Vec<Status>,
-    hands: ItemType<Item>,
+    pub hands: ItemType<Item>,
+    pub worn: ItemType<Item>,
     uuid: UUID,
     location: Coord,
     description: String,
@@ -62,6 +63,7 @@ impl Player {
     pub fn new(name: &str) -> Self {
         let (name, status) = (name.to_string(), vec![Alive]);
         let hands: ItemType<Item> = Container(Vec::new());
+        let worn: ItemType<Item> = Container(Vec::new());
         let uuid = UUID(uuid::Uuid::new_v4().as_u128());
         let location = Coord(0, 0);
         let description = String::new();
@@ -69,6 +71,7 @@ impl Player {
             name,
             status,
             hands,
+            worn,
             uuid,
             location,
             description,
@@ -110,6 +113,14 @@ impl Player {
 
     pub fn hands_mut(&mut self) -> &mut ItemType<Item> {
         &mut self.hands
+    }
+
+    pub fn worn(&self) -> &ItemType<Item> {
+        &self.worn
+    }
+
+    pub fn worn_mut(&mut self) -> &mut ItemType<Item> {
+        &mut self.worn
     }
 
     pub fn set_location(&mut self, c: Coord) {

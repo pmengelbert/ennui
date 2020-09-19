@@ -48,6 +48,8 @@ fn main() -> Result<(), String> {
         drop,
         quit,
         inventory,
+        remove,
+        wear, 
         say
     ];
 

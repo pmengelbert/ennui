@@ -186,6 +186,32 @@ impl Game {
         }
     }
 
+    pub fn player_wears_item(&mut self, uuid: UUID, item_hook: &str, dir: Direction) -> Result<String, String> {
+        let mut p = self.get_player_mut(uuid);
+        let mut hands = {
+            p.hands.clone()
+        };
+
+        let mut worn = {
+            p.worn.clone()
+        };
+
+        let (to, from, verb) = match dir {
+            Direction::To => (&mut hands, &mut worn, "wear"),
+            Direction::From => (&mut worn, &mut hands, "take off"),
+        };
+
+        let res = match to.transfer_item(item_hook, from) {
+            Ok(_) => Ok(format!("you {} the {}", verb, item_hook)),
+            e => e,
+        };
+
+        p.hands = hands;
+        p.worn = worn;
+
+        res
+    }
+
     pub fn list_items_for_player(&mut self, uuid: UUID) -> String {
         let p = self.get_player(uuid);
         let mut s = String::from("you are carrying:");

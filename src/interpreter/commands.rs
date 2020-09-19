@@ -97,3 +97,19 @@ gen_func! {
         format!(r#"you say "{}""#, args.join(" "))
     }
 }
+
+gen_func! {
+    wear(g, uuid, args) {
+        match g.player_wears_item(uuid, args[0], Direction::To) {
+            Ok(msg) | Err(msg) => msg,
+        }
+    }
+}
+
+gen_func! {
+    remove(g, uuid, args) {
+        match g.player_wears_item(uuid, args[0], Direction::From) {
+            Ok(msg) | Err(msg) => msg,
+        }
+    }
+}
