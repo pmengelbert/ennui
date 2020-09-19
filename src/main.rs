@@ -29,7 +29,8 @@ macro_rules! interpreter {
 
 fn main() -> Result<(), String> {
     let p = Player::new("bill");
-    let dog = Player::new("dog");
+    let mut dog = Player::new("dog");
+    dog.set_description("an adorable pup");
     let dog_uuid = dog.uuid();
 
     let uuid = p.uuid();

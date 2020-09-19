@@ -100,6 +100,10 @@ impl Player {
         &self.description
     }
 
+    pub fn set_description(&mut self, desc: &str) {
+        self.description = desc.to_string();
+    }
+
     pub fn hands(&self) -> &ItemType<Item> {
         &self.hands
     }

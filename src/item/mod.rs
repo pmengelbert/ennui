@@ -2,7 +2,7 @@ mod itemlist;
 
 use self::ItemType::*;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum ItemType<T> {
     Weapon(T),
     Armor(T),
@@ -93,7 +93,7 @@ impl ItemType<Item> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Item {
     name: String,
     hook: String,
