@@ -49,7 +49,7 @@ fn main() -> Result<(), String> {
         quit,
         inventory,
         remove,
-        wear, 
+        wear,
         say
     ];
 

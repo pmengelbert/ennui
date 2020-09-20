@@ -2,6 +2,7 @@ use super::map::{room::Room, Coord, Map};
 use super::player::{Player, PlayerType, PlayerType::*, UUID};
 use crate::item::{Item, ItemType, ItemType::*};
 use std::collections::HashMap;
+use std::collections::hash_map::Entry;
 
 pub struct Game {
     players: HashMap<UUID, PlayerType<Player>>,
@@ -96,18 +97,16 @@ impl Game {
         match self.map.get(location) {
             Some(room) => {
                 match room.players.iter().find(|&&u| {
-                    let p = self.get_player(u); 
+                    let p = self.get_player(u);
                     p.name() == item_hook
                 }) {
                     Some(u) => self.get_player(*u).description().clone(),
                     None => match room.items_not_mut().find_by_hook(item_hook) {
                         Some(i) => i.description().clone(),
-                        None => {
-                            match p.hands().find_by_hook(item_hook) {
-                                Some(i) => i.description().clone(),
-                                None => format!("you don't see a {} here", item_hook),
-                            }
-                        }
+                        None => match p.hands().find_by_hook(item_hook) {
+                            Some(i) => i.description().clone(),
+                            None => format!("you don't see a {} here", item_hook),
+                        },
                     },
                 }
             }
@@ -186,30 +185,41 @@ impl Game {
         }
     }
 
-    pub fn player_wears_item(&mut self, uuid: UUID, item_hook: &str, dir: Direction) -> Result<String, String> {
-        let mut p = self.get_player_mut(uuid);
-        let mut hands = {
-            p.hands.clone()
+    pub fn player_wears_item(
+        &mut self,
+        uuid: UUID,
+        item_hook: &str,
+        dir: Direction,
+    ) -> Result<String, String> {
+        let player = match self.players.entry(uuid){
+            Entry::Occupied(oe) => oe.into_mut(),
+            _ => {
+                return Err(format!("can't find player"));
+            }
         };
 
-        let mut worn = {
-            p.worn.clone()
+        let (mut hands, mut worn) = {
+            match player {
+                Human(p) => {
+                    (&mut p.hands, &mut p.worn)
+                },
+                _ => {
+                    return Err(format!("nonhuman"));
+                }
+            }
         };
 
         let (to, from, verb) = match dir {
             Direction::To => (&mut hands, &mut worn, "wear"),
-            Direction::From => (&mut worn, &mut hands, "take off"),
+            Direction::From => (&mut worn, &mut hands, "remove"),
         };
 
-        let res = match to.transfer_item(item_hook, from) {
-            Ok(_) => Ok(format!("you {} the {}", verb, item_hook)),
+        match to.transfer_item(item_hook, from) {
+            Ok(_) => {
+                Ok(format!("you {} the {}", verb, item_hook))
+            },
             e => e,
-        };
-
-        p.hands = hands;
-        p.worn = worn;
-
-        res
+        }
     }
 
     pub fn list_items_for_player(&mut self, uuid: UUID) -> String {
