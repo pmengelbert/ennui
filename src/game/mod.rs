@@ -1,8 +1,8 @@
 use super::map::{room::Room, Coord, Map};
 use super::player::{Player, PlayerType, PlayerType::*, UUID};
 use crate::item::{Item, ItemType, ItemType::*};
-use std::collections::HashMap;
 use std::collections::hash_map::Entry;
+use std::collections::HashMap;
 
 pub struct Game {
     players: HashMap<UUID, PlayerType<Player>>,
@@ -191,7 +191,7 @@ impl Game {
         item_hook: &str,
         dir: Direction,
     ) -> Result<String, String> {
-        let player = match self.players.entry(uuid){
+        let player = match self.players.entry(uuid) {
             Entry::Occupied(oe) => oe.into_mut(),
             _ => {
                 return Err(format!("can't find player"));
@@ -200,9 +200,7 @@ impl Game {
 
         let (mut hands, mut worn) = {
             match player {
-                Human(p) => {
-                    (&mut p.hands, &mut p.worn)
-                },
+                Human(p) => (&mut p.hands, &mut p.worn),
                 _ => {
                     return Err(format!("nonhuman"));
                 }
@@ -215,9 +213,7 @@ impl Game {
         };
 
         match to.transfer_item(item_hook, from) {
-            Ok(_) => {
-                Ok(format!("you {} the {}", verb, item_hook))
-            },
+            Ok(_) => Ok(format!("you {} the {}", verb, item_hook)),
             e => e,
         }
     }
