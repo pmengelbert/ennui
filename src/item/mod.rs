@@ -13,10 +13,14 @@ pub enum ItemType<T> {
 }
 
 impl ItemType<Item> {
-    pub fn item(&self) -> Option<&Item> {
+    pub fn item(&self) -> Box<Item> {
         match &self {
-            Weapon(ref t) | Armor(ref t) | Food(ref t) | Drink(ref t) | Inert(ref t) => Some(t),
-            _ => None,
+            Weapon(ref t) | Armor(ref t) | Food(ref t) | Drink(ref t) | Inert(ref t) => Box::new(t.clone()),
+            _ => Box::new(Item{ 
+                name: "".to_string(),
+                description: "".to_string(),
+                hook: "".to_string(),
+            })
         }
     }
 
@@ -24,6 +28,13 @@ impl ItemType<Item> {
         match &self {
             Container(ref t) => Some(t),
             _ => None,
+        }
+    }
+
+    pub fn container_two(&self) -> Box<Vec<ItemType<Item>>> {
+        match &self {
+            Container(ref t) => Box::new(t.clone()),
+            _ => Box::new(vec![]),
         }
     }
 
@@ -38,17 +49,14 @@ impl ItemType<Item> {
         match self.container() {
             Some(c) => c
                 .iter()
-                .map(|i| format!("\n - {}", i.item().unwrap().name()))
+                .map(|i| format!("\n - {}", i.item().name()))
                 .collect::<String>(),
-            None => self.item().unwrap().description().to_string(),
+            None => self.item().description().to_string(),
         }
     }
 
     pub fn hook(&self) -> String {
-        match self.item() {
-            Some(i) => i.hook().to_string(),
-            None => unreachable!(),
-        }
+        self.item().hook().clone()
     }
 
     pub fn transfer_item(
@@ -60,7 +68,7 @@ impl ItemType<Item> {
             (&mut Container(ref mut c), &mut Container(ref mut d)) => {
                 let index = c
                     .iter()
-                    .take_while(|&x| x.item().unwrap().hook() != item_hook)
+                    .take_while(|&x| x.item().hook() != item_hook)
                     .count();
 
                 if index == c.len() {
@@ -76,20 +84,10 @@ impl ItemType<Item> {
         }
     }
 
-    pub fn find_by_hook(&self, item_hook: &str) -> Option<&Item> {
-        match self.container() {
-            None => None,
-            Some(c) => {
-                for i in c {
-                    let itm = i.item().unwrap();
-                    if itm.hook() == item_hook {
-                        return Some(itm);
-                    }
-                }
-
-                return None;
-            }
-        }
+    pub fn find_by_hook(&self, item_hook: &str) -> Option<Box<Item>> {
+        self.into_iter()
+            .map(|i| i.item())
+            .find(|x| x.hook() == item_hook)
     }
 }
 
@@ -121,5 +119,17 @@ impl Item {
 
     pub fn description(&self) -> &String {
         &self.description
+    }
+}
+
+impl IntoIterator for &ItemType<Item> {
+    type Item = ItemType<Item>;
+    type IntoIter = std::vec::IntoIter<Self::Item>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        match self {
+            Container(v) => v.to_vec().into_iter(),
+            _ => vec![self.clone()].to_vec().into_iter(),
+        }
     }
 }

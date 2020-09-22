@@ -224,7 +224,7 @@ impl Game {
 
         if let Some(c) = p.hands().container() {
             for i in c {
-                s.push_str(&format!("\n - {}", i.item().unwrap().name()));
+                s.push_str(&format!("\n - {}", i.item().name()));
             }
         }
 
