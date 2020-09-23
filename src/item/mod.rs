@@ -3,7 +3,8 @@ mod itemlist;
 use self::ItemType::*;
 use serde::{Serialize, Deserialize};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Deserialize)]
+#[serde(tag = "kind")]
 pub enum ItemType<T> {
     Weapon(T),
     Armor(T),
@@ -79,6 +80,9 @@ impl ItemType<Item> {
                 }
 
                 let item = c.remove(index);
+                if let Inert(ref i) = item {
+                    return Err(format!("you can't take {}", item.item().name()));
+                }
                 d.push(item);
 
                 Ok(format!(""))

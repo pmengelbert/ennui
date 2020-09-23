@@ -1,17 +1,36 @@
+---
 1: 
   name: The bedroom
+  x: 0
+  y: 0
   description: "The bed takes up most of the room, and it is a warm and delightful
         place to sleep. Worn clothing piles up in the corner, and there is a dog of unknown
         ancestry snoring atop the pile. Do not attempt to wake up the dog, because that
         would be mean."
   items:
-    - name: a big ol butt
-      hook: butt
-      description: i'm a bad person, truly
-    - name: poo
-      hook: poo
-      description: it's poo
-    - name: peen
-      hook: peen
-      description: peen
-
+    - name: a pink shirt
+      hook: shirt
+      description: Upon closer look, you notice that, for some reason, the shirt
+        features the face of Ludwig van Beethoven, and has the words "Peter's 9th Symphony" 
+        written on it.
+      kind: Armor
+    - name: a laundry bag
+      hook: bag
+      description: Dirty would be an overstatement.  These clothes have been worn
+        once and then tossed on the ground by a slob.
+      kind: Inert
+2: 
+  name: The entryway
+  x: 0
+  y: -1
+  description: A narrow hallway connecting the entrance (to the east) to the bedroom (south).
+  items:
+    - name: a keyhook
+      hook: keyhook
+      description: A nice piece of furniture that's good for holding keys.
+      kind: Inert
+    - kind: Inert
+      name: a shoe rack
+      hook: rack
+      description: A shoe rack piled with shit. The mess frustrates you, but a sudden wave of
+        anxiety kicks in, and you decide to do nothing about it.

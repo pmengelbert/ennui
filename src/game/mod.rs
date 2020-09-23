@@ -18,7 +18,7 @@ pub enum Direction {
 
 impl Game {
     pub fn new() -> Self {
-        let map = Map::new_test();
+        let map = Map::from_file("map/01.yaml");
 
         Game {
             players: HashMap::new(),
