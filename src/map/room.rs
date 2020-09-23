@@ -1,5 +1,5 @@
 use super::super::item::{Item, ItemType, ItemType::*};
-use super::super::player::{Player, PlayerType, PlayerType::*, UUID};
+use super::super::player::UUID;
 
 #[derive(Debug)]
 pub struct Room {

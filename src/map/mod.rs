@@ -1,10 +1,10 @@
 use std::collections::HashMap;
 
-pub mod room;
 mod io;
-use super::item::{Item, ItemType, ItemType::*};
+pub mod room;
+use super::item::{Item, ItemType};
 use room::*;
-use serde::{Serialize, Deserialize};
+use serde::Deserialize;
 use std::fs::File;
 use std::io::prelude::*;
 
@@ -20,7 +20,7 @@ impl Map {
         Map { m: HashMap::new() }
     }
 
-    pub fn from_file(filename: &str) -> Self {
+    pub fn from_file(filename: &str) -> Result<Self, String> {
         let mut file = match File::open(filename) {
             Ok(f) => f,
             Err(err) => panic!(err),
@@ -42,37 +42,13 @@ impl Map {
             let c = Coord(v.x, v.y);
             let mut r = Room::new(&v.name, &v.description);
             for item in v.items {
-                r.add_item(item);
+                r.add_item(item)?;
             }
 
             ret.insert(c, r);
         }
 
-        Map { m: ret }
-    }
-
-    pub fn new_test() -> Self {
-        let mut m = HashMap::new();
-        let mut room = Room::new("the kitchen", "this is the kitchen");
-        let mut room2 = Room::new("the hallway", "this is the hallway");
-        let item = Item::new(
-            "a knife",
-            "knife",
-            "a ceremonial knife, for when you have to poop and stuff",
-        );
-
-        let item2 = Item::new(
-            "a pink shirt",
-            "shirt",
-            "it's an ugly pink shirt. you'd rather not wear it...",
-        );
-
-        room.add_item(Weapon(item));
-        room.add_item(Armor(item2));
-        m.insert(Coord(0, 0), room);
-        m.insert(Coord(0, 1), room2);
-
-        Self { m }
+        Ok(Map { m: ret })
     }
 
     pub fn get(&self, c: Coord) -> Option<&Room> {

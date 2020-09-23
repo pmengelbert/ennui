@@ -1,7 +1,6 @@
 use ennui::game::Game;
-use ennui::interpreter::commands;
-#[macro_use]
 use ennui::interpreter;
+use ennui::interpreter::commands;
 use ennui::interpreter::{random_insult, Interpreter};
 use ennui::map::Coord;
 use ennui::player::{Player, PlayerType::*};
@@ -16,7 +15,7 @@ fn main() -> Result<(), String> {
 
     let uuid = p.uuid();
 
-    let mut g = Game::new();
+    let mut g = Game::new()?;
 
     let c = interpreter![
         commands::look,
@@ -44,7 +43,7 @@ fn main() -> Result<(), String> {
     loop {
         let mut user_input = String::new();
         print!("\n> ");
-        io::stdout().flush();
+        io::stdout().flush().expect("error flushing");
 
         io::stdin()
             .read_line(&mut user_input)
@@ -59,6 +58,4 @@ fn main() -> Result<(), String> {
             println!("{}", random_insult());
         }
     }
-
-    Ok(())
 }

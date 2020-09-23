@@ -1,7 +1,7 @@
 mod itemlist;
 
 use self::ItemType::*;
-use serde::{Serialize, Deserialize};
+use serde::Deserialize;
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(tag = "kind")]
@@ -81,7 +81,7 @@ impl ItemType<Item> {
 
                 let item = c.remove(index);
                 if let Inert(ref i) = item {
-                    return Err(format!("you can't take {}", item.item().name()));
+                    return Err(format!("you can't take {}", i.name()));
                 }
                 d.push(item);
 

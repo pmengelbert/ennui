@@ -1,9 +1,10 @@
 use super::map::{room::Room, Coord, Map};
 use super::player::{Player, PlayerType, PlayerType::*, UUID};
-use crate::item::{Item, ItemType, ItemType::*};
+use crate::item::ItemType::*;
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 
+#[allow(dead_code)]
 pub struct Game {
     players: HashMap<UUID, PlayerType<Player>>,
     npcs: HashMap<UUID, PlayerType<Player>>,
@@ -17,15 +18,15 @@ pub enum Direction {
 }
 
 impl Game {
-    pub fn new() -> Self {
-        let map = Map::from_file("map/01.yaml");
+    pub fn new() -> Result<Self, String> {
+        let map = Map::from_file("map/01.yaml")?;
 
-        Game {
+        Ok(Game {
             players: HashMap::new(),
             npcs: HashMap::new(),
             admins: HashMap::new(),
             map: map,
-        }
+        })
     }
 
     pub fn add_player(&mut self, p: PlayerType<Player>) -> Option<PlayerType<Player>> {
@@ -37,7 +38,7 @@ impl Game {
     }
 
     pub fn place_player_in_room(&mut self, uuid: UUID, c: Coord) -> Result<String, String> {
-        let mut player = match self.players.get_mut(&uuid) {
+        let player = match self.players.get_mut(&uuid) {
             Some(q) => q.player_mut(),
             None => {
                 return Err(format!("somehow, player not found"));
@@ -46,7 +47,7 @@ impl Game {
         let old_coord = player.location();
 
         if let Some(old_room) = self.map.get_mut(old_coord) {
-            old_room.remove_player(uuid);
+            old_room.remove_player(uuid)?;
         }
 
         match self.map.get_mut(c) {
@@ -73,7 +74,7 @@ impl Game {
                         s.push_str(&name);
 
                         for u in room.players.iter().filter(|&u| *u != uuid) {
-                            if let Some((name, _, items)) = self.get_player_info_strings(*u) {
+                            if let Some((name, _, _items)) = self.get_player_info_strings(*u) {
                                 s.push_str(&format!("\n ---> {}", name))
                             }
                         }
@@ -209,14 +210,14 @@ impl Game {
             Direction::To => {
                 match hands.into_iter().find(|x| x.item().hook() == item_hook) {
                     Some(i) => match i {
-                        Armor(i) => (),
+                        Armor(_) => (),
                         _ => return Err(format!("you can't wear a {}", item_hook)),
                     },
                     None => return Err(format!("you're not holding a {}", item_hook)),
                 }
 
                 (&mut hands, &mut worn, "wear")
-            },
+            }
             Direction::From => (&mut worn, &mut hands, "remove"),
         };
 

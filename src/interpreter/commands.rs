@@ -4,6 +4,7 @@ use crate::player::UUID;
 
 macro_rules! gen_func {
     ($name:ident ($g:ident, $uuid:ident, $args:ident) $bl:block ) => {
+        #[allow(unused_variables)]
         pub fn $name($g: &mut Game, $uuid: UUID, $args: &[&str]) -> String {
             $bl
         }
@@ -29,7 +30,7 @@ macro_rules! dir_func {
 
             match g.place_player_in_room(uuid, new_coord) {
                 Ok(msg) => format!("you go {}\n{}", stringify!($name), msg),
-                Err(s) => format!("you can't go that way!"),
+                Err(_) => format!("you can't go that way!"),
             }
         }}
     };
