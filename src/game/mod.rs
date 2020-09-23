@@ -200,19 +200,23 @@ impl Game {
 
         let (mut hands, mut worn) = {
             match player {
-                Human(p) => match p.hands.into_iter().find(|x| x.item().hook() == item_hook) {
-                    Some(i) => match i {
-                        Armor(i) => (&mut p.hands, &mut p.worn),
-                        _ => return Err(format!("you can't wear a {}", item_hook)),
-                    },
-                    None => return Err(format!("you're not holding a {}", item_hook)),
-                },
+                Human(p) => (&mut p.hands, &mut p.worn),
                 _ => return Err(format!("nonhuman")),
             }
         };
 
         let (to, from, verb) = match dir {
-            Direction::To => (&mut hands, &mut worn, "wear"),
+            Direction::To => {
+                match hands.into_iter().find(|x| x.item().hook() == item_hook) {
+                    Some(i) => match i {
+                        Armor(i) => (),
+                        _ => return Err(format!("you can't wear a {}", item_hook)),
+                    },
+                    None => return Err(format!("you're not holding a {}", item_hook)),
+                }
+
+                (&mut hands, &mut worn, "wear")
+            },
             Direction::From => (&mut worn, &mut hands, "remove"),
         };
 
