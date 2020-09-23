@@ -16,6 +16,17 @@ gen_func! {
         match args.len() {
             0 => g.room_to_string_for_player(uuid),
             1 => g.look_at_item(uuid, args[0]),
+            2 => match args[0] {
+                "at" => {
+                    g.look_at_item(uuid, args[1])
+                },
+                "in" => {
+                    format!("not implemented yet")
+                },
+                _ => {
+                    format!(r#""look at" or "look in", but don't "look {}""#, args[0])
+                }
+            }
             _ => format!("tell me ONE thing to look at, not a whole bunch at once"),
         }
 
