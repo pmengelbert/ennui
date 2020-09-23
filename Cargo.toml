@@ -8,6 +8,6 @@ edition = "2018"
 
 [dependencies]
 rand = "0.7.3"
-uuid = { version = "0.8", features = ["v4"] }
+uuid = { version = "0.8", features = ["v4", "stdweb"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_yaml = "0.8.13"

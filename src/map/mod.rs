@@ -21,10 +21,7 @@ impl Map {
     }
 
     pub fn from_file(filename: &str) -> Result<Self, String> {
-        let mut file = match File::open(filename) {
-            Ok(f) => f,
-            Err(err) => panic!(err),
-        };
+        let mut file = File::open(filename).expect(&format!("cannot find file {}", filename));
 
         let mut contents = String::new();
         match file.read_to_string(&mut contents) {
