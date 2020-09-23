@@ -62,8 +62,8 @@ pub struct Player {
 impl Player {
     pub fn new(name: &str) -> Self {
         let (name, status) = (name.to_string(), vec![Alive]);
-        let hands: ItemType<Item> = Container(Vec::new());
-        let worn: ItemType<Item> = Container(Vec::new());
+        let hands: ItemType<Item> = Container{name: "your hands".to_string(), hook: "hands".to_string(), items: Vec::new()};
+        let worn: ItemType<Item> = Container{name: "you are wearing".to_string(), hook: "worn".to_string(), items: Vec::new()};
         let uuid = UUID(uuid::Uuid::new_v4().as_u128());
         let location = Coord(0, 0);
         let description = String::new();
@@ -79,7 +79,7 @@ impl Player {
     }
 
     pub fn take_item(&mut self, item: ItemType<Item>) -> Result<(), String> {
-        if let Container(h) = &mut self.hands {
+        if let Container{items: ref mut h, .. } = &mut self.hands {
             h.push(item);
             Ok(())
         } else {

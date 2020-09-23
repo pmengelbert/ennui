@@ -12,7 +12,7 @@ pub struct Room {
 impl Room {
     pub fn new(name: &str, description: &str) -> Self {
         let (name, description) = (name.to_string(), description.to_string());
-        let items = Container(Vec::new());
+        let items = Container{name: "your hands".to_string(), hook: "hands".to_string(), items: Vec::new()};
         let players = Vec::new();
         Self {
             name,

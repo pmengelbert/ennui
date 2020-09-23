@@ -4,13 +4,13 @@ use self::ItemType::*;
 use serde::Deserialize;
 
 #[derive(Debug, Clone, Deserialize)]
-#[serde(tag = "kind")]
+#[serde(tag = "kind", content = "c")]
 pub enum ItemType<T> {
     Weapon(T),
     Armor(T),
     Food(T),
     Drink(T),
-    Container(Vec<ItemType<T>>),
+    Container{name: String, hook: String, items: Vec<ItemType<T>>},
     Inert(T),
 }
 
@@ -30,21 +30,21 @@ impl ItemType<Item> {
 
     pub fn container(&self) -> Option<&Vec<ItemType<Item>>> {
         match &self {
-            Container(ref t) => Some(t),
+            Container{items: ref t, .. } => Some(t),
             _ => None,
         }
     }
 
     pub fn container_two(&self) -> Box<Vec<ItemType<Item>>> {
         match &self {
-            Container(ref t) => Box::new(t.clone()),
+            Container{items: ref t, .. } => Box::new(t.clone()),
             _ => Box::new(vec![]),
         }
     }
 
     pub fn container_mut(&mut self) -> Option<&mut Vec<ItemType<Item>>> {
         match self {
-            &mut Container(ref mut t) => Some(t),
+            &mut Container{items: ref mut t, .. } => Some(t),
             _ => None,
         }
     }
@@ -53,14 +53,24 @@ impl ItemType<Item> {
         match self.container() {
             Some(c) => c
                 .iter()
-                .map(|i| format!("\n - {}", i.item().name()))
+                .map(|i| format!("\n - {}", i.name()))
                 .collect::<String>(),
             None => self.item().description().to_string(),
         }
     }
 
+    pub fn name(&self) -> String {
+        match self {
+            Container{ name: n, .. } => n.clone(),
+            _ => self.item().name().clone(),
+        }
+    }
+
     pub fn hook(&self) -> String {
-        self.item().hook().clone()
+        match self {
+            Container{ hook: h, .. } => h.clone(),
+            _ => self.item().hook().clone(),
+        }
     }
 
     pub fn transfer_item(
@@ -69,7 +79,7 @@ impl ItemType<Item> {
         to: &mut ItemType<Item>,
     ) -> Result<String, String> {
         match (self, to) {
-            (&mut Container(ref mut c), &mut Container(ref mut d)) => {
+            (&mut Container{items: ref mut c, .. }, &mut Container{items: ref mut d, .. }) => {
                 let index = c
                     .iter()
                     .take_while(|&x| x.item().hook() != item_hook)
@@ -91,10 +101,19 @@ impl ItemType<Item> {
         }
     }
 
-    pub fn find_by_hook(&self, item_hook: &str) -> Option<Box<Item>> {
+    pub fn find_by_hook(&self, item_hook: &str) -> Option<ItemType<Item>> {
         self.into_iter()
-            .map(|i| i.item())
             .find(|x| x.hook() == item_hook)
+    }
+
+    pub fn description(&self) -> String {
+        match self {
+            Container{name: s, items: v, .. } => {
+                let is = v.iter().map(|i| i.item().name().clone()).collect::<Vec<String>>().join("\n - ");
+                format!("{}\n-----------\n - {}", s, is)
+            },
+            _ => self.item().description().clone()
+        }
     }
 }
 
@@ -135,7 +154,7 @@ impl IntoIterator for &ItemType<Item> {
 
     fn into_iter(self) -> Self::IntoIter {
         match self {
-            Container(v) => v.to_vec().into_iter(),
+            Container{items: ref v, .. } => v.to_vec().into_iter(),
             _ => vec![self.clone()].to_vec().into_iter(),
         }
     }
