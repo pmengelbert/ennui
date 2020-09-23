@@ -1,31 +1,12 @@
 use ennui::game::Game;
 use ennui::interpreter::commands;
-use ennui::interpreter::Interpreter;
+#[macro_use]
+use ennui::interpreter;
+use ennui::interpreter::{random_insult, Interpreter};
 use ennui::map::Coord;
 use ennui::player::{Player, PlayerType::*};
-use rand::Rng;
 use std::io;
 use std::io::Write;
-
-pub fn random_insult() -> String {
-    match rand::thread_rng().gen_range(1, 6) {
-        1 => "dude wtf".to_string(),
-        2 => "i think you should leave".to_string(),
-        3 => "i'll have to ask my lawyer about that".to_string(),
-        4 => "that's ... uncommon".to_string(),
-        _ => "that's an interesting theory... but will it hold up in the laboratory?".to_string(),
-    }
-}
-
-macro_rules! interpreter {
-    ( $namespace:ident :: $( $name:ident ),* ) => {
-        {
-            let mut i = Interpreter::new();
-            $( i.insert(stringify!($name), $namespace::$name); )*
-            i
-        }
-    }
-}
 
 fn main() -> Result<(), String> {
     let p = Player::new("bill");

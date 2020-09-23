@@ -15,12 +15,14 @@ pub enum ItemType<T> {
 impl ItemType<Item> {
     pub fn item(&self) -> Box<Item> {
         match &self {
-            Weapon(ref t) | Armor(ref t) | Food(ref t) | Drink(ref t) | Inert(ref t) => Box::new(t.clone()),
-            _ => Box::new(Item{ 
+            Weapon(ref t) | Armor(ref t) | Food(ref t) | Drink(ref t) | Inert(ref t) => {
+                Box::new(t.clone())
+            }
+            _ => Box::new(Item {
                 name: "".to_string(),
                 description: "".to_string(),
                 hook: "".to_string(),
-            })
+            }),
         }
     }
 

@@ -26,7 +26,14 @@ impl Map {
             "a ceremonial knife, for when you have to poop and stuff",
         );
 
+        let item2 = Item::new(
+            "a pink shirt",
+            "shirt",
+            "it's an ugly pink shirt. you'd rather not wear it...",
+        );
+
         room.add_item(Weapon(item));
+        room.add_item(Armor(item2));
         m.insert(Coord(0, 0), room);
         m.insert(Coord(0, 1), room2);
 
