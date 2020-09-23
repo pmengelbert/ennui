@@ -200,10 +200,14 @@ impl Game {
 
         let (mut hands, mut worn) = {
             match player {
-                Human(p) => (&mut p.hands, &mut p.worn),
-                _ => {
-                    return Err(format!("nonhuman"));
-                }
+                Human(p) => match p.hands.into_iter().find(|x| x.item().hook() == item_hook) {
+                    Some(i) => match i {
+                        Armor(i) => (&mut p.hands, &mut p.worn),
+                        _ => return Err(format!("you can't wear a {}", item_hook)),
+                    },
+                    None => return Err(format!("you're not holding a {}", item_hook)),
+                },
+                _ => return Err(format!("nonhuman")),
             }
         };
 
