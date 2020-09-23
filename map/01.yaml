@@ -1,0 +1,17 @@
+1: 
+  name: The bedroom
+  description: "The bed takes up most of the room, and it is a warm and delightful
+        place to sleep. Worn clothing piles up in the corner, and there is a dog of unknown
+        ancestry snoring atop the pile. Do not attempt to wake up the dog, because that
+        would be mean."
+  items:
+    - name: a big ol butt
+      hook: butt
+      description: i'm a bad person, truly
+    - name: poo
+      hook: poo
+      description: it's poo
+    - name: peen
+      hook: peen
+      description: peen
+

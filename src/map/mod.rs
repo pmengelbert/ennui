@@ -1,8 +1,10 @@
 use std::collections::HashMap;
 
 pub mod room;
+mod io;
 use super::item::{Item, ItemType, ItemType::*};
 use room::*;
+use serde::{Serialize, Deserialize};
 
 #[derive(Hash, Eq, PartialEq, Copy, Clone, Debug)]
 pub struct Coord(pub i32, pub i32);
@@ -14,6 +16,11 @@ pub struct Map {
 impl Map {
     pub fn new() -> Self {
         Map { m: HashMap::new() }
+    }
+
+    pub fn from_file(filename: &str) -> Self {
+        let m = Map { m: HashMap::new() };
+        m
     }
 
     pub fn new_test() -> Self {
@@ -47,4 +54,36 @@ impl Map {
     pub fn get_mut(&mut self, c: Coord) -> Option<&mut Room> {
         self.m.get_mut(&c)
     }
+}
+
+#[test]
+fn test_yaml() {
+    use std::fs::File;
+    use std::io::prelude::*;
+
+    let mut file = match File::open("./map/01.yaml") {
+        Ok(f) => f,
+        Err(err) => panic!(err),
+    };
+
+    let mut contents = String::new();
+    match file.read_to_string(&mut contents) {
+        Ok(_) => (),
+        Err(_) => (),
+    }
+
+    let map: HashMap<usize, LightRoom> = match serde_yaml::from_str(&contents) {
+        Ok(o) => o,
+        Err(err) => panic!(err),
+    };
+
+    let x = &map[&1];
+    println!("{}\n---------\n{}\n{:?}", x.name, x.description, x.items);
+}
+
+#[derive(Deserialize)]
+struct LightRoom {
+    name: String,
+    description: String,
+    items: Vec<Item>,
 }

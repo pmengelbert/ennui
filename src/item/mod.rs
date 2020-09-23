@@ -1,6 +1,7 @@
 mod itemlist;
 
 use self::ItemType::*;
+use serde::{Serialize, Deserialize};
 
 #[derive(Debug, Clone)]
 pub enum ItemType<T> {
@@ -93,7 +94,7 @@ impl ItemType<Item> {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Deserialize)]
 pub struct Item {
     name: String,
     hook: String,
