@@ -1,9 +1,106 @@
 use std::collections::HashMap;
+use crate::game::Game;
+use uuid::Uuid;
+use std::borrow::BorrowMut;
+use std::ops::Deref;
 
-pub enum Command {
+#[derive(Eq, PartialEq, Debug, Hash)]
+pub enum CommandKind {
     Look,
+    Take,
+    NotFound,
+}
+
+struct CommandFunc(Box<dyn FnMut(&mut Game, u128, &[&str]) -> Option<String>>);
+impl Deref for CommandFunc {
+    type Target = Box<dyn FnMut(&mut Game, u128, &[&str]) -> Option<String>>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl Default for CommandFunc {
+    fn default() -> Self {
+        b(|_,_,_| None)
+    }
 }
 
 pub struct Interpreter {
-    commands: HashMap<Command, Box<dyn Fn(usize) -> usize>>,
+    commands: HashMap<CommandKind, CommandFunc>,
+}
+
+impl Interpreter {
+    pub fn new() -> Self {
+        use CommandKind::*;
+        let mut commands: HashMap<CommandKind, CommandFunc> = HashMap::new();
+        Self {
+            commands,
+        }
+    }
+
+    pub fn resolve_str<T>(s: T) -> CommandKind
+        where T: AsRef<str>,
+    {
+        let sw = |s, str: &str| str.starts_with(s);
+
+        let s = s.as_ref();
+        match s.to_lowercase().as_str() {
+            s if sw(s, "look") => CommandKind::Look,
+            s if sw(s, "take") => CommandKind::Take,
+            _ => CommandKind::NotFound,
+        }
+    }
+
+    pub fn insert<F: 'static>(&mut self, c: &str, f: F)
+    where F: FnMut(&mut Game, u128, &[&str]) -> Option<String>
+    {
+        self.commands.insert(Self::resolve_str(c), b(f));
+    }
+
+    pub fn interpret(&mut self, g: &mut Game, pid: u128, s: &str) -> Option<String> {
+        let mut tokens = s.split_whitespace();
+        let (cmd, args) = (tokens.next().unwrap_or(""), tokens.collect::<Vec<_>>());
+        let cmd = Self::resolve_str(cmd);
+        let CommandFunc(cmd_func) = self.commands
+            .entry(cmd)
+            .or_default();
+
+        cmd_func(g, pid, &args)
+    }
+}
+
+fn b<F: 'static>(cf: F) -> CommandFunc
+where F: FnMut(&mut Game, u128, &[&str]) -> Option<String>
+{
+    CommandFunc(Box::new(cf))
+}
+
+#[cfg(test)]
+mod interpreter_test {
+    use super::*;
+
+    #[test]
+    fn interpreter_new_test() {
+        use CommandKind::*;
+        let mut i = Interpreter::new();
+        i.commands.insert(Look, b(|g, pid, args| Some("you have looked".to_owned())));
+    }
+
+    #[test]
+    fn interpreter_shortened_commands_resolve_correctly() {
+        assert_eq!(Interpreter::resolve_str("look"), CommandKind::Look);
+        assert_eq!(Interpreter::resolve_str("loo"), CommandKind::Look);
+        assert_eq!(Interpreter::resolve_str("lo"), CommandKind::Look);
+        assert_eq!(Interpreter::resolve_str("l"), CommandKind::Look);
+    }
+
+    #[test]
+    fn interpreter_resolve_String_works_too() {
+        assert_eq!(Interpreter::resolve_str(String::from("look")), CommandKind::Look);
+    }
+
+    fn interpreter_resolves_case_insensitively() {
+        assert_eq!(Interpreter::resolve_str("tA"), CommandKind::Take);
+    }
 }

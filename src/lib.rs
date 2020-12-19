@@ -1,3 +1,4 @@
 pub mod player;
-pub mod interpreter;
 pub mod game;
+pub mod interpreter;
+pub mod map;
