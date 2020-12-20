@@ -1,7 +1,5 @@
 use std::collections::HashMap;
 use crate::game::Game;
-use uuid::Uuid;
-use std::borrow::BorrowMut;
 use std::ops::Deref;
 
 #[derive(Eq, PartialEq, Debug, Hash)]
@@ -37,8 +35,7 @@ pub struct Interpreter {
 
 impl Interpreter {
     pub fn new() -> Self {
-        use CommandKind::*;
-        let mut commands: HashMap<CommandKind, CommandFunc> = HashMap::new();
+        let commands: HashMap<CommandKind, CommandFunc> = HashMap::new();
         Self {
             commands,
         }

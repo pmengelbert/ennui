@@ -1,10 +1,10 @@
 use ennui::game::Game;
 use ennui::player::Player;
-use std::io::Write;
+use std::io::{Write, Result};
 
-fn main() {
+fn main() -> Result<()> {
     let mut g = Game::new();
-    let mut p = Player::new("peter");
+    let p = Player::new("peter");
 
     let uuid = p.uuid();
     g.add_player(p);
@@ -12,18 +12,20 @@ fn main() {
     loop {
         let mut s = String::new();
         std::io::stdout()
-            .write_all(b"\n > ");
-        std::io::stdout().flush();
+            .write_all(b"\n > ")?;
+        std::io::stdout().flush()?;
 
         std::io::stdin()
-            .read_line(&mut s)
-            .expect("failure");
+            .read_line(&mut s)?;
+
         let s = s.trim();
 
         if let Some(msg) = g.interpret(uuid, s) {
             println!("{}", msg);
         } else {
-            println!("i don't know about that...")
+            break;
         }
     }
+
+    Ok(())
 }

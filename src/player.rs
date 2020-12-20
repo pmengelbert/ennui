@@ -25,7 +25,7 @@ impl Uuid for Player {
 
 impl Uuid for &Player {
     fn uuid(&self) -> u128 {
-        self.uuid()
+        self.uuid
     }
 }
 

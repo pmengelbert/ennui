@@ -1,7 +1,6 @@
-use std::collections::{HashMap, HashSet};
-use uuid::Uuid as CrateUuid;
-use crate::player::{PlayerList, Player, PlayerListRaw, Uuid};
-use crate::item::{ItemList, Item, ItemKind};
+use std::collections::{HashSet};
+use crate::player::{PlayerListRaw, Uuid};
+use crate::item::{ItemList, ItemKind};
 
 #[derive(Eq, PartialEq, Debug, Hash, Default)]
 pub struct Coord(pub i64, pub i64);
@@ -26,7 +25,7 @@ impl Room {
         }
     }
 
-    pub fn display(&self, globalPlayers: &PlayerListRaw) -> String {
+    pub fn display(&self, global_players: &PlayerListRaw) -> String {
         let Room{ name, description, players, items } = self;
         let items_list = items.iter()
             .map(|i| {
@@ -36,14 +35,14 @@ impl Room {
             .join("\n");
         let player_list = players.iter()
             .filter_map(|uuid| {
-                match globalPlayers.get(uuid) {
+                match global_players.get(uuid) {
                     Some(player) => Some(format!("- {}", player.name())),
                     None => None,
                 }
             })
             .collect::<Vec<_>>()
             .join("\n");
-        let underline = (0..self.name.len()).map(|i| '-').collect::<String>();
+        let underline = (0..self.name.len()).map(|_| '-').collect::<String>();
         format!("\n\
             {}\n\
             {}\n\
@@ -95,6 +94,7 @@ mod room_test {
 
     #[test]
     fn room_display_sample() {
+        use crate::player::PlayerList;
         let mut pl = PlayerList::new();
         let p = Player::new("bill");
         let q = Player::new("mindy");
@@ -159,9 +159,9 @@ mod coord_test {
     }
 }
 
-pub struct Map {
-    m: HashMap<Coord, Room>
-}
+// pub struct Map {
+//     m: HashMap<Coord, Room>
+// }
 
 #[cfg(test)]
 mod map_test {

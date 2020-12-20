@@ -1,11 +1,11 @@
 use super::player::Player;
 use std::collections::{HashMap, HashSet};
 use crate::map::{Coord, Room};
-use crate::player::{PlayerListRaw, PlayerList, Uuid};
+use crate::player::{Uuid};
 use crate::interpreter::Interpreter;
 use std::process;
 use crate::item::{ItemKind, Item, ItemList};
-use std::mem::{replace, take, swap};
+use std::mem::{take, swap};
 use rand::Rng;
 use std::option::NoneError;
 
@@ -17,7 +17,7 @@ pub struct Game {
     interpreter: Interpreter,
 }
 
-pub enum Direction {
+enum Direction {
     Take,
     Give,
     Drop,
@@ -137,7 +137,7 @@ impl Game {
         }
     }
 
-    pub fn transfer<T>(&mut self, u: T, other: Option<&str>, dir: Direction, handle: &str) -> PassFail
+    fn transfer<T>(&mut self, u: T, other: Option<&str>, dir: Direction, handle: &str) -> PassFail
     where
         T: Uuid,
     {
@@ -146,8 +146,6 @@ impl Game {
         let mut rooms = take(&mut self.rooms);
         let mut players = take(&mut self.players);
 
-        let p = players.get_mut(&u.uuid());
-
         let mut ret = Err(NoneError);
 
         cleanup_on_fail!('needs_cleanup,
@@ -155,7 +153,7 @@ impl Game {
             let p = break_fail!(players.get_mut(&u.uuid()), 'needs_cleanup);
             let mut p = take(p);
 
-            let mut r = break_fail!(rooms.get_mut(p.loc()), 'needs_cleanup);
+            let r = break_fail!(rooms.get_mut(p.loc()), 'needs_cleanup);
 
             let mut players_items = p.get_itemlist();
             let mut room_items = r.get_itemlist();
@@ -171,18 +169,8 @@ impl Game {
                     }
                     Give => {
                         let other = break_fail!(other, 'internal_cleanup);
-
-                        let other_id = r.players()
-                            .iter()
-                            .find(|p| {
-                                match players.get(p) {
-                                    Some(p) => p.name() == other,
-                                    _ => false,
-                                }
-                            });
-                        let other_id = break_fail!(other_id, 'internal_cleanup);
-
-                        let other_player = players.get_mut(other_id)?;
+                        println!("it's ok!");
+                        let other_player = break_fail!(self.get_player_mut_by_name(other, r.players()), 'internal_cleanup);
 
                         let mut others_items = other_player.get_itemlist();
                         let inner_result = Self::t_item(&mut players_items, &mut others_items, handle);
@@ -309,12 +297,12 @@ fn fill_interpreter(i: &mut Interpreter) {
         Some(random_insult())
     });
 
-    i.insert("quit", |g, u, a| {
+    i.insert("quit", |_,_,_| {
         process::exit(0);
     })
 }
 
-pub fn random_insult() -> String {
+fn random_insult() -> String {
     match rand::thread_rng().gen_range(1, 6) {
         1 => "dude wtf",
         2 => "i think you should leave",
