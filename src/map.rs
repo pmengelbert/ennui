@@ -1,6 +1,7 @@
 use std::collections::{HashMap, HashSet};
-use uuid::Uuid;
-use crate::player::{PlayerList, Player, PlayerListRaw, UuidProvide};
+use uuid::Uuid as CrateUuid;
+use crate::player::{PlayerList, Player, PlayerListRaw, Uuid};
+use crate::item::{ItemList, Item, ItemKind};
 
 #[derive(Eq, PartialEq, Debug, Hash)]
 pub struct Coord(pub i64, pub i64);
@@ -10,6 +11,7 @@ pub struct Room {
     name: String,
     description: String,
     players: HashSet<u128>,
+    items: ItemList,
 }
 
 impl Room {
@@ -20,11 +22,18 @@ impl Room {
             name,
             description,
             players: HashSet::new(),
+            items: ItemList::new(),
         }
     }
 
     pub fn display(&self, globalPlayers: &PlayerListRaw) -> String {
-        let Room{name, description, players} = self;
+        let Room{ name, description, players, items } = self;
+        let items_list = items.iter()
+            .map(|i| {
+                format!(" --> {}", i.name())
+            })
+            .collect::<Vec<_>>()
+            .join("\n");
         let player_list = players.iter()
             .filter_map(|uuid| {
                 match globalPlayers.get(uuid) {
@@ -39,14 +48,35 @@ impl Room {
             {}\n\
             {}\n\
             {}\n\
+            {}\n\
             {}\
-            ", name, underline, description, player_list)
+            ", name, underline, description, player_list, items_list)
     }
 
     pub fn add_player<P>(&mut self, p: &P) -> bool
-        where P: UuidProvide,
+        where P: Uuid,
     {
         self.players.insert(p.uuid())
+    }
+
+    pub fn add_item(&mut self, i: ItemKind) {
+        self.items.push(i)
+    }
+
+    pub fn get_item(&self, handle: &str) -> Option<&ItemKind> {
+        self.items.get(handle)
+    }
+
+    pub fn items(&self) -> &ItemList {
+        &self.items
+    }
+
+    pub fn get_itemlist(&mut self) -> ItemList {
+        std::mem::replace(&mut self.items, ItemList::new())
+    }
+
+    pub fn replace_itemlist(&mut self, i: ItemList) {
+        self.items = i;
     }
 }
 
@@ -64,6 +94,7 @@ mod room_test {
             name: "the room".to_owned(),
             description: "this is your room".to_owned(),
             players: HashSet::new(),
+            items: ItemList::new(),
         };
         r.players.insert(p.uuid());
         r.players.insert(q.uuid());

@@ -1,9 +1,10 @@
 use super::player::Player;
 use std::collections::HashMap;
 use crate::map::{Coord, Room};
-use crate::player::{PlayerListRaw, PlayerList};
+use crate::player::{PlayerListRaw, PlayerList, Uuid};
 use crate::interpreter::Interpreter;
-use std::process::exit;
+use std::process;
+use crate::item::{ItemKind, Item};
 
 pub struct Game {
     players: HashMap<u128, Player>,
@@ -17,6 +18,8 @@ impl Game {
         let mut r = Room::new("the living room", Some("this is the living room"));
         let p = Player::new("billy");
         r.add_player(&p);
+        let i = ItemKind::Clothing(Item::new("codpiece", Some("a beautifully decorated codpiece. truly a wonder"), "codpiece"));
+        r.add_item(i);
         rooms.insert(Coord(0, 0), r);
         let mut interpreter = Interpreter::new();
         fill_interpreter(&mut interpreter);
@@ -59,20 +62,39 @@ impl Game {
     pub fn get_player(&self, u: u128) -> Option<&Player> {
         self.players.get(&u)
     }
+
+    pub fn describe_item<U>(&self, pid: U, handle: &str) -> Option<&str>
+        where U: Uuid,
+    {
+        let p = self.get_player(pid.uuid())?;
+
+        let loc = p.loc();
+        let items = self.rooms.get(loc)?;
+
+        if let Some(item) = items.get_item(handle) {
+            Some(&item.description())
+        } else {
+            Some(p.items().get(handle)?.description())
+        }
+    }
 }
 
 fn fill_interpreter(i: &mut Interpreter) {
     i.insert("look", |g, u, args| {
+        let player = g.get_player(u).or(None)?;
+        let c = player.loc();
         match args.len() {
-            _ => {
-                let c = g.get_player(u).unwrap().loc();
+            0 => {
                 Some(g.display_room(c))
             },
-            // _ => None,
+            1 => {
+                Some(g.describe_item(u, args[0])?.to_owned())
+            }
+            _ => None,
         }
     });
     i.insert("quit", |g, u, a| {
-        exit(0)
+        process::exit(0);
     })
 }
 
@@ -100,8 +122,12 @@ mod game_test {
     #[test]
     fn game_test_interpreter() {
         let mut g = Game::new();
-
+        let mut r = Room::new("yo", None);
         let p = Player::new("lol");
-        println!("{}", g.interpret(p.uuid(), "look there").unwrap());
+        r.add_player(&p);
+        let uuid = p.uuid();
+        g.add_player(p);
+
+        assert!(g.interpret(uuid, "look").is_some());
     }
 }

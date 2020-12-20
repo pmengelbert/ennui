@@ -71,7 +71,7 @@ impl Interpreter {
 }
 
 fn b<F: 'static>(cf: F) -> CommandFunc
-where F: FnMut(&mut Game, u128, &[&str]) -> Option<String>
+    where F: FnMut(&mut Game, u128, &[&str]) -> Option<String>
 {
     CommandFunc(Box::new(cf))
 }

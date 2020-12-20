@@ -1,26 +1,28 @@
-use uuid::Uuid;
+use uuid::Uuid as CrateUuid;
 use std::collections::HashMap;
 use std::ops::{Deref, DerefMut};
 use crate::map::Coord;
+use crate::item::ItemList;
 
 #[derive(Debug)]
 pub struct Player {
     uuid: u128,
     name: String,
     loc: Coord,
+    items: ItemList,
 }
 
-pub trait UuidProvide {
+pub trait Uuid {
     fn uuid(&self) -> u128;
 }
 
-impl UuidProvide for Player {
+impl Uuid for Player {
     fn uuid(&self) -> u128 {
         self.uuid()
     }
 }
 
-impl UuidProvide for u128 {
+impl Uuid for u128 {
     fn uuid(&self) -> u128 {
         *self
     }
@@ -52,9 +54,10 @@ impl PlayerList {
 impl Player {
     pub fn new(name: &str) -> Self {
         Self {
-            uuid: Uuid::new_v4().as_u128(),
+            uuid: CrateUuid::new_v4().as_u128(),
             name: name.to_owned(),
             loc: Coord(0, 0),
+            items: ItemList::new(),
         }
     }
 
@@ -68,6 +71,10 @@ impl Player {
 
     pub fn loc(&self) -> &Coord {
         &self.loc
+    }
+
+    pub fn items(&self) -> &ItemList {
+        &self.items
     }
 }
 
