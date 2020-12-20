@@ -51,19 +51,17 @@ impl DerefMut for ItemList {
 
 impl ItemList {
     pub fn new() -> Self {
-        ItemList {
-            list: Vec::new(),
-        }
+        ItemList { list: Vec::new() }
     }
     pub fn push(&mut self, item: ItemKind) {
         self.list.push(item)
     }
 
-    pub fn get (&self, handle: &str) -> Option<&ItemKind> {
+    pub fn get(&self, handle: &str) -> Option<&ItemKind> {
         self.list.iter().find(|i| i.handle() == handle)
     }
 
-    pub fn get_mut (&mut self, handle: &str) -> Option<&mut ItemKind> {
+    pub fn get_mut(&mut self, handle: &str) -> Option<&mut ItemKind> {
         self.list.iter_mut().find(|i| i.handle() == handle)
     }
 
@@ -76,21 +74,20 @@ impl ItemList {
 use ItemKind::*;
 impl ItemKind {
     pub fn name(&self) -> &str {
-        &self.unwrap().name
+        &self.safe_unwrap().name
     }
 
     pub fn handle(&self) -> &str {
-        &self.unwrap().handle
+        &self.safe_unwrap().handle
     }
 
     pub fn description(&self) -> &str {
-        &self.unwrap().description
+        &self.safe_unwrap().description
     }
 
-    fn unwrap(&self) -> &Item {
+    fn safe_unwrap(&self) -> &Item {
         match self {
-            Clothing(item) => &item,
-            Weapon(item) => &item,
+            Clothing(item) | Weapon(item) => &item,
         }
     }
 }

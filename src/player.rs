@@ -1,8 +1,8 @@
-use uuid::Uuid as CrateUuid;
+use crate::item::ItemList;
+use crate::map::Coord;
 use std::collections::HashMap;
 use std::ops::{Deref, DerefMut};
-use crate::map::Coord;
-use crate::item::ItemList;
+use uuid::Uuid as CrateUuid;
 
 #[derive(Debug, Default)]
 pub struct Player {

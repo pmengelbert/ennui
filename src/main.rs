@@ -1,6 +1,6 @@
 use ennui::game::Game;
 use ennui::player::Player;
-use std::io::{Write, Result};
+use std::io::{Result, Write};
 
 fn main() -> Result<()> {
     let mut g = Game::new();
@@ -11,12 +11,10 @@ fn main() -> Result<()> {
 
     loop {
         let mut s = String::new();
-        std::io::stdout()
-            .write_all(b"\n > ")?;
+        std::io::stdout().write_all(b"\n > ")?;
         std::io::stdout().flush()?;
 
-        std::io::stdin()
-            .read_line(&mut s)?;
+        std::io::stdin().read_line(&mut s)?;
 
         let s = s.trim();
 

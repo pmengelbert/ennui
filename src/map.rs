@@ -1,6 +1,6 @@
-use std::collections::{HashSet};
+use crate::item::{ItemKind, ItemList};
 use crate::player::{PlayerListRaw, Uuid};
-use crate::item::{ItemList, ItemKind};
+use std::collections::HashSet;
 
 #[derive(Eq, PartialEq, Debug, Hash, Default, Clone, Copy)]
 pub struct Coord(pub i64, pub i64);
@@ -26,30 +26,38 @@ impl Room {
     }
 
     pub fn display(&self, global_players: &PlayerListRaw) -> String {
-        let Room{ name, description, players, items } = self;
-        let items_list = items.iter()
-            .map(|i| {
-                format!(" --> {}", i.name())
+        let Room {
+            name,
+            description,
+            players,
+            items,
+        } = self;
+
+        let items_list = items
+            .iter()
+            .map(|i| format!(" --> {}", i.name()))
+            .collect::<Vec<_>>()
+            .join("\n");
+
+        let player_list = players
+            .iter()
+            .filter_map(|uuid| match global_players.get(uuid) {
+                Some(player) => Some(format!("- {}", player.name())),
+                None => None,
             })
             .collect::<Vec<_>>()
             .join("\n");
-        let player_list = players.iter()
-            .filter_map(|uuid| {
-                match global_players.get(uuid) {
-                    Some(player) => Some(format!("- {}", player.name())),
-                    None => None,
-                }
-            })
-            .collect::<Vec<_>>()
-            .join("\n");
+
         let underline = (0..self.name.len()).map(|_| '-').collect::<String>();
-        format!("\n\
+
+        format!(
+            "{}\n\
             {}\n\
             {}\n\
             {}\n\
-            {}\n\
-            {}\
-            ", name, underline, description, player_list, items_list)
+            {}",
+            name, underline, description, player_list, items_list
+        )
     }
 
     pub fn players(&self) -> &HashSet<u128> {
@@ -61,7 +69,8 @@ impl Room {
     }
 
     pub fn add_player<P>(&mut self, p: &P) -> bool
-        where P: Uuid,
+    where
+        P: Uuid,
     {
         self.players.insert(p.uuid())
     }
@@ -115,22 +124,22 @@ mod room_test {
 impl Coord {
     pub fn north(&self) -> Self {
         let Coord(x, y) = self;
-        Coord(*x, *y+1)
+        Coord(*x, *y + 1)
     }
 
     pub fn south(&self) -> Self {
         let Coord(x, y) = self;
-        Coord(*x, *y-1)
+        Coord(*x, *y - 1)
     }
 
     pub fn east(&self) -> Self {
         let Coord(x, y) = self;
-        Coord(*x+1, *y)
+        Coord(*x + 1, *y)
     }
 
     pub fn west(&self) -> Self {
         let Coord(x, y) = self;
-        Coord(*x-1, *y)
+        Coord(*x - 1, *y)
     }
 }
 
@@ -172,5 +181,3 @@ mod map_test {
         assert_eq!(Coord(0, 0).north(), Coord(0, 1));
     }
 }
-
-

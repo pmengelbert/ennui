@@ -1,13 +1,15 @@
-use super::player::Player;
 use std::collections::{HashMap, HashSet};
-use crate::map::{Coord, Room};
-use crate::player::{Uuid};
-use crate::interpreter::Interpreter;
-use std::process;
-use crate::item::{ItemKind, Item, ItemList};
-use std::mem::{take, swap};
-use rand::Rng;
+use std::mem::{swap, take};
 use std::option::NoneError;
+use std::process;
+
+use crate::interpreter::Interpreter;
+use crate::item::{Item, ItemKind, ItemList};
+use crate::map::{Coord, Room};
+use crate::player::Player;
+use crate::player::Uuid;
+
+use rand::Rng;
 
 type PassFail = Result<(), std::option::NoneError>;
 
@@ -29,7 +31,7 @@ macro_rules! break_fail {
             Some(r) => r,
             None => break $label,
         }
-    }
+    };
 }
 
 macro_rules! cleanup_on_fail {
@@ -49,11 +51,16 @@ impl Game {
         let mut p = Player::new("billy");
         p.set_description("this guy is a silly billy, don't you think?");
         r.add_player(&p);
-        let i = ItemKind::Clothing(Item::new("codpiece", Some("a beautifully decorated codpiece. truly a wonder"), "codpiece"));
+        let i = ItemKind::Clothing(Item::new(
+            "codpiece",
+            Some("a beautifully decorated codpiece. truly a wonder"),
+            "codpiece",
+        ));
         r.add_item(i);
         rooms.insert(Coord(0, 0), r);
         let mut interpreter = Interpreter::new();
         fill_interpreter(&mut interpreter);
+
         let mut ret = Self {
             players,
             rooms,
@@ -66,9 +73,7 @@ impl Game {
 
     pub fn display_room(&self, c: &Coord) -> String {
         match self.rooms.get(c) {
-            Some(r) => {
-                r.display(&self.players)
-            },
+            Some(r) => r.display(&self.players),
             None => "".to_owned(),
         }
     }
@@ -95,17 +100,26 @@ impl Game {
     }
 
     pub fn get_player_by_name(&self, name: &str, pl: &HashSet<u128>) -> Option<&Player> {
-        let u = pl.iter().find(|p| self.players.get(p).unwrap_or(&Player::new("")).name() ==  name)?;
+        let u = pl
+            .iter()
+            .find(|p| self.players.get(p).unwrap_or(&Player::new("")).name() == name)?;
         self.players.get(u)
     }
 
-    pub fn get_player_mut_by_name(&mut self, name: &str, pl: &HashSet<u128>) -> Option<&mut Player> {
-        let u = pl.iter().find(|p| self.players.get(p).unwrap_or(&Player::new("")).name() ==  name)?;
+    pub fn get_player_mut_by_name(
+        &mut self,
+        name: &str,
+        pl: &HashSet<u128>,
+    ) -> Option<&mut Player> {
+        let u = pl
+            .iter()
+            .find(|p| self.players.get(p).unwrap_or(&Player::new("")).name() == name)?;
         self.players.get_mut(u)
     }
 
     pub fn describe_item<U>(&self, pid: U, handle: &str) -> Option<&str>
-        where U: Uuid,
+    where
+        U: Uuid,
     {
         let p = self.get_player(pid.uuid())?;
 
@@ -169,7 +183,6 @@ impl Game {
                     }
                     Give => {
                         let other = break_fail!(other, 'internal_cleanup);
-                        println!("it's ok!");
                         let other_player = break_fail!(self.get_player_mut_by_name(other, r.players()), 'internal_cleanup);
 
                         let mut others_items = other_player.get_itemlist();
@@ -197,7 +210,9 @@ impl Game {
         let mut ret = String::new();
         ret.push_str("you are holding:\n");
         let items = self.players.get(&u.uuid())?.items();
-        let ret = items.iter().map(|i| {
+        let ret = items
+            .iter()
+            .map(|i| {
                 let name = i.name();
                 format!("{} {}", article(name), name)
             })
@@ -217,14 +232,14 @@ impl Game {
 fn article(noun: &str) -> String {
     let suffix = if let Some(c) = noun.to_lowercase().chars().next() {
         match c {
-            'a' | 'e' | 'i' | 'o' |'u' => "n",
+            'a' | 'e' | 'i' | 'o' | 'u' => "n",
             _ => "",
         }
     } else {
         ""
     };
 
-    format!("a{}", suffix)
+    format!("a{} {}", suffix, noun)
 }
 
 fn fill_interpreter(i: &mut Interpreter) {
@@ -232,72 +247,70 @@ fn fill_interpreter(i: &mut Interpreter) {
         let player = g.get_player(u)?;
         let c = player.loc();
         match args.len() {
-            0 => {
-                Some(g.display_room(c))
-            },
+            0 => Some(g.display_room(c)),
             1 => {
                 if let Some(item) = g.describe_item(u, args[0]) {
                     Some(item.to_owned())
                 } else if let Some(person) = g.describe_player(u, args[0]) {
                     Some(person.to_owned())
                 } else {
-                    Some(format!("i don't see {} {} here...", article(args[0]), args[0]))
+                    Some(format!("i don't see {} here...", article(args[0])))
                 }
             }
             _ => None,
         }
     });
 
-    i.insert("take", |g, u, a| {
-        match a.len() {
-            0 => Some("there seems to be an error".to_owned()),
-            1 => {
-                let handle = a[0];
-                g.transfer(u, None, Direction::Take, handle).ok()?;
-                Some(format!("you take the {}", handle).to_owned())
-            }
-            _ => None,
-        }
-    });
-
-    i.insert("drop", |g, u, a| {
-        match a.len() {
-            0 => Some("there seems to be an error".to_owned()),
-            1 => {
-                let handle = a[0];
-                g.transfer(u, None, Direction::Drop, handle).ok()?;
-                Some(format!("you drop the {}", handle).to_owned())
-            }
-            _ => None,
-        }
-    });
-
-    i.insert("give", |g, u, a| {
-        match a.len() {
-            2 => {
-                if let &[other, handle, ..] = a {
-                    if g.transfer(u, Some(other), Direction::Give, handle).is_ok() {
-                        Some(format!("you give {} {} {}", other, article(handle), handle))
-                    } else {
-                        Some("that person or thing isn't here".to_owned())
-                    }
+    i.insert("take", |g, u, a| match a.len() {
+        0 => Some("there seems to be an error".to_owned()),
+        1 => {
+            let handle = a[0];
+            Some(
+                if let Ok(_) = g.transfer(u, None, Direction::Take, handle) {
+                    format!("you take the {}", handle)
                 } else {
-                    None
-                }
-            }
-            _ => Some("E - NUN - CI - ATE".to_owned()),
+                    format!("you don't see {} here", article(handle))
+                },
+            )
         }
+        _ => None,
     });
 
-    i.insert("inventory", |g, u, _a| {
-        g.list_inventory(u)
+    i.insert("drop", |g, u, a| match a.len() {
+        0 => Some("there seems to be an error".to_owned()),
+        1 => {
+            let handle = a[0];
+            Some(
+                if let Ok(_) = g.transfer(u, None, Direction::Drop, handle) {
+                    format!("you drop the {}", handle)
+                } else {
+                    format!("you don't see {} here", article(handle))
+                },
+            )
+        }
+        _ => None,
     });
 
-    i.insert("none", |_,_,_| {
-        Some(random_insult())
+    i.insert("give", |g, u, a| match a.len() {
+        2 => {
+            if let &[other, handle, ..] = a {
+                if g.transfer(u, Some(other), Direction::Give, handle).is_ok() {
+                    Some(format!("you give {} {}", other, article(handle)))
+                } else {
+                    Some("that person or thing isn't here".to_owned())
+                }
+            } else {
+                None
+            }
+        }
+        _ => Some("E - NUN - CI - ATE".to_owned()),
     });
 
-    i.insert("quit", |_,_,_| {
+    i.insert("inventory", |g, u, _a| g.list_inventory(u));
+
+    i.insert("none", |_, _, _| Some(random_insult()));
+
+    i.insert("quit", |_, _, _| {
         process::exit(0);
     })
 }
@@ -309,9 +322,9 @@ fn random_insult() -> String {
         3 => "i'll have to ask my lawyer about that",
         4 => "that's ... uncommon",
         _ => "that's an interesting theory... but will it hold up in the laboratory?",
-    }.to_string()
+    }
+    .to_owned()
 }
-
 
 #[cfg(test)]
 mod game_test {
