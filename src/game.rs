@@ -7,6 +7,7 @@ use std::process;
 use crate::item::{ItemKind, Item, ItemList};
 use std::mem::{replace, take, swap};
 use rand::Rng;
+use std::option::NoneError;
 
 type PassFail = Result<(), std::option::NoneError>;
 
@@ -20,6 +21,15 @@ pub enum Direction {
     Take,
     Give,
     Drop,
+}
+
+macro_rules! break_fail {
+    ($res:expr, $label:tt) => {
+        match $res {
+            Some(r) => r,
+            None => break $label,
+        }
+    }
 }
 
 impl Game {
@@ -125,50 +135,62 @@ impl Game {
 
         let mut rooms = take(&mut self.rooms);
         let mut players = take(&mut self.players);
-        let mut p = take(players.get_mut(&u.uuid())?);
 
-        let ret = if let Some(r) = rooms.get_mut(p.loc()) {
+        let p = players.get_mut(&u.uuid());
+
+        let mut ret = Err(NoneError);
+
+        'needs_cleanup: while let Some(p) = p {
+            let p = break_fail!(players.get_mut(&u.uuid()), 'needs_cleanup);
+            let mut p = take(p);
+
+            let mut r = break_fail!(rooms.get_mut(p.loc()), 'needs_cleanup);
+
             let mut players_items = p.get_itemlist();
             let mut room_items = r.get_itemlist();
 
-            // bug: can short circuit before memory is restored to its proper place
-            let ret = match dir {
-                Take => {
-                    Self::t_item(&mut room_items, &mut players_items, handle)
-                }
-                Drop => {
-                    Self::t_item(&mut players_items, &mut room_items, handle)
-                }
-                Give => {
-                    let other = other.unwrap_or("");
-                    let other_id = r.players().iter()
-                        .find(|p| players.get(p)
-                        .unwrap_or(&Player::new(""))
-                        .name() == other);
-
-                    let mut r = Err(std::option::NoneError);
-                    if let Some(id) = other_id {
-                        if let Some(o) = players.get_mut(id) {
-                            let mut others_items = o.get_itemlist();
-
-                            r = Self::t_item(&mut players_items, &mut others_items, handle);
-
-                            o.replace_itemlist(others_items);
-                        };
+            'internal_cleanup: loop {
+                ret = match dir {
+                    Take => {
+                        Self::t_item(&mut room_items, &mut players_items, handle)
                     }
-                    r
-                }
-                _ => Err(std::option::NoneError),
-            };
+                    Drop => {
+                        Self::t_item(&mut players_items, &mut room_items, handle)
+                    }
+                    Give => {
+                        let other = break_fail!(other, 'internal_cleanup);
+
+                        let other_id = r.players()
+                            .iter()
+                            .find(|p| {
+                                match players.get(p) {
+                                    Some(p) => p.name() == other,
+                                    _ => false,
+                                }
+                            });
+                        let other_id = break_fail!(other_id, 'internal_cleanup);
+
+                        let other_player = players.get_mut(other_id)?;
+
+                        let mut others_items = other_player.get_itemlist();
+                        let inner_result = Self::t_item(&mut players_items, &mut others_items, handle);
+                        other_player.replace_itemlist(others_items);
+
+                        inner_result
+                    }
+                };
+
+                break 'internal_cleanup;
+            }
 
             r.replace_itemlist(room_items);
             p.replace_itemlist(players_items);
-            swap(players.get_mut(&u.uuid())?, &mut p);
-            ret
-        } else {
-            Err(std::option::NoneError)
-        };
 
+            let q = players.entry(u.uuid()).or_default();
+            swap(q, &mut p);
+
+            break 'needs_cleanup;
+        }
 
         self.rooms = rooms;
         self.players = players;

@@ -35,7 +35,7 @@ impl Uuid for u128 {
     }
 }
 
-pub struct PlayerList(HashMap<u128, Player>);
+pub struct PlayerList(pub HashMap<u128, Player>);
 pub type PlayerListRaw = HashMap<u128, Player>;
 
 impl Deref for PlayerList {
