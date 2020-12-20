@@ -12,7 +12,7 @@ fn main() {
     loop {
         let mut s = String::new();
         std::io::stdout()
-            .write_all(b"> ");
+            .write_all(b"\n > ");
         std::io::stdout().flush();
 
         std::io::stdin()

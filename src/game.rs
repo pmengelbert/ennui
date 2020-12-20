@@ -32,6 +32,16 @@ macro_rules! break_fail {
     }
 }
 
+macro_rules! cleanup_on_fail {
+    ($label:tt, $code:expr) => {
+        $label: loop {
+            $code
+
+            break $label
+        }
+    }
+}
+
 impl Game {
     pub fn new() -> Self {
         let (players, mut rooms) = (HashMap::new(), HashMap::new());
@@ -140,7 +150,8 @@ impl Game {
 
         let mut ret = Err(NoneError);
 
-        'needs_cleanup: while let Some(p) = p {
+        cleanup_on_fail!('needs_cleanup,
+        {
             let p = break_fail!(players.get_mut(&u.uuid()), 'needs_cleanup);
             let mut p = take(p);
 
@@ -149,7 +160,8 @@ impl Game {
             let mut players_items = p.get_itemlist();
             let mut room_items = r.get_itemlist();
 
-            'internal_cleanup: loop {
+            cleanup_on_fail!('internal_cleanup,
+            {
                 ret = match dir {
                     Take => {
                         Self::t_item(&mut room_items, &mut players_items, handle)
@@ -179,18 +191,14 @@ impl Game {
                         inner_result
                     }
                 };
-
-                break 'internal_cleanup;
-            }
+            });
 
             r.replace_itemlist(room_items);
             p.replace_itemlist(players_items);
 
             let q = players.entry(u.uuid()).or_default();
             swap(q, &mut p);
-
-            break 'needs_cleanup;
-        }
+        });
 
         self.rooms = rooms;
         self.players = players;
@@ -293,7 +301,7 @@ fn fill_interpreter(i: &mut Interpreter) {
         }
     });
 
-    i.insert("inventory", |g,u,a| {
+    i.insert("inventory", |g, u, _a| {
         g.list_inventory(u)
     });
 
