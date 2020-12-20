@@ -2,7 +2,7 @@ use std::collections::{HashSet};
 use crate::player::{PlayerListRaw, Uuid};
 use crate::item::{ItemList, ItemKind};
 
-#[derive(Eq, PartialEq, Debug, Hash, Default)]
+#[derive(Eq, PartialEq, Debug, Hash, Default, Clone, Copy)]
 pub struct Coord(pub i64, pub i64);
 
 #[derive(Debug, Default)]
