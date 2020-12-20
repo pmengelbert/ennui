@@ -8,7 +8,11 @@ use std::ops::Deref;
 pub enum CommandKind {
     Look,
     Take,
+    Drop,
+    Give,
+    Inventory,
     NotFound,
+    Quit,
 }
 
 struct CommandFunc(Box<dyn FnMut(&mut Game, u128, &[&str]) -> Option<String>>);
@@ -42,13 +46,18 @@ impl Interpreter {
     pub fn resolve_str<T>(s: T) -> CommandKind
         where T: AsRef<str>,
     {
+        use CommandKind::*;
         let sw = |s, str: &str| str.starts_with(s);
 
         let s = s.as_ref();
         match s.to_lowercase().as_str() {
-            s if sw(s, "look") => CommandKind::Look,
-            s if sw(s, "take") => CommandKind::Take,
-            _ => CommandKind::NotFound,
+            s if sw(s, "look") => Look,
+            s if sw(s, "take") => Take,
+            s if sw(s, "drop") => Drop,
+            s if sw(s, "give") => Give,
+            s if sw(s, "quit") => Quit,
+            s if sw(s, "inventory") => Inventory,
+            _ => NotFound,
         }
     }
 

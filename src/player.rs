@@ -8,6 +8,7 @@ use crate::item::ItemList;
 pub struct Player {
     uuid: u128,
     name: String,
+    description: String,
     loc: Coord,
     items: ItemList,
 }
@@ -17,6 +18,12 @@ pub trait Uuid {
 }
 
 impl Uuid for Player {
+    fn uuid(&self) -> u128 {
+        self.uuid()
+    }
+}
+
+impl Uuid for &Player {
     fn uuid(&self) -> u128 {
         self.uuid()
     }
@@ -55,10 +62,15 @@ impl Player {
     pub fn new(name: &str) -> Self {
         Self {
             uuid: CrateUuid::new_v4().as_u128(),
+            description: "".to_owned(),
             name: name.to_owned(),
             loc: Coord(0, 0),
             items: ItemList::new(),
         }
+    }
+
+    pub fn set_description(&mut self, d: &str) {
+        self.description = d.to_owned();
     }
 
     pub fn uuid(&self) -> u128 {
@@ -75,6 +87,18 @@ impl Player {
 
     pub fn items(&self) -> &ItemList {
         &self.items
+    }
+
+    pub fn description(&self) -> &str {
+        &self.description
+    }
+
+    pub fn get_itemlist(&mut self) -> ItemList {
+        std::mem::replace(&mut self.items, ItemList::new())
+    }
+
+    pub fn replace_itemlist(&mut self, i: ItemList) {
+        self.items = i;
     }
 }
 

@@ -53,6 +53,14 @@ impl Room {
             ", name, underline, description, player_list, items_list)
     }
 
+    pub fn players(&self) -> &HashSet<u128> {
+        &self.players
+    }
+
+    pub fn players_mut(&mut self) -> &mut HashSet<u128> {
+        &mut self.players
+    }
+
     pub fn add_player<P>(&mut self, p: &P) -> bool
         where P: Uuid,
     {

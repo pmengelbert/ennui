@@ -20,9 +20,10 @@ fn main() {
             .expect("failure");
         let s = s.trim();
 
-        let ret = g.interpret(uuid, s).unwrap_or("".to_owned());
-        println!("{}", ret);
+        if let Some(msg) = g.interpret(uuid, s) {
+            println!("{}", msg);
+        } else {
+            println!("i don't know about that...")
+        }
     }
-
-
 }

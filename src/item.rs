@@ -66,6 +66,11 @@ impl ItemList {
     pub fn get_mut (&mut self, handle: &str) -> Option<&mut ItemKind> {
         self.list.iter_mut().find(|i| i.handle() == handle)
     }
+
+    pub fn get_owned(&mut self, handle: &str) -> Option<ItemKind> {
+        let pos = self.list.iter().position(|i| i.handle() == handle)?;
+        Some(self.list.remove(pos))
+    }
 }
 
 use ItemKind::*;
