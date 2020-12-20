@@ -6,7 +6,7 @@ pub enum ItemKind {
     Weapon(Item),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct Item {
     name: String,
     description: String,
@@ -30,7 +30,7 @@ impl Item {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct ItemList {
     list: Vec<ItemKind>,
 }

@@ -5,7 +5,7 @@ use crate::player::{PlayerListRaw, PlayerList, Uuid};
 use crate::interpreter::Interpreter;
 use std::process;
 use crate::item::{ItemKind, Item, ItemList};
-use std::mem::replace;
+use std::mem::{replace, take, swap};
 use rand::Rng;
 
 type PassFail = Result<(), std::option::NoneError>;
@@ -58,8 +58,7 @@ impl Game {
     }
 
     pub fn interpret(&mut self, p: u128, s: &str) -> Option<String> {
-        let i = &mut self.interpreter;
-        let mut interpreter = replace(i, Interpreter::new());
+        let mut interpreter = take(&mut self.interpreter);
 
         let ret = interpreter.interpret(self, p, s);
 
@@ -124,9 +123,9 @@ impl Game {
     {
         use Direction::*;
 
-        let mut rooms = replace(&mut self.rooms, HashMap::new());
-        let mut players = replace(&mut self.players, HashMap::new());
-        let mut p = replace(players.get_mut(&u.uuid())?, Player::new(""));
+        let mut rooms = take(&mut self.rooms);
+        let mut players = take(&mut self.players);
+        let mut p = take(players.get_mut(&u.uuid())?);
 
         let ret = if let Some(r) = rooms.get_mut(p.loc()) {
             let mut players_items = p.get_itemlist();
@@ -164,7 +163,7 @@ impl Game {
 
             r.replace_itemlist(room_items);
             p.replace_itemlist(players_items);
-            replace(players.get_mut(&u.uuid())?, p);
+            swap(players.get_mut(&u.uuid())?, &mut p);
             ret
         } else {
             Err(std::option::NoneError)

@@ -3,10 +3,10 @@ use uuid::Uuid as CrateUuid;
 use crate::player::{PlayerList, Player, PlayerListRaw, Uuid};
 use crate::item::{ItemList, Item, ItemKind};
 
-#[derive(Eq, PartialEq, Debug, Hash)]
+#[derive(Eq, PartialEq, Debug, Hash, Default)]
 pub struct Coord(pub i64, pub i64);
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct Room {
     name: String,
     description: String,

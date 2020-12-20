@@ -4,7 +4,7 @@ use std::ops::{Deref, DerefMut};
 use crate::map::Coord;
 use crate::item::ItemList;
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct Player {
     uuid: u128,
     name: String,
@@ -94,7 +94,7 @@ impl Player {
     }
 
     pub fn get_itemlist(&mut self) -> ItemList {
-        std::mem::replace(&mut self.items, ItemList::new())
+        std::mem::take(&mut self.items)
     }
 
     pub fn replace_itemlist(&mut self, i: ItemList) {

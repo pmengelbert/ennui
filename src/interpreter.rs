@@ -30,6 +30,7 @@ impl Default for CommandFunc {
     }
 }
 
+#[derive(Default)]
 pub struct Interpreter {
     commands: HashMap<CommandKind, CommandFunc>,
 }
