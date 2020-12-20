@@ -1,6 +1,6 @@
 use std::collections::{HashMap, HashSet};
 use uuid::Uuid;
-use crate::player::{PlayerList, Player, PlayerListRaw};
+use crate::player::{PlayerList, Player, PlayerListRaw, UuidProvide};
 
 #[derive(Eq, PartialEq, Debug, Hash)]
 pub struct Coord(pub i64, pub i64);
@@ -43,7 +43,9 @@ impl Room {
             ", name, underline, description, player_list)
     }
 
-    pub fn add_player(&mut self, p: &Player) -> bool {
+    pub fn add_player<P>(&mut self, p: &P) -> bool
+        where P: UuidProvide,
+    {
         self.players.insert(p.uuid())
     }
 }

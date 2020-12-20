@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use crate::map::{Coord, Room};
 use crate::player::{PlayerListRaw, PlayerList};
 use crate::interpreter::Interpreter;
+use std::process::exit;
 
 pub struct Game {
     players: HashMap<u128, Player>,
@@ -13,19 +14,27 @@ pub struct Game {
 impl Game {
     pub fn new() -> Self {
         let (players, mut rooms) = (HashMap::new(), HashMap::new());
-        rooms.insert(Coord(0, 0), Room::new("the living room", Some("this is the living room")));
+        let mut r = Room::new("the living room", Some("this is the living room"));
+        let p = Player::new("billy");
+        r.add_player(&p);
+        rooms.insert(Coord(0, 0), r);
         let mut interpreter = Interpreter::new();
         fill_interpreter(&mut interpreter);
-        Self {
+        let mut ret = Self {
             players,
             rooms,
             interpreter,
-        }
+        };
+
+        ret.add_player(p);
+        ret
     }
 
     pub fn display_room(&self, c: &Coord) -> String {
         match self.rooms.get(c) {
-            Some(r) => r.display(&self.players),
+            Some(r) => {
+                r.display(&self.players)
+            },
             None => "".to_owned(),
         }
     }
@@ -55,13 +64,16 @@ impl Game {
 fn fill_interpreter(i: &mut Interpreter) {
     i.insert("look", |g, u, args| {
         match args.len() {
-            0 => {
+            _ => {
                 let c = g.get_player(u).unwrap().loc();
                 Some(g.display_room(c))
             },
-            _ => None,
+            // _ => None,
         }
     });
+    i.insert("quit", |g, u, a| {
+        exit(0)
+    })
 }
 
 #[cfg(test)]

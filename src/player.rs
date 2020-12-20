@@ -3,10 +3,27 @@ use std::collections::HashMap;
 use std::ops::{Deref, DerefMut};
 use crate::map::Coord;
 
+#[derive(Debug)]
 pub struct Player {
-    uuid: Uuid,
+    uuid: u128,
     name: String,
     loc: Coord,
+}
+
+pub trait UuidProvide {
+    fn uuid(&self) -> u128;
+}
+
+impl UuidProvide for Player {
+    fn uuid(&self) -> u128 {
+        self.uuid()
+    }
+}
+
+impl UuidProvide for u128 {
+    fn uuid(&self) -> u128 {
+        *self
+    }
 }
 
 pub struct PlayerList(HashMap<u128, Player>);
@@ -35,14 +52,14 @@ impl PlayerList {
 impl Player {
     pub fn new(name: &str) -> Self {
         Self {
-            uuid: Uuid::new_v4(),
+            uuid: Uuid::new_v4().as_u128(),
             name: name.to_owned(),
             loc: Coord(0, 0),
         }
     }
 
     pub fn uuid(&self) -> u128 {
-        self.uuid.as_u128()
+        self.uuid
     }
 
     pub fn name(&self) -> &str {
