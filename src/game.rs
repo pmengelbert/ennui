@@ -26,7 +26,7 @@ enum Direction {
     Remove,
 }
 
-macro_rules! cleanup_on_fail {
+macro_rules! goto_cleanup_on_fail {
     ($res:expr, $label:tt) => {
         match $res {
             Some(r) => r,
@@ -35,6 +35,47 @@ macro_rules! cleanup_on_fail {
     };
 }
 
+/// Wrap a block of fallible code, and provide a set of cleanup instructions that will be
+/// executed after the block. The cleanup can be jumped to early if there is a failure,
+/// using the goto_cleanup_on_fail! macro.
+/// ```
+///enum Quality {
+///    AfraidOfVacuum,
+///    FindsSnacksInCatbox,
+///}
+///
+/// pub struct Dog {
+///    beauty: u128, // cannot be < 0
+///    weight: u64,
+///    personality: i64,
+///    list_of_quirks: Vec<Quality>
+///}
+///
+/// impl Dog {
+///    fn internal_memory_thing(&mut self, i: &str) -> Result<(), ()> {
+///        // take full ownership of quirks, leaving an empty vec in the struct field
+///        // we have to remember to replace it, or the caller may find our Dog in
+///        // an unexpected state.
+///        let mut quirks = std::mem::replace(&mut self.list_of_quirks, Vec::new());
+///
+///        // the block is named (here, `'my_cleanup`) so that blocks can be nested
+///        // within one another, and the proper block to break from can be specified.
+///        with_cleanup!(('my_cleanup) {
+///            // returns the value if Some, else jumps to the cleanup block.
+///            let index = goto_cleanup_on_fail!(usize::parse(i), 'my_cleanup);
+///
+///        // the cleanup block is always preceded by "'cleanup:". This is not a variable,
+///        // but rather marks the cleanup block.
+///        } 'cleanup: {
+///            // restore the quirks to their rightful field on the struct
+///            self.list_of_quirks = quirks;
+///        })
+///    }
+///}
+///
+///
+/// ```
+#[macro_export]
 macro_rules! with_cleanup {
     (($label:tt) $code:block 'cleanup: $cleanup:block) => {
         $label: loop {
@@ -81,6 +122,8 @@ impl Game {
         }
     }
 
+    /// `interpret` will interpret a command (`s`) given by the player `p`, returning
+    /// the response to the command.
     pub fn interpret(&mut self, p: u128, s: &str) -> Option<String> {
         let mut interpreter = take(&mut self.interpreter);
 
@@ -159,10 +202,10 @@ impl Game {
         let mut ret = Err(NoneError);
 
         with_cleanup!(('outer_cleanup) {
-            let p = cleanup_on_fail!(players.get_mut(&u.uuid()), 'outer_cleanup);
+            let p = goto_cleanup_on_fail!(players.get_mut(&u.uuid()), 'outer_cleanup);
             let mut p = take(p);
 
-            let r = cleanup_on_fail!(rooms.get_mut(p.loc()), 'outer_cleanup);
+            let r = goto_cleanup_on_fail!(rooms.get_mut(p.loc()), 'outer_cleanup);
 
             let mut players_items = p.get_itemlist();
             let mut players_clothing = p.get_clothinglist();
@@ -177,8 +220,8 @@ impl Game {
                         Self::t_item(&mut players_items, &mut room_items, handle)
                     }
                     Give => {
-                        let other = cleanup_on_fail!(other, 'inner_cleanup);
-                        let other_player = cleanup_on_fail!(r.players().get_player_mut_by_name(&mut players, other), 'inner_cleanup);
+                        let other = goto_cleanup_on_fail!(other, 'inner_cleanup);
+                        let other_player = goto_cleanup_on_fail!(r.players().get_player_mut_by_name(&mut players, other), 'inner_cleanup);
 
                         let mut others_items = other_player.get_itemlist();
                         let inner_result = Self::t_item(&mut players_items, &mut others_items, handle);
