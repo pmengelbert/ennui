@@ -22,6 +22,8 @@ enum Direction {
     Take,
     Give,
     Drop,
+    Wear,
+    Remove,
 }
 
 macro_rules! cleanup_on_fail {
@@ -163,7 +165,9 @@ impl Game {
             let r = cleanup_on_fail!(rooms.get_mut(p.loc()), 'outer_cleanup);
 
             let mut players_items = p.get_itemlist();
+            let mut players_clothing = p.get_clothinglist();
             let mut room_items = r.get_itemlist();
+
             with_cleanup!(('inner_cleanup) {
                 ret = match dir {
                     Take => {
@@ -182,12 +186,18 @@ impl Game {
 
                         inner_result
                     }
+                    Wear => {
+                        Self::t_item(&mut players_items, &mut players_clothing, handle)
+                    }
+                    Remove => {
+                        Self::t_item(&mut players_clothing, &mut players_items, handle)
+                    }
                 };
-
             } 'cleanup: {
                 // 'inner_cleanup:
                 r.replace_itemlist(room_items);
                 p.replace_itemlist(players_items);
+                p.replace_clothinglist(players_clothing);
 
                 let q = players.entry(u.uuid()).or_default();
                 swap(q, &mut p);
@@ -246,15 +256,17 @@ fn fill_interpreter(i: &mut Interpreter) {
         match args.len() {
             0 => Some(g.display_room(c)),
             1 => {
-                if let Some(item) = g.describe_item(u, args[0]) {
-                    Some(item.to_owned())
-                } else if let Some(person) = g.describe_player(u, args[0]) {
-                    Some(person.to_owned())
-                } else {
-                    Some(format!("i don't see {} here...", article(args[0])))
-                }
+                Some (
+                    if let Some(item) = g.describe_item(u, args[0]) {
+                        item.to_owned()
+                    } else if let Some(person) = g.describe_player(u, args[0]) {
+                        person.to_owned()
+                    } else {
+                        format!("i don't see {} here...", article(args[0]))
+                    }
+                )
             }
-            _ => None,
+            _ => Some("be more specific. or less specific.".to_owned()),
         }
     });
 
@@ -270,7 +282,36 @@ fn fill_interpreter(i: &mut Interpreter) {
                 },
             )
         }
-        _ => None,
+        _ => Some("be more specific. or less specific.".to_owned()),
+    });
+
+    i.insert("wear", |g, u, a| match a.len() {
+        0 => Some("there seems to be an error".to_owned()),
+        1 => {
+            let handle = a[0];
+            Some(
+                if let Ok(_) = g.transfer(u, None, Direction::Wear, handle) {
+                    format!("you wear the {}", handle)
+                } else {
+                    format!("you're not holding {}", article(handle))
+                },
+            )
+        }
+        _ => Some("be more specific. or less specific.".to_owned()),
+    });
+
+    i.insert("remove", |g, u, a| match a.len() {
+        1 => {
+            let handle = a[0];
+            Some(
+                if let Ok(_) = g.transfer(u, None, Direction::Remove, handle) {
+                    format!("you take off the {}", handle)
+                } else {
+                    format!("you're not wearing {}", article(handle))
+                },
+            )
+        }
+        _ => Some("be more specific. or less specific.".to_owned()),
     });
 
     i.insert("drop", |g, u, a| match a.len() {
@@ -285,20 +326,19 @@ fn fill_interpreter(i: &mut Interpreter) {
                 },
             )
         }
-        _ => None,
+        _ => Some("be more specific. or less specific.".to_owned()),
     });
 
     i.insert("give", |g, u, a| match a.len() {
         2 => {
-            if let &[other, handle, ..] = a {
+            let (other, handle) = (a[0], a[1]);
+            Some(
                 if g.transfer(u, Some(other), Direction::Give, handle).is_ok() {
-                    Some(format!("you give {} {}", other, article(handle)))
+                    format!("you give {} {}", other, article(handle))
                 } else {
-                    Some("that person or thing isn't here".to_owned())
+                    "that person or thing isn't here".to_owned()
                 }
-            } else {
-                None
-            }
+            )
         }
         _ => Some("E - NUN - CI - ATE".to_owned()),
     });

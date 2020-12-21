@@ -11,6 +11,7 @@ pub struct Player {
     description: String,
     loc: Coord,
     items: ItemList,
+    clothing: ItemList,
 }
 
 #[derive(Debug, Default)]
@@ -107,6 +108,7 @@ impl Player {
             name: name.to_owned(),
             loc: Coord(0, 0),
             items: ItemList::new(),
+            clothing: ItemList::new(),
         }
     }
 
@@ -138,8 +140,16 @@ impl Player {
         std::mem::take(&mut self.items)
     }
 
+    pub fn get_clothinglist(&mut self) -> ItemList {
+        std::mem::take(&mut self.clothing)
+    }
+
     pub fn replace_itemlist(&mut self, i: ItemList) {
         self.items = i;
+    }
+
+    pub fn replace_clothinglist(&mut self, i: ItemList) {
+        self.clothing = i;
     }
 }
 

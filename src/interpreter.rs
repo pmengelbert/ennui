@@ -9,6 +9,8 @@ pub enum CommandKind {
     Take,
     Drop,
     Give,
+    Wear,
+    Remove,
     Inventory,
     NotFound,
     Quit,
@@ -53,8 +55,10 @@ impl Interpreter {
             s if sw(s, "take") => Take,
             s if sw(s, "drop") => Drop,
             s if sw(s, "give") => Give,
-            s if sw(s, "quit") => Quit,
+            s if sw(s, "wear") => Wear,
+            s if sw(s, "remove") => Remove,
             s if sw(s, "inventory") => Inventory,
+            s if sw(s, "quit") => Quit,
             _ => NotFound,
         }
     }
