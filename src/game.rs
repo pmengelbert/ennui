@@ -34,12 +34,14 @@ macro_rules! cleanup_on_fail {
 }
 
 macro_rules! with_cleanup {
-    (($label:tt) $code:expr) => {
+    (($label:tt) $code:block 'cleanup: $cleanup:block) => {
         $label: loop {
             $code
 
             break $label
         }
+
+        $cleanup
     }
 }
 
@@ -136,7 +138,7 @@ impl Game {
                     ),
                 };
 
-                format!("{}\n{}", p.description().to_owned(), item_list)
+                format!("{}{}", p.description().to_owned(), item_list)
             } else {
                 format!("you don't see {} here", other)
             },
@@ -162,7 +164,6 @@ impl Game {
 
             let mut players_items = p.get_itemlist();
             let mut room_items = r.get_itemlist();
-
             with_cleanup!(('inner_cleanup) {
                 ret = match dir {
                     Take => {
@@ -182,19 +183,22 @@ impl Game {
                         inner_result
                     }
                 };
+
+            } 'cleanup: {
+                // 'inner_cleanup:
+                r.replace_itemlist(room_items);
+                p.replace_itemlist(players_items);
+
+                let q = players.entry(u.uuid()).or_default();
+                swap(q, &mut p);
             });
 
-            // 'inner_cleanup:
-            r.replace_itemlist(room_items);
-            p.replace_itemlist(players_items);
-
-            let q = players.entry(u.uuid()).or_default();
-            swap(q, &mut p);
+        } 'cleanup: {
+            // 'outer_cleanup:
+            self.rooms = rooms;
+            self.players = players;
         });
 
-        // 'outer_cleanup:
-        self.rooms = rooms;
-        self.players = players;
 
         ret
     }
