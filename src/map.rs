@@ -110,7 +110,7 @@ mod room_test {
         let mut r = Room {
             name: "the room".to_owned(),
             description: "this is your room".to_owned(),
-            players: HashSet::new(),
+            players: PlayerIdList(HashSet::new()),
             items: ItemList::new(),
         };
         r.players.insert(p.uuid());

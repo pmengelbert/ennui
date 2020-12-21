@@ -24,7 +24,7 @@ enum Direction {
     Drop,
 }
 
-macro_rules! break_fail {
+macro_rules! cleanup_on_fail {
     ($res:expr, $label:tt) => {
         match $res {
             Some(r) => r,
@@ -33,8 +33,8 @@ macro_rules! break_fail {
     };
 }
 
-macro_rules! cleanup_on_fail {
-    ($label:tt, $code:expr) => {
+macro_rules! with_cleanup {
+    (($label:tt) $code:expr) => {
         $label: loop {
             $code
 
@@ -70,19 +70,11 @@ impl Game {
         ret
     }
 
-    pub fn display_room(&self, c: &Coord) -> String {
+    fn display_room(&self, c: &Coord) -> String {
         match self.rooms.get(c) {
             Some(r) => r.display(&self.players),
             None => "".to_owned(),
         }
-    }
-
-    pub fn players(&self) -> &HashMap<u128, Player> {
-        &self.players
-    }
-
-    pub fn players_mut(&mut self) -> &mut HashMap<u128, Player> {
-        &mut self.players
     }
 
     pub fn interpret(&mut self, p: u128, s: &str) -> Option<String> {
@@ -98,11 +90,11 @@ impl Game {
         self.players.insert(p.uuid(), p);
     }
 
-    pub fn get_player(&self, u: u128) -> Option<&Player> {
+    fn get_player(&self, u: u128) -> Option<&Player> {
         self.players.get(&u)
     }
 
-    pub fn describe_item<U>(&self, pid: U, handle: &str) -> Option<&str>
+    fn describe_item<U>(&self, pid: U, handle: &str) -> Option<&str>
     where
         U: Uuid,
     {
@@ -118,7 +110,7 @@ impl Game {
         })
     }
 
-    pub fn describe_player<T>(&self, pid: T, other: &str) -> Option<String>
+    fn describe_player<T>(&self, pid: T, other: &str) -> Option<String>
     where
         T: Uuid,
     {
@@ -131,7 +123,20 @@ impl Game {
 
         Some(
             if let Some(p) = room.players().get_player_by_name(&self.players, other) {
-                p.description().to_owned()
+                let item_list = match p.items().len() {
+                    0 => "".to_owned(),
+                    _ => format!(
+                        "\n{} is holding:\n{}",
+                        p.name(),
+                        p.items()
+                            .iter()
+                            .map(|i| format!(" --> {}", article(i.name())))
+                            .collect::<Vec<_>>()
+                            .join("\n"),
+                    ),
+                };
+
+                format!("{}\n{}", p.description().to_owned(), item_list)
             } else {
                 format!("you don't see {} here", other)
             },
@@ -149,18 +154,16 @@ impl Game {
 
         let mut ret = Err(NoneError);
 
-        cleanup_on_fail!('needs_cleanup,
-        {
-            let p = break_fail!(players.get_mut(&u.uuid()), 'needs_cleanup);
+        with_cleanup!(('outer_cleanup) {
+            let p = cleanup_on_fail!(players.get_mut(&u.uuid()), 'outer_cleanup);
             let mut p = take(p);
 
-            let r = break_fail!(rooms.get_mut(p.loc()), 'needs_cleanup);
+            let r = cleanup_on_fail!(rooms.get_mut(p.loc()), 'outer_cleanup);
 
             let mut players_items = p.get_itemlist();
             let mut room_items = r.get_itemlist();
 
-            cleanup_on_fail!('internal_cleanup,
-            {
+            with_cleanup!(('inner_cleanup) {
                 ret = match dir {
                     Take => {
                         Self::t_item(&mut room_items, &mut players_items, handle)
@@ -169,8 +172,8 @@ impl Game {
                         Self::t_item(&mut players_items, &mut room_items, handle)
                     }
                     Give => {
-                        let other = break_fail!(other, 'internal_cleanup);
-                        let other_player = break_fail!(r.players_mut().get_player_mut_by_name(&mut players, other), 'internal_cleanup);
+                        let other = cleanup_on_fail!(other, 'inner_cleanup);
+                        let other_player = cleanup_on_fail!(r.players().get_player_mut_by_name(&mut players, other), 'inner_cleanup);
 
                         let mut others_items = other_player.get_itemlist();
                         let inner_result = Self::t_item(&mut players_items, &mut others_items, handle);
@@ -181,6 +184,7 @@ impl Game {
                 };
             });
 
+            // 'inner_cleanup:
             r.replace_itemlist(room_items);
             p.replace_itemlist(players_items);
 
@@ -188,12 +192,14 @@ impl Game {
             swap(q, &mut p);
         });
 
+        // 'outer_cleanup:
         self.rooms = rooms;
         self.players = players;
+
         ret
     }
 
-    pub fn list_inventory<T: Uuid>(&self, u: T) -> Option<String> {
+    fn list_inventory<T: Uuid>(&self, u: T) -> Option<String> {
         let mut ret = String::new();
         ret.push_str("you are holding:\n");
         let items = self.players.get(&u.uuid())?.items();

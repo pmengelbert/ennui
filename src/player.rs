@@ -36,7 +36,7 @@ impl PlayerIdList {
     }
 
     pub fn get_player_mut_by_name<'a>(
-        &mut self,
+        &self,
         pl: &'a mut PlayerList,
         name: &str,
     ) -> Option<&'a mut Player> {
