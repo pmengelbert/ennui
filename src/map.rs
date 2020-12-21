@@ -1,5 +1,5 @@
 use crate::item::{ItemKind, ItemList};
-use crate::player::{PlayerListRaw, Uuid};
+use crate::player::{PlayerIdList, PlayerListRaw, Uuid};
 use std::collections::HashSet;
 
 #[derive(Eq, PartialEq, Debug, Hash, Default, Clone, Copy)]
@@ -9,7 +9,7 @@ pub struct Coord(pub i64, pub i64);
 pub struct Room {
     name: String,
     description: String,
-    players: HashSet<u128>,
+    players: PlayerIdList,
     items: ItemList,
 }
 
@@ -20,7 +20,7 @@ impl Room {
         Self {
             name,
             description,
-            players: HashSet::new(),
+            players: PlayerIdList(HashSet::new()),
             items: ItemList::new(),
         }
     }
@@ -60,11 +60,11 @@ impl Room {
         )
     }
 
-    pub fn players(&self) -> &HashSet<u128> {
+    pub fn players(&self) -> &PlayerIdList {
         &self.players
     }
 
-    pub fn players_mut(&mut self) -> &mut HashSet<u128> {
+    pub fn players_mut(&mut self) -> &mut PlayerIdList {
         &mut self.players
     }
 

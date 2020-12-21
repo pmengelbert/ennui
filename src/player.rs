@@ -1,6 +1,6 @@
 use crate::item::ItemList;
 use crate::map::Coord;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::ops::{Deref, DerefMut};
 use uuid::Uuid as CrateUuid;
 
@@ -11,6 +11,46 @@ pub struct Player {
     description: String,
     loc: Coord,
     items: ItemList,
+}
+
+#[derive(Debug, Default)]
+pub struct PlayerIdList(pub HashSet<u128>);
+impl Deref for PlayerIdList {
+    type Target = HashSet<u128>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl DerefMut for PlayerIdList {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
+impl PlayerIdList {
+    pub fn get_player_by_name<'a>(&self, pl: &'a PlayerList, name: &str) -> Option<&'a Player> {
+        let u = self.id_of_name(pl, name)?;
+        pl.get(&u)
+    }
+
+    pub fn get_player_mut_by_name<'a>(
+        &mut self,
+        pl: &'a mut PlayerList,
+        name: &str,
+    ) -> Option<&'a mut Player> {
+        let u = self.id_of_name(pl, name)?;
+        pl.get_mut(&u)
+    }
+
+    fn id_of_name(&self, g: &PlayerList, name: &str) -> Option<u128> {
+        Some(
+            *self
+                .iter()
+                .find(|p| g.get(p).unwrap_or(&Player::new("")).name() == name)?,
+        )
+    }
 }
 
 pub trait Uuid {
@@ -35,6 +75,7 @@ impl Uuid for u128 {
     }
 }
 
+#[derive(Default)]
 pub struct PlayerList(pub HashMap<u128, Player>);
 pub type PlayerListRaw = HashMap<u128, Player>;
 

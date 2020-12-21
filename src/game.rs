@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::mem::{swap, take};
 use std::option::NoneError;
 use std::process;
@@ -6,15 +6,14 @@ use std::process;
 use crate::interpreter::Interpreter;
 use crate::item::{Item, ItemKind, ItemList};
 use crate::map::{Coord, Room};
-use crate::player::Player;
-use crate::player::Uuid;
+use crate::player::{Player, PlayerList, Uuid};
 
 use rand::Rng;
 
 type PassFail = Result<(), std::option::NoneError>;
 
 pub struct Game {
-    players: HashMap<u128, Player>,
+    players: PlayerList,
     rooms: HashMap<Coord, Room>,
     interpreter: Interpreter,
 }
@@ -62,7 +61,7 @@ impl Game {
         fill_interpreter(&mut interpreter);
 
         let mut ret = Self {
-            players,
+            players: PlayerList(players),
             rooms,
             interpreter,
         };
@@ -82,6 +81,10 @@ impl Game {
         &self.players
     }
 
+    pub fn players_mut(&mut self) -> &mut HashMap<u128, Player> {
+        &mut self.players
+    }
+
     pub fn interpret(&mut self, p: u128, s: &str) -> Option<String> {
         let mut interpreter = take(&mut self.interpreter);
 
@@ -99,24 +102,6 @@ impl Game {
         self.players.get(&u)
     }
 
-    pub fn get_player_by_name(&self, name: &str, pl: &HashSet<u128>) -> Option<&Player> {
-        let u = pl
-            .iter()
-            .find(|p| self.players.get(p).unwrap_or(&Player::new("")).name() == name)?;
-        self.players.get(u)
-    }
-
-    pub fn get_player_mut_by_name(
-        &mut self,
-        name: &str,
-        pl: &HashSet<u128>,
-    ) -> Option<&mut Player> {
-        let u = pl
-            .iter()
-            .find(|p| self.players.get(p).unwrap_or(&Player::new("")).name() == name)?;
-        self.players.get_mut(u)
-    }
-
     pub fn describe_item<U>(&self, pid: U, handle: &str) -> Option<&str>
     where
         U: Uuid,
@@ -126,11 +111,11 @@ impl Game {
         let loc = p.loc();
         let room = self.rooms.get(loc)?;
 
-        if let Some(item) = room.get_item(handle) {
-            Some(&item.description())
+        Some(if let Some(item) = room.get_item(handle) {
+            &item.description()
         } else {
-            Some(p.items().get(handle)?.description())
-        }
+            p.items().get(handle)?.description()
+        })
     }
 
     pub fn describe_player<T>(&self, pid: T, other: &str) -> Option<String>
@@ -144,11 +129,13 @@ impl Game {
             self.rooms.get(loc)?
         };
 
-        if let Some(p) = self.get_player_by_name(other, room.players()) {
-            Some(p.description().to_owned())
-        } else {
-            Some(format!("you don't see {} here", other))
-        }
+        Some(
+            if let Some(p) = room.players().get_player_by_name(&self.players, other) {
+                p.description().to_owned()
+            } else {
+                format!("you don't see {} here", other)
+            },
+        )
     }
 
     fn transfer<T>(&mut self, u: T, other: Option<&str>, dir: Direction, handle: &str) -> PassFail
@@ -183,7 +170,7 @@ impl Game {
                     }
                     Give => {
                         let other = break_fail!(other, 'internal_cleanup);
-                        let other_player = break_fail!(self.get_player_mut_by_name(other, r.players()), 'internal_cleanup);
+                        let other_player = break_fail!(r.players_mut().get_player_mut_by_name(&mut players, other), 'internal_cleanup);
 
                         let mut others_items = other_player.get_itemlist();
                         let inner_result = Self::t_item(&mut players_items, &mut others_items, handle);
@@ -214,7 +201,7 @@ impl Game {
             .iter()
             .map(|i| {
                 let name = i.name();
-                format!("{} {}", article(name), name)
+                format!("{}", article(name))
             })
             .collect::<Vec<_>>()
             .join("\n");
