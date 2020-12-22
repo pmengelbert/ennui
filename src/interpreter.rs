@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::ops::Deref;
 
 use crate::game::Game;
+use std::sync::{Mutex, Arc};
 
 #[derive(Eq, PartialEq, Debug, Hash)]
 pub enum CommandKind {
@@ -16,14 +17,17 @@ pub enum CommandKind {
     Quit,
 }
 
-struct CommandFunc(Box<dyn FnMut(&mut Game, u128, &[&str]) -> Option<String>>);
+type CommandFunction = Arc<Mutex<dyn FnMut(&mut Game, u128, &[&str]) -> Option<String>>>;
+struct CommandFunc(CommandFunction);
 impl Deref for CommandFunc {
-    type Target = Box<dyn FnMut(&mut Game, u128, &[&str]) -> Option<String>>;
+    type Target = CommandFunction;
 
     fn deref(&self) -> &Self::Target {
         &self.0
     }
 }
+
+unsafe impl Send for CommandFunc {}
 
 impl Default for CommandFunc {
     fn default() -> Self {
@@ -76,7 +80,7 @@ impl Interpreter {
         let cmd = Self::resolve_str(cmd);
         let CommandFunc(cmd_func) = self.commands.entry(cmd).or_default();
 
-        cmd_func(g, pid, &args)
+        cmd_func.lock().unwrap()(g, pid, &args)
     }
 }
 
@@ -84,7 +88,7 @@ fn b<F: 'static>(cf: F) -> CommandFunc
 where
     F: FnMut(&mut Game, u128, &[&str]) -> Option<String>,
 {
-    CommandFunc(Box::new(cf))
+    CommandFunc(Arc::new(Mutex::new(cf)))
 }
 
 #[cfg(test)]

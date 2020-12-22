@@ -31,43 +31,41 @@ impl Item {
 }
 
 #[derive(Debug, Default)]
-pub struct ItemList {
-    list: Vec<ItemKind>,
-}
+#[repr(transparent)]
+pub struct ItemList(Vec<ItemKind>);
+// pub struct ItemList {
+//     list: Vec<ItemKind>,
+// }
 
 impl Deref for ItemList {
     type Target = Vec<ItemKind>;
 
     fn deref(&self) -> &Self::Target {
-        &self.list
+        &self.0
     }
 }
 
 impl DerefMut for ItemList {
     fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.list
+        &mut self.0
     }
 }
 
 impl ItemList {
     pub fn new() -> Self {
-        ItemList { list: Vec::new() }
+        ItemList ( Vec::new() )
     }
-    pub fn push(&mut self, item: ItemKind) {
-        self.list.push(item)
-    }
-
     pub fn get(&self, handle: &str) -> Option<&ItemKind> {
-        self.list.iter().find(|i| i.handle() == handle)
+        self.iter().find(|i| i.handle() == handle)
     }
 
     pub fn get_mut(&mut self, handle: &str) -> Option<&mut ItemKind> {
-        self.list.iter_mut().find(|i| i.handle() == handle)
+        self.iter_mut().find(|i| i.handle() == handle)
     }
 
     pub fn get_owned(&mut self, handle: &str) -> Option<ItemKind> {
-        let pos = self.list.iter().position(|i| i.handle() == handle)?;
-        Some(self.list.remove(pos))
+        let pos = self.iter().position(|i| i.handle() == handle)?;
+        Some(self.remove(pos))
     }
 }
 

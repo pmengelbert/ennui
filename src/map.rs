@@ -1,5 +1,5 @@
 use crate::item::{ItemKind, ItemList};
-use crate::player::{PlayerIdList, PlayerListRaw, Uuid};
+use crate::player::{PlayerIdList, Uuid, PlayerList};
 use std::collections::HashSet;
 
 #[derive(Eq, PartialEq, Debug, Hash, Default, Clone, Copy)]
@@ -25,7 +25,7 @@ impl Room {
         }
     }
 
-    pub fn display(&self, global_players: &PlayerListRaw) -> String {
+    pub fn display(&self, p: u128, global_players: &PlayerList) -> String {
         let Room {
             name,
             description,
@@ -42,8 +42,8 @@ impl Room {
         let player_list = players
             .iter()
             .filter_map(|uuid| match global_players.get(uuid) {
-                Some(player) => Some(format!("- {}", player.name())),
-                None => None,
+                Some(player) if player.uuid() != p => Some(format!("- {}", player.name())),
+                _ => None,
             })
             .collect::<Vec<_>>()
             .join("\n");

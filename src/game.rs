@@ -18,6 +18,8 @@ pub struct Game {
     interpreter: Interpreter,
 }
 
+// impl Send for Game {}
+
 enum Direction {
     Take,
     Give,
@@ -35,6 +37,7 @@ macro_rules! goto_cleanup_on_fail {
     };
 }
 
+#[macro_export]
 /// Wrap a block of fallible code, and provide a set of cleanup instructions that will be
 /// executed after the block. The cleanup can be jumped to early if there is a failure,
 /// using the goto_cleanup_on_fail! macro.
@@ -75,7 +78,6 @@ macro_rules! goto_cleanup_on_fail {
 ///
 ///
 /// ```
-#[macro_export]
 macro_rules! with_cleanup {
     (($label:tt) $code:block 'cleanup: $cleanup:block) => {
         $label: loop {
@@ -115,9 +117,9 @@ impl Game {
         ret
     }
 
-    fn display_room(&self, c: &Coord) -> String {
+    fn display_room(&self, p: u128, c: &Coord) -> String {
         match self.rooms.get(c) {
-            Some(r) => r.display(&self.players),
+            Some(r) => r.display(p, &self.players),
             None => "".to_owned(),
         }
     }
@@ -134,6 +136,7 @@ impl Game {
     }
 
     pub fn add_player(&mut self, p: Player) {
+        self.rooms.entry(*p.loc()).or_default().add_player(&p);
         self.players.insert(p.uuid(), p);
     }
 
@@ -297,7 +300,7 @@ fn fill_interpreter(i: &mut Interpreter) {
         let player = g.get_player(u)?;
         let c = player.loc();
         match args.len() {
-            0 => Some(g.display_room(c)),
+            0 => Some(g.display_room(u, c)),
             1 => {
                 Some (
                     if let Some(item) = g.describe_item(u, args[0]) {
