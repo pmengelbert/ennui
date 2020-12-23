@@ -1,5 +1,8 @@
+use crate::game::MapDir;
 use crate::item::{ItemKind, ItemList};
 use crate::player::{PlayerIdList, PlayerList, Uuid};
+use crate::text::Color::*;
+use crate::text::Wrap;
 use std::collections::HashSet;
 
 #[derive(Eq, PartialEq, Debug, Hash, Default, Clone, Copy)]
@@ -33,30 +36,39 @@ impl Room {
             items,
         } = self;
 
-        let items_list = items
-            .iter()
-            .map(|i| format!(" --> {}", i.name()))
-            .collect::<Vec<_>>()
-            .join("\n");
-
         let player_list = players
             .iter()
             .filter_map(|uuid| match global_players.get(uuid) {
-                Some(player) if player.uuid() != p => Some(format!("- {}", player.name())),
+                Some(player) if player.uuid() != p && player.uuid() != 0 => Some(player.name()),
                 _ => None,
             })
-            .collect::<Vec<_>>()
-            .join("\n");
+            .collect::<Vec<_>>();
+        let player_list = Yellow(match player_list.len() {
+            0 => "".to_owned(),
+            1 => format!("\n{}", player_list[0]),
+            _ => format!("\n{}", player_list.join("\n")),
+        });
+
+        let items_list = items.iter().map(|i| i.name()).collect::<Vec<_>>();
+        let items_list = Green(match items_list.len() {
+            0 => "".to_owned(),
+            1 => format!("\n{}", items_list[0]),
+            _ => format!("\n{}", items_list.join("\n")),
+        });
 
         let underline = (0..self.name.len()).map(|_| '-').collect::<String>();
 
         format!(
             "{}\n\
             {}\n\
-            {}\n\
-            {}\n\
+            {}\
+            {}\
             {}",
-            name, underline, description, player_list, items_list
+            name,
+            underline,
+            description.wrap(80),
+            player_list,
+            items_list,
         )
     }
 
@@ -117,7 +129,6 @@ mod room_test {
         r.players.insert(q.uuid());
         pl.insert(p.uuid(), p);
         pl.insert(q.uuid(), q);
-        println!("{}", r.display(&pl));
     }
 }
 
@@ -140,6 +151,38 @@ impl Coord {
     pub fn west(&self) -> Self {
         let Coord(x, y) = self;
         Coord(*x - 1, *y)
+    }
+
+    pub fn add(&self, dir: MapDir) -> Self {
+        use MapDir::*;
+
+        match dir {
+            North => self.north(),
+            South => self.south(),
+            East => self.east(),
+            West => self.west(),
+            _ => return *self,
+        }
+    }
+
+    pub fn north_mut(&mut self) {
+        let Coord(x, y) = self;
+        *y += 1;
+    }
+
+    pub fn south_mut(&mut self) {
+        let Coord(x, y) = self;
+        *y -= 1;
+    }
+
+    pub fn east_mut(&mut self) {
+        let Coord(x, y) = self;
+        *x += 1;
+    }
+
+    pub fn west_mut(&mut self) {
+        let Coord(x, y) = self;
+        *x -= 1;
     }
 }
 
@@ -167,10 +210,6 @@ mod coord_test {
         assert_eq!(Coord(0, 0).west(), Coord(-1, 0));
     }
 }
-
-// pub struct Map {
-//     m: HashMap<Coord, Room>
-// }
 
 #[cfg(test)]
 mod map_test {

@@ -7,8 +7,10 @@ use crate::interpreter::Interpreter;
 use crate::item::{Item, ItemKind, ItemList};
 use crate::map::{Coord, Room};
 use crate::player::{Player, PlayerList, Uuid};
+use crate::text::{Color::*, Wrap};
 
 use rand::Rng;
+use std::cmp::min;
 use std::io::Write;
 
 type PassFail = Result<(), std::option::NoneError>;
@@ -17,6 +19,10 @@ pub struct Game {
     players: PlayerList,
     rooms: HashMap<Coord, Room>,
     interpreter: Interpreter,
+}
+
+pub trait Transfer {
+    fn transfer() -> Option<()>;
 }
 
 // impl Send for Game {}
@@ -29,72 +35,26 @@ enum Direction {
     Remove,
 }
 
-macro_rules! goto_cleanup_on_fail {
-    ($res:expr, $label:tt) => {
-        match $res {
-            Some(r) => r,
-            None => break $label,
-        }
-    };
-}
-
-#[macro_export]
-/// Wrap a block of fallible code, and provide a set of cleanup instructions that will be
-/// executed after the block. The cleanup can be jumped to early if there is a failure,
-/// using the goto_cleanup_on_fail! macro.
-/// ```
-///enum Quality {
-///    AfraidOfVacuum,
-///    FindsSnacksInCatbox,
-///}
-///
-/// pub struct Dog {
-///    beauty: u128, // cannot be < 0
-///    weight: u64,
-///    personality: i64,
-///    list_of_quirks: Vec<Quality>
-///}
-///
-/// impl Dog {
-///    fn internal_memory_thing(&mut self, i: &str) -> Result<(), ()> {
-///        // take full ownership of quirks, leaving an empty vec in the struct field
-///        // we have to remember to replace it, or the caller may find our Dog in
-///        // an unexpected state.
-///        let mut quirks = std::mem::replace(&mut self.list_of_quirks, Vec::new());
-///
-///        // the block is named (here, `'my_cleanup`) so that blocks can be nested
-///        // within one another, and the proper block to break from can be specified.
-///        with_cleanup!(('my_cleanup) {
-///            // returns the value if Some, else jumps to the cleanup block.
-///            let index = goto_cleanup_on_fail!(usize::parse(i), 'my_cleanup);
-///
-///        // the cleanup block is always preceded by "'cleanup:". This is not a variable,
-///        // but rather marks the cleanup block.
-///        } 'cleanup: {
-///            // restore the quirks to their rightful field on the struct
-///            self.list_of_quirks = quirks;
-///        })
-///    }
-///}
-///
-///
-/// ```
-macro_rules! with_cleanup {
-    (($label:tt) $code:block 'cleanup: $cleanup:block) => {
-        $label: loop {
-            $code
-
-            break $label
-        }
-
-        $cleanup
-    }
+pub enum MapDir {
+    North,
+    South,
+    East,
+    West,
+    Up,
+    Down,
+    NorthEast,
+    // etc
 }
 
 impl Game {
     pub fn new() -> Self {
         let (players, mut rooms) = (HashMap::new(), HashMap::new());
-        let mut r = Room::new("the living room", Some("this is the living room"));
+        let desc = r#"You are at the Temple Yard of Dragonia. Beautiful marble stairs lead up to the Temple of Dragonia. You feel small as you stare up the huge pillars making the entrance to the temple. This place serves as a sanctuary where the people of the city can come and seek refuge, and rest their tired bones. Just north of here is the common square, and the temple opens to the south."#;
+        let mut r = Room::new("the living room", Some(desc));
+        let mut r2 = Room::new(
+            "the other room",
+            Some(&desc.chars().rev().collect::<String>()),
+        );
         let mut p = Player::new("billy");
         p.set_description("this guy is a silly billy, don't you think?");
         r.add_player(&p);
@@ -105,6 +65,7 @@ impl Game {
         ));
         r.add_item(i);
         rooms.insert(Coord(0, 0), r);
+        rooms.insert(Coord(0, 1), r2);
         let mut interpreter = Interpreter::new();
         fill_interpreter(&mut interpreter);
 
@@ -118,17 +79,17 @@ impl Game {
         ret
     }
 
-    fn display_room(&mut self, p: u128) -> String {
-        let mut player = take(self.players.entry(p).or_default());
+    fn display_room<P: Uuid>(&mut self, p: P) -> String {
+        let mut player = take(self.players.entry(p.uuid()).or_default());
         let mut ret = "".to_owned();
 
         with_cleanup!(('player_cleanup) {
             let c = player.loc();
             let r = goto_cleanup_on_fail!(self.rooms.get(c), 'player_cleanup);
 
-            ret = r.display(p, &self.players);
+            ret = r.display(p.uuid(), &self.players);
         } 'cleanup: {
-            swap(self.players.entry(p).or_default(), &mut player);
+            swap(self.players.entry(p.uuid()).or_default(), &mut player);
         });
 
         ret
@@ -139,18 +100,31 @@ impl Game {
     pub fn interpret(&mut self, p: u128, s: &str) -> Option<String> {
         let mut interpreter = take(&mut self.interpreter);
 
-        let mut ret = interpreter.interpret(self, p, s);
-        if let None = ret {
-            ret = Some(random_insult())
+        let mut ret = None;
+        with_cleanup!(('interpreter) {
+            ret = Some(goto_cleanup_on_fail!(interpreter.interpret(self, p, s), 'interpreter));
+        } 'cleanup: {
+            self.interpreter = interpreter;
+        });
+
+        if ret.is_none() {
+            let quit_string = "quit";
+            if !quit_string.starts_with(&s[..min(s.len(), quit_string.len())]) {
+                ret = Some(random_insult())
+            }
         }
 
-        self.interpreter = interpreter;
         ret
     }
 
     pub fn add_player(&mut self, p: Player) {
         self.rooms.entry(*p.loc()).or_default().add_player(&p);
         self.players.insert(p.uuid(), p);
+    }
+
+    pub fn remove_player<T: Uuid>(&mut self, p: T) -> Option<Player> {
+        self.players.get_mut(&p.uuid())?.flush();
+        self.players.remove(&p.uuid())
     }
 
     pub fn send_to_player<P, U>(&mut self, p: P, buf: U) -> std::io::Result<usize>
@@ -166,6 +140,13 @@ impl Game {
             }
             None => Err(std::io::ErrorKind::AddrNotAvailable.into()),
         }
+    }
+
+    fn move_player<U: Uuid>(&self, u: U, from: &mut Room, to: &mut Room) -> Option<()> {
+        let u = &u.uuid();
+        from.players_mut().remove(u);
+        to.add_player(u);
+        Some(())
     }
 
     pub fn broadcast<U>(&mut self, buf: U) -> io::Result<usize>
@@ -201,6 +182,41 @@ impl Game {
         } else {
             p.items().get(handle)?.description()
         })
+    }
+
+    fn dir_func<U: Uuid>(&mut self, u: U, dir: MapDir) -> Option<String> {
+        use MapDir::*;
+        let u = u.uuid();
+        let loc = self.loc_of(u)?;
+        let other_loc = loc.add(dir);
+
+        let mut fail = true;
+        let mut ret = None;
+        let mut rooms = take(&mut self.rooms);
+
+        with_cleanup!(('rooms) {
+            let mut next_room = take(goto_cleanup_on_fail!(rooms.get_mut(&other_loc), 'rooms));
+            let mut current_room = take(goto_cleanup_on_fail!(rooms.get_mut(&loc), 'rooms));
+            with_cleanup!(('inner) {
+                goto_cleanup_on_fail!(self.move_player(u, &mut current_room, &mut next_room), 'inner);
+                goto_cleanup_on_fail!(self.players.get_mut(&u), 'inner).set_loc(other_loc);
+                fail = false;
+
+            } 'cleanup: {
+                swap(rooms.entry(other_loc).or_default(), &mut next_room);
+                swap(rooms.entry(loc).or_default(), &mut current_room);
+            });
+
+        } 'cleanup: {
+            self.rooms = rooms;
+            ret = Some(if fail {
+                "alas! you cannot go that way".to_owned()
+            } else {
+                self.display_room(u)
+            })
+        });
+
+        ret
     }
 
     fn describe_player<T>(&self, pid: T, other: &str) -> Option<String>
@@ -330,6 +346,7 @@ impl Game {
         Some(*self.players.get(&p.uuid())?.loc())
     }
 
+    #[allow(dead_code)]
     fn name_of<P>(&self, p: P) -> Option<&str>
     where
         P: Uuid,
@@ -370,9 +387,9 @@ fn fill_interpreter(i: &mut Interpreter) {
             let handle = a[0];
             Some(
                 if let Ok(_) = g.transfer(u, None, Direction::Take, handle) {
-                    format!("you take the {}", handle)
+                    format!("you take the {}", Red(handle.to_owned()))
                 } else {
-                    format!("you don't see {} here", article(handle))
+                    format!("you don't see {} here", Green(article(handle)))
                 },
             )
         }
@@ -479,13 +496,33 @@ fn fill_interpreter(i: &mut Interpreter) {
         ret
     });
 
+    i.insert("evaluate", |g, u, _| {
+        let p = g.get_player(u)?;
+
+        let mut s = String::new();
+        for meter in p.stats() {
+            s.push_str(&format!("{:#?}", meter));
+        }
+
+        Some(s)
+    });
+
+    i.insert("north", |g, u, _| g.dir_func(u, MapDir::North));
+
+    i.insert("south", |g, u, _| g.dir_func(u, MapDir::South));
+
+    // i.insert("ouch", |g, u, a| {
+    //     const prick: usize = 5;
+    //     g.players.entry(u).or_default().hurt(prick);
+
+    //     Some(format!("that hurt a surprising amount"))
+    // });
+
     i.insert("inventory", |g, u, _a| g.list_inventory(u));
 
     i.insert("none", |_, _, _| Some(random_insult()));
 
-    i.insert("quit", |_, _, _| {
-        process::exit(0);
-    })
+    i.insert("quit", |_, _, _| return None)
 }
 
 fn random_insult() -> String {
@@ -506,6 +543,7 @@ mod game_test {
     #[test]
     fn game_test_display_room() {
         let p = Player::new("lol");
+        let uuid = p.uuid();
         let q = Player::new("billy");
         let pp = Player::new("mindy");
 
@@ -517,7 +555,7 @@ mod game_test {
         }
         g.rooms.insert(Coord(0, 0), r);
 
-        println!("{}", g.display_room(p.uuid()));
+        println!("{}", g.display_room(uuid));
     }
 
     #[test]

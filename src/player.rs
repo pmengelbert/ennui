@@ -6,6 +6,66 @@ use std::net::TcpStream;
 use std::ops::{Deref, DerefMut};
 use uuid::Uuid as CrateUuid;
 
+#[derive(Debug)]
+pub enum MeterKind {
+    Hit(Meter),
+    Mana(Meter),
+    Movement(Meter),
+    Strength(Meter),
+    Dexterity(Meter),
+    Weight(Meter),
+    Height(Meter),
+}
+
+#[derive(Debug, Default)]
+pub struct Meter(pub i64, pub i64);
+
+impl Meter {
+    pub fn current(&self) -> i64 {
+        self.0
+    }
+
+    pub fn max(&self) -> i64 {
+        self.1
+    }
+
+    pub fn set(&mut self, val: i64) {
+        self.0 = val;
+    }
+}
+
+impl MeterKind {
+    pub fn current(&self) -> i64 {
+        self.safe_unwrap().0
+    }
+
+    pub fn max(&self) -> i64 {
+        self.safe_unwrap().1
+    }
+
+    pub fn set(&mut self, val: i64) {
+        *self.safe_unwrap_mut().0 = val
+    }
+
+    fn safe_unwrap(&self) -> &Meter {
+        use MeterKind::*;
+        match self {
+            Hit(m) | Mana(m) | Movement(m) | Strength(m) | Dexterity(m) | Weight(m) | Height(m) => {
+                m
+            }
+        }
+    }
+
+    fn safe_unwrap_mut(&mut self) -> (&mut i64, &mut i64) {
+        use MeterKind::*;
+        match self {
+            Hit(m) | Mana(m) | Movement(m) | Strength(m) | Dexterity(m) | Weight(m) | Height(m) => {
+                (&mut m.0, &mut m.1)
+            }
+        }
+    }
+}
+
 #[derive(Debug, Default)]
 pub struct Player {
     uuid: u128,
@@ -15,6 +75,7 @@ pub struct Player {
     items: ItemList,
     clothing: ItemList,
     stream: Option<TcpStream>,
+    stats: Vec<MeterKind>,
 }
 
 impl Write for Player {
@@ -90,6 +151,12 @@ impl Uuid for &Player {
     }
 }
 
+impl Uuid for &mut Player {
+    fn uuid(&self) -> u128 {
+        self.uuid
+    }
+}
+
 impl Uuid for u128 {
     fn uuid(&self) -> u128 {
         *self
@@ -123,6 +190,13 @@ impl PlayerList {
 
 impl Player {
     pub fn new(name: &str) -> Self {
+        use MeterKind::*;
+        let stats = vec![
+            Hit(Meter(100, 100)),
+            Movement(Meter(100, 100)),
+            Mana(Meter(100, 100)),
+        ];
+
         Self {
             uuid: CrateUuid::new_v4().as_u128(),
             description: "".to_owned(),
@@ -131,6 +205,7 @@ impl Player {
             items: ItemList::new(),
             clothing: ItemList::new(),
             stream: None,
+            stats,
         }
     }
 
@@ -150,15 +225,34 @@ impl Player {
     {
         let mut result = 0_usize;
         for (_, p) in &mut **pl {
-            let mut retstr = b"\n\n".to_vec();
-            retstr.extend_from_slice(format!("{} chats '", self.name).as_bytes());
-            retstr.extend_from_slice(buf.as_ref());
-            retstr.extend_from_slice(&b"'\n\n > "[..]);
-            result = p.write(&retstr)?;
-            println!("{}", result);
+            let mut ret = b"\n\n".to_vec();
+            ret.extend_from_slice(format!("{} chats '", self.name).as_bytes());
+            ret.extend_from_slice(buf.as_ref());
+            ret.extend_from_slice(b"'\n\n > ".as_ref());
+            result = p.write(&ret)?;
             p.flush()?;
         }
         Ok(result)
+    }
+
+    pub fn hurt(&mut self, amt: usize) {
+        use MeterKind::*;
+        let current = self.hp();
+        (*self
+            .stats
+            .iter_mut()
+            .find(|s| if let Hit(_) = s { true } else { false })
+            .unwrap())
+        .set(current - amt as i64);
+    }
+
+    pub fn hp(&self) -> i64 {
+        use MeterKind::*;
+        self.stats
+            .iter()
+            .find(|s| if let Hit(_) = s { true } else { false })
+            .unwrap()
+            .current()
     }
 
     pub fn set_description(&mut self, d: &str) {
@@ -177,12 +271,24 @@ impl Player {
         &self.loc
     }
 
+    pub fn set_loc(&mut self, new_loc: Coord) {
+        self.loc = new_loc;
+    }
+
+    pub fn loc_mut(&mut self) -> &mut Coord {
+        &mut self.loc
+    }
+
     pub fn items(&self) -> &ItemList {
         &self.items
     }
 
     pub fn description(&self) -> &str {
         &self.description
+    }
+
+    pub fn stats(&self) -> &[MeterKind] {
+        &self.stats
     }
 
     pub fn get_itemlist(&mut self) -> ItemList {
