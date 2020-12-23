@@ -1,5 +1,5 @@
 use crate::item::{ItemKind, ItemList};
-use crate::player::{PlayerIdList, Uuid, PlayerList};
+use crate::player::{PlayerIdList, PlayerList, Uuid};
 use std::collections::HashSet;
 
 #[derive(Eq, PartialEq, Debug, Hash, Default, Clone, Copy)]

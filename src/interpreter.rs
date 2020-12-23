@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::ops::Deref;
 
 use crate::game::Game;
-use std::sync::{Mutex, Arc};
+use std::sync::{Arc, Mutex};
 
 #[derive(Eq, PartialEq, Debug, Hash)]
 pub enum CommandKind {
@@ -13,6 +13,7 @@ pub enum CommandKind {
     Wear,
     Remove,
     Chat,
+    Say,
     Inventory,
     NotFound,
     Quit,
@@ -62,6 +63,7 @@ impl Interpreter {
             s if sw(s, "give") => Give,
             s if sw(s, "wear") => Wear,
             s if sw(s, "chat") => Chat,
+            s if sw(s, "say") => Say,
             s if sw(s, "remove") => Remove,
             s if sw(s, "inventory") => Inventory,
             s if sw(s, "quit") => Quit,

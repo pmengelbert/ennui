@@ -139,7 +139,10 @@ impl Game {
     pub fn interpret(&mut self, p: u128, s: &str) -> Option<String> {
         let mut interpreter = take(&mut self.interpreter);
 
-        let ret = interpreter.interpret(self, p, s);
+        let mut ret = interpreter.interpret(self, p, s);
+        if let None = ret {
+            ret = Some(random_insult())
+        }
 
         self.interpreter = interpreter;
         ret
@@ -319,6 +322,20 @@ impl Game {
         to.push(item);
         Ok(())
     }
+
+    fn loc_of<P>(&self, p: P) -> Option<Coord>
+    where
+        P: Uuid,
+    {
+        Some(*self.players.get(&p.uuid())?.loc())
+    }
+
+    fn name_of<P>(&self, p: P) -> Option<&str>
+    where
+        P: Uuid,
+    {
+        Some(self.players.get(&p.uuid())?.name())
+    }
 }
 
 fn article(noun: &str) -> String {
@@ -418,6 +435,33 @@ fn fill_interpreter(i: &mut Interpreter) {
             )
         }
         _ => Some("E - NUN - CI - ATE".to_owned()),
+    });
+
+    i.insert("say", |g, u, a| {
+        let statement = a.join(" ");
+        let loc = g.loc_of(u)?;
+        let name = g.players.get(&u)?.name().to_owned();
+
+        let mut ret = Some(format!("there's a pretty serious error here"));
+
+        let rooms = take(&mut g.rooms);
+        with_cleanup!(('rooms_cleanup) {
+            let s = format!("{} says '{}'", name, statement);
+            let r = goto_cleanup_on_fail!(rooms.get(&loc), 'rooms_cleanup).players();
+
+            for id in &**r {
+                if *id == u {
+                    continue;
+                }
+
+                g.send_to_player(*id, s.clone()).ok()?;
+            }
+            ret = Some(format!("you say '{}'", statement));
+        } 'cleanup: {
+            g.rooms = rooms;
+        });
+
+        ret
     });
 
     i.insert("chat", |g, u, a| {

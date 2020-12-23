@@ -33,9 +33,6 @@ impl Item {
 #[derive(Debug, Default)]
 #[repr(transparent)]
 pub struct ItemList(Vec<ItemKind>);
-// pub struct ItemList {
-//     list: Vec<ItemKind>,
-// }
 
 impl Deref for ItemList {
     type Target = Vec<ItemKind>;
@@ -53,7 +50,7 @@ impl DerefMut for ItemList {
 
 impl ItemList {
     pub fn new() -> Self {
-        ItemList ( Vec::new() )
+        ItemList(Vec::new())
     }
     pub fn get(&self, handle: &str) -> Option<&ItemKind> {
         self.iter().find(|i| i.handle() == handle)

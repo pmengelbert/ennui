@@ -1,10 +1,10 @@
 use crate::item::ItemList;
 use crate::map::Coord;
 use std::collections::{HashMap, HashSet};
+use std::io::Write;
+use std::net::TcpStream;
 use std::ops::{Deref, DerefMut};
 use uuid::Uuid as CrateUuid;
-use std::net::TcpStream;
-use std::io::Write;
 
 #[derive(Debug, Default)]
 pub struct Player {
@@ -20,20 +20,21 @@ pub struct Player {
 impl Write for Player {
     fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
         match self.stream {
-             Some(ref mut s) => s.write(buf),
-             None => Ok(0)
+            Some(ref mut s) => s.write(buf),
+            None => Ok(0),
         }
     }
 
     fn flush(&mut self) -> std::io::Result<()> {
         match self.stream {
             Some(ref mut s) => s.flush(),
-            None => Ok(())
+            None => Ok(()),
         }
     }
 }
 
 #[derive(Debug, Default)]
+#[repr(transparent)]
 pub struct PlayerIdList(pub HashSet<u128>);
 impl Deref for PlayerIdList {
     type Target = HashSet<u128>;
@@ -96,6 +97,7 @@ impl Uuid for u128 {
 }
 
 #[derive(Default)]
+#[repr(transparent)]
 pub struct PlayerList(pub HashMap<u128, Player>);
 pub type PlayerListRaw = HashMap<u128, Player>;
 
@@ -144,7 +146,7 @@ impl Player {
 
     pub fn broadcast<T>(&self, pl: &mut PlayerList, buf: T) -> std::io::Result<usize>
     where
-        T: AsRef<[u8]>
+        T: AsRef<[u8]>,
     {
         let mut result = 0_usize;
         for (_, p) in &mut **pl {
