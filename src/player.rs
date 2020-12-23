@@ -3,6 +3,8 @@ use crate::map::Coord;
 use std::collections::{HashMap, HashSet};
 use std::ops::{Deref, DerefMut};
 use uuid::Uuid as CrateUuid;
+use std::net::TcpStream;
+use std::io::Write;
 
 #[derive(Debug, Default)]
 pub struct Player {
@@ -12,6 +14,23 @@ pub struct Player {
     loc: Coord,
     items: ItemList,
     clothing: ItemList,
+    stream: Option<TcpStream>,
+}
+
+impl Write for Player {
+    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+        match self.stream {
+             Some(ref mut s) => s.write(buf),
+             None => Ok(0)
+        }
+    }
+
+    fn flush(&mut self) -> std::io::Result<()> {
+        match self.stream {
+            Some(ref mut s) => s.flush(),
+            None => Ok(())
+        }
+    }
 }
 
 #[derive(Debug, Default)]
@@ -109,7 +128,35 @@ impl Player {
             loc: Coord(0, 0),
             items: ItemList::new(),
             clothing: ItemList::new(),
+            stream: None,
         }
+    }
+
+    pub fn new_with_stream(name: &str, stream: TcpStream) -> Self {
+        let mut p = Self::new(name);
+        p.assign_stream(stream);
+        p
+    }
+
+    pub fn assign_stream(&mut self, stream: TcpStream) {
+        self.stream = Some(stream);
+    }
+
+    pub fn broadcast<T>(&self, pl: &mut PlayerList, buf: T) -> std::io::Result<usize>
+    where
+        T: AsRef<[u8]>
+    {
+        let mut result = 0_usize;
+        for (_, p) in &mut **pl {
+            let mut retstr = b"\n\n".to_vec();
+            retstr.extend_from_slice(format!("{} chats '", self.name).as_bytes());
+            retstr.extend_from_slice(buf.as_ref());
+            retstr.extend_from_slice(&b"'\n\n > "[..]);
+            result = p.write(&retstr)?;
+            println!("{}", result);
+            p.flush()?;
+        }
+        Ok(result)
     }
 
     pub fn set_description(&mut self, d: &str) {

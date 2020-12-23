@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::mem::{swap, take};
 use std::option::NoneError;
-use std::process;
+use std::{process, io};
 
 use crate::interpreter::Interpreter;
 use crate::item::{Item, ItemKind, ItemList};
@@ -9,6 +9,8 @@ use crate::map::{Coord, Room};
 use crate::player::{Player, PlayerList, Uuid};
 
 use rand::Rng;
+use std::io::Write;
+use std::convert::TryInto;
 
 type PassFail = Result<(), std::option::NoneError>;
 
@@ -138,6 +140,36 @@ impl Game {
     pub fn add_player(&mut self, p: Player) {
         self.rooms.entry(*p.loc()).or_default().add_player(&p);
         self.players.insert(p.uuid(), p);
+    }
+
+    pub fn send_to_player<P, U>(&mut self, p: P, buf: U) -> std::io::Result<usize>
+    where
+        P: Uuid,
+        U: AsRef<[u8]>
+    {
+        match self.players.get_mut(&p.uuid()) {
+            Some(p) => {
+                let res = p.write(buf.as_ref())?;
+                p.flush()?;
+                Ok(res)
+            },
+            None => Err(std::io::ErrorKind::AddrNotAvailable.into())
+        }
+    }
+
+    pub fn broadcast<U>(&mut self, buf: U) -> io::Result<usize>
+    where
+        U: AsRef<[u8]>
+    {
+        let mut res: usize = 0;
+        for (_, p) in &mut *self.players {
+            let mut s = String::from("\n\n");
+            s.push_str(&String::from_utf8(buf.as_ref().to_owned()).unwrap());
+            s.push_str("\n\n > ");
+            res = p.write(s.as_bytes())?;
+            p.flush()?;
+        }
+        Ok(res)
     }
 
     fn get_player(&self, u: u128) -> Option<&Player> {
@@ -387,6 +419,21 @@ fn fill_interpreter(i: &mut Interpreter) {
             )
         }
         _ => Some("E - NUN - CI - ATE".to_owned()),
+    });
+
+    i.insert("chat", |g, u, a| {
+        let statement = a.join(" ");
+        let mut ret = Some(format!("there's a pretty serious error here"));
+
+        let mut p = take(g.players.entry(u).or_default());
+        with_cleanup!(('player_cleanup) {
+            goto_cleanup_on_fail!(p.broadcast(&mut g.players, statement.clone()).ok(), 'player_cleanup);
+            ret = Some(format!("you chat '{}'", statement));
+        } 'cleanup: {
+            swap(g.players.entry(u).or_default(), &mut p);
+        });
+
+        ret
     });
 
     i.insert("inventory", |g, u, _a| g.list_inventory(u));
