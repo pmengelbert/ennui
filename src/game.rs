@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::mem::{swap, take};
 use std::option::NoneError;
-use std::{process, io};
+use std::{io, process};
 
 use crate::interpreter::Interpreter;
 use crate::item::{Item, ItemKind, ItemList};
@@ -10,7 +10,6 @@ use crate::player::{Player, PlayerList, Uuid};
 
 use rand::Rng;
 use std::io::Write;
-use std::convert::TryInto;
 
 type PassFail = Result<(), std::option::NoneError>;
 
@@ -119,11 +118,20 @@ impl Game {
         ret
     }
 
-    fn display_room(&self, p: u128, c: &Coord) -> String {
-        match self.rooms.get(c) {
-            Some(r) => r.display(p, &self.players),
-            None => "".to_owned(),
-        }
+    fn display_room(&mut self, p: u128) -> String {
+        let mut player = take(self.players.entry(p).or_default());
+        let mut ret = "".to_owned();
+
+        with_cleanup!(('player_cleanup) {
+            let c = player.loc();
+            let r = goto_cleanup_on_fail!(self.rooms.get(c), 'player_cleanup);
+
+            ret = r.display(p, &self.players);
+        } 'cleanup: {
+            swap(self.players.entry(p).or_default(), &mut player);
+        });
+
+        ret
     }
 
     /// `interpret` will interpret a command (`s`) given by the player `p`, returning
@@ -145,21 +153,21 @@ impl Game {
     pub fn send_to_player<P, U>(&mut self, p: P, buf: U) -> std::io::Result<usize>
     where
         P: Uuid,
-        U: AsRef<[u8]>
+        U: AsRef<[u8]>,
     {
         match self.players.get_mut(&p.uuid()) {
             Some(p) => {
                 let res = p.write(buf.as_ref())?;
                 p.flush()?;
                 Ok(res)
-            },
-            None => Err(std::io::ErrorKind::AddrNotAvailable.into())
+            }
+            None => Err(std::io::ErrorKind::AddrNotAvailable.into()),
         }
     }
 
     pub fn broadcast<U>(&mut self, buf: U) -> io::Result<usize>
     where
-        U: AsRef<[u8]>
+        U: AsRef<[u8]>,
     {
         let mut res: usize = 0;
         for (_, p) in &mut *self.players {
@@ -287,7 +295,6 @@ impl Game {
             self.players = players;
         });
 
-
         ret
     }
 
@@ -315,13 +322,9 @@ impl Game {
 }
 
 fn article(noun: &str) -> String {
-    let suffix = if let Some(c) = noun.to_lowercase().chars().next() {
-        match c {
-            'a' | 'e' | 'i' | 'o' | 'u' => "n",
-            _ => "",
-        }
-    } else {
-        ""
+    let suffix = match noun.to_lowercase().chars().next().unwrap_or('\0') {
+        'a' | 'e' | 'i' | 'o' | 'u' => "n",
+        _ => "",
     };
 
     format!("a{} {}", suffix, noun)
@@ -329,23 +332,19 @@ fn article(noun: &str) -> String {
 
 fn fill_interpreter(i: &mut Interpreter) {
     i.insert("look", |g, u, args| {
-        let player = g.get_player(u)?;
-        let c = player.loc();
-        match args.len() {
-            0 => Some(g.display_room(u, c)),
+        Some(match args.len() {
+            0 => g.display_room(u),
             1 => {
-                Some (
-                    if let Some(item) = g.describe_item(u, args[0]) {
-                        item.to_owned()
-                    } else if let Some(person) = g.describe_player(u, args[0]) {
-                        person.to_owned()
-                    } else {
-                        format!("i don't see {} here...", article(args[0]))
-                    }
-                )
+                if let Some(item) = g.describe_item(u, args[0]) {
+                    item.to_owned()
+                } else if let Some(person) = g.describe_player(u, args[0]) {
+                    person.to_owned()
+                } else {
+                    format!("i don't see {} here...", article(args[0]))
+                }
             }
-            _ => Some("be more specific. or less specific.".to_owned()),
-        }
+            _ => "be more specific. or less specific.".to_owned(),
+        })
     });
 
     i.insert("take", |g, u, a| match a.len() {
@@ -415,7 +414,7 @@ fn fill_interpreter(i: &mut Interpreter) {
                     format!("you give {} {}", other, article(handle))
                 } else {
                     "that person or thing isn't here".to_owned()
-                }
+                },
             )
         }
         _ => Some("E - NUN - CI - ATE".to_owned()),
@@ -474,7 +473,7 @@ mod game_test {
         }
         g.rooms.insert(Coord(0, 0), r);
 
-        println!("{}", g.display_room(&Coord(0, 0)));
+        println!("{}", g.display_room(p.uuid()));
     }
 
     #[test]
