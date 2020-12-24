@@ -3,6 +3,7 @@ name = "ennui"
 version = "0.1.0"
 authors = ["Peter Engelbert <pmengelbert@gmail.com>"]
 edition = "2018"
+default-run = "ennui"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 

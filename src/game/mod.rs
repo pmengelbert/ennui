@@ -6,7 +6,7 @@ use crate::item::{Holder, Item, ItemKind};
 use crate::map::{Coord, Locate, Room, RoomList};
 use crate::player::{Player, PlayerList, Uuid};
 use crate::text::Color::*;
-use crate::PassFail;
+use crate::{mapdata, PassFail};
 
 use rand::Rng;
 use std::fmt::{Display, Formatter};
@@ -167,8 +167,7 @@ impl Display for MapDir {
 impl Game {
     pub fn new() -> Self {
         let (players, mut rooms) = (HashMap::new(), RoomList::default());
-        let file = std::fs::read("sample.yaml").unwrap_or_default();
-        let mut v: Vec<Room> = serde_yaml::from_slice(&file).unwrap_or_default();
+        let mut v: Vec<Room> = serde_cbor::from_slice(mapdata::MAP.as_ref()).unwrap_or_default();
         let mut p = Player::new("billy");
 
         for r in v {

@@ -10,10 +10,26 @@ fn main() -> io::Result<()> {
         let x = fs::read(srcfile)?;
         let r: Vec<Room> = serde_yaml::from_slice(&x[..]).unwrap_or_default();
         println!("{:#?}", r);
-        let mut f = fs::File::create(dstfile)?;
-        serde_cbor::to_writer(&f, &r);
-        println!("cbor written to {}", dstfile);
-        f.flush()?;
+        let mut buf = serde_cbor::to_vec(&r).unwrap_or_default();
+        let len = buf.len();
+
+        let mut output = format!(r#"pub const MAP: [u8; {}] = ["#, len);
+
+        output.push_str(
+            &buf.as_slice()
+                .chunks(10)
+                .map(|a| {
+                    a.iter()
+                        .map(|i| i.to_string())
+                        .collect::<Vec<String>>()
+                        .join(", ")
+                })
+                .collect::<Vec<_>>()
+                .join(",\n"),
+        );
+        output.push_str("];");
+
+        std::fs::write(dstfile, output);
     } else {
         println!("usage: convert <srcfile> <dstfile>");
     }
