@@ -450,7 +450,8 @@ fn fill_interpreter(i: &mut Interpreter) {
                 continue;
             }
 
-            g.send_to_player(p, format!("\n{} says '{}'\n", name, message));
+            g.send_to_player(p, format!("\n{} says '{}'\n", name, message))
+                .ok()?;
         }
 
         Some(format!("you say '{}'", message))
@@ -458,17 +459,15 @@ fn fill_interpreter(i: &mut Interpreter) {
 
     i.insert("chat", |g, u, a| {
         let statement = a.join(" ");
-        let mut ret = Some(format!("there's a pretty serious error here"));
+        let name = g.name_of(u)?.to_owned();
 
-        let mut p = take(g.players.entry(u).or_default());
-        with_cleanup!(('player_cleanup) {
-            goto_cleanup_on_fail!(p.broadcast(&mut g.players, statement.clone()).ok(), 'player_cleanup);
-            ret = Some(format!("you chat '{}'", statement));
-        } 'cleanup: {
-            swap(g.players.entry(u).or_default(), &mut p);
-        });
+        let all_players: Vec<u128> = g.players.keys().filter(|id| **id != u).cloned().collect();
+        for p in all_players {
+            g.send_to_player(p, format!("{} chats '{}'", name, statement))
+                .ok()?;
+        }
 
-        ret
+        Some(format!("you chat '{}'", statement))
     });
 
     i.insert("evaluate", |g, u, _| {
