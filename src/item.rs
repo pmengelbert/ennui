@@ -1,14 +1,15 @@
 use crate::PassFail;
+use serde::{Deserialize, Serialize};
 use std::ops::{Deref, DerefMut};
 use ItemKind::*;
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub enum ItemKind {
     Clothing(Item),
     Weapon(Item),
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 pub struct Item {
     name: String,
     description: String,
@@ -69,7 +70,7 @@ impl Item {
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 #[repr(transparent)]
 pub struct ItemList(Vec<ItemKind>);
 

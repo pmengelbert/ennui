@@ -5,11 +5,15 @@ use crate::interpreter::Interpreter;
 use crate::item::{Holder, Item, ItemKind};
 use crate::map::{Coord, Locate, Room, RoomList};
 use crate::player::{Player, PlayerList, Uuid};
+use crate::text::Color::*;
 use crate::PassFail;
 
 use rand::Rng;
 use std::fmt::{Display, Formatter};
 use std::io::Write;
+
+use serde::{Deserialize, Serialize};
+use std::iter::Map;
 
 impl AsRef<Game> for Game {
     fn as_ref(&self) -> &Game {
@@ -30,27 +34,51 @@ pub trait Provider<T> {
 
 impl<T> Provider<PlayerList> for T
 where
-    T: AsRef<Game> + AsMut<Game>,
+    T: AsRef<PlayerList> + AsMut<PlayerList>,
 {
     fn provide(&self) -> &PlayerList {
-        &self.as_ref().players
+        self.as_ref()
     }
 
     fn provide_mut(&mut self) -> &mut PlayerList {
-        &mut self.as_mut().players
+        self.as_mut()
     }
 }
 
 impl<T> Provider<RoomList> for T
 where
-    T: AsRef<Game> + AsMut<Game>,
+    T: AsRef<RoomList> + AsMut<RoomList>,
 {
     fn provide(&self) -> &RoomList {
-        &self.as_ref().rooms
+        self.as_ref()
     }
 
     fn provide_mut(&mut self) -> &mut RoomList {
-        &mut self.as_mut().rooms
+        self.as_mut()
+    }
+}
+
+impl AsRef<RoomList> for Game {
+    fn as_ref(&self) -> &RoomList {
+        &self.rooms
+    }
+}
+
+impl AsRef<PlayerList> for Game {
+    fn as_ref(&self) -> &PlayerList {
+        &self.players
+    }
+}
+
+impl AsMut<RoomList> for Game {
+    fn as_mut(&mut self) -> &mut RoomList {
+        &mut self.rooms
+    }
+}
+
+impl AsMut<PlayerList> for Game {
+    fn as_mut(&mut self) -> &mut PlayerList {
+        &mut self.players
     }
 }
 
@@ -68,7 +96,7 @@ enum Direction {
     Remove,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Copy, Clone)]
 pub enum MapDir {
     North,
     South,
@@ -80,7 +108,23 @@ pub enum MapDir {
     // etc
 }
 
-impl Display for MapDir {
+impl MapDir {
+    const ALL_DIRS: [MapDir; 7] = [
+        MapDir::North,
+        MapDir::South,
+        MapDir::East,
+        MapDir::West,
+        MapDir::Up,
+        MapDir::Down,
+        MapDir::NorthEast,
+    ];
+
+    pub fn all() -> &'static [Self] {
+        &Self::ALL_DIRS
+    }
+}
+
+impl std::fmt::Debug for MapDir {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         use MapDir::*;
 
@@ -100,27 +144,36 @@ impl Display for MapDir {
     }
 }
 
+impl Display for MapDir {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        use MapDir::*;
+
+        write!(
+            f,
+            "{}",
+            match self {
+                North => "n",
+                South => "s",
+                East => "e",
+                West => "w",
+                Up => "u",
+                Down => "d",
+                NorthEast => "ne",
+            }
+        )
+    }
+}
+
 impl Game {
     pub fn new() -> Self {
         let (players, mut rooms) = (HashMap::new(), RoomList::default());
-        let desc = r#"You are at the Temple Yard of Dragonia. Beautiful marble stairs lead up to the Temple of Dragonia. You feel small as you stare up the huge pillars making the entrance to the temple. This place serves as a sanctuary where the people of the city can come and seek refuge, and rest their tired bones. Just north of here is the common square, and the temple opens to the south."#;
-        let mut r = Room::new("the living room", Some(desc), Coord(0, 0));
-        let r2 = Room::new(
-            "the other room",
-            Some(&desc.chars().rev().collect::<String>()),
-            Coord(0, 1),
-        );
+        let file = std::fs::read("sample.yaml").unwrap_or_default();
+        let mut v: Vec<Room> = serde_yaml::from_slice(&file).unwrap_or_default();
         let mut p = Player::new("billy");
-        p.set_description("this guy is a silly billy, don't you think?");
-        r.add_player(&p);
-        let i = ItemKind::Clothing(Item::new(
-            "codpiece",
-            Some("a beautifully decorated codpiece. truly a wonder"),
-            "codpiece",
-        ));
-        r.add_item(i);
-        rooms.insert(r.loc(), r);
-        rooms.insert(r2.loc(), r2);
+
+        for r in v {
+            rooms.insert(r.loc(), r);
+        }
         let mut interpreter = Interpreter::new();
         fill_interpreter(&mut interpreter);
 
@@ -141,7 +194,7 @@ impl Game {
         let rooms = &self.rooms;
         let r = loc.room(rooms)?;
 
-        Some(r.display(p.uuid(), players))
+        Some(r.display(p.uuid(), players, rooms))
     }
 
     /// `interpret` will interpret a command (`s`) given by the player `p`, returning
@@ -224,7 +277,7 @@ impl Game {
 
         let u = u.uuid();
         Some(match loc.move_player(self, u, dir.clone()) {
-            Ok(_) => format!("you go {}\n{}", dir, self.describe_room(u)?),
+            Ok(_) => format!("\nyou go {:?}\n\n{}", dir, self.describe_room(u)?),
             Err(_) => format!("alas! you cannot go that way..."),
         })
     }
@@ -473,7 +526,7 @@ fn fill_interpreter(i: &mut Interpreter) {
         const PRICK: usize = 5;
         g.players.entry(u).or_default().hurt(PRICK);
 
-        Some(format!("that hurt a surprising amount"))
+        Some(format!("{}", Red("that hurt a surprising amount".into())))
     });
 
     i.insert("inventory", |g, u, _a| g.list_inventory(u));
@@ -496,79 +549,80 @@ fn random_insult() -> String {
     .to_owned()
 }
 
-#[cfg(test)]
-mod game_test {
-    use super::*;
-    use std::borrow::{Borrow, BorrowMut};
-    use std::sync::RwLock;
-
-    struct Thing {
-        inner: HashMap<usize, RwLock<Room>>,
-    }
-
-    impl Thing {
-        fn new() -> Self {
-            let mut inner = HashMap::new();
-            let mut g = Game::new();
-            let r1 = take(g.rooms.get_mut(&Coord(0, 0)).unwrap());
-            let r2 = take(g.rooms.get_mut(&Coord(0, 1)).unwrap());
-            inner.insert(0, RwLock::new(r1));
-            inner.insert(1, RwLock::new(r2));
-
-            Thing { inner }
-        }
-
-        // DOES NOT WORK
-        fn thing(&mut self) -> Option<String> {
-            let r2 = self.inner.get_mut(&0).unwrap().read().unwrap().borrow();
-            let mut r1 = self.inner.get(&1).unwrap().write().unwrap().borrow_mut();
-            r1.add_player(&(7 as u128));
-            let x = r2.get_item("codpiece").unwrap();
-            Some(format!("{} {}", r1.players().len(), x.name()))
-        }
-    }
-
-    #[test]
-    fn test_interior_mutability() {
-        assert_eq!(Thing::new().thing(), Some("1 codpiece".to_owned()));
-    }
-
-    fn new_game() -> Game {
-        let mut g = Game::new();
-        let p = Player::new("peter");
-
-        let uuid = p.uuid();
-        g.add_player(p);
-        g
-    }
-
-    #[test]
-    fn game_test_display_room() {
-        let p = Player::new("lol");
-        let uuid = p.uuid();
-        let q = Player::new("billy");
-        let pp = Player::new("mindy");
-
-        let mut r = Room::new("the room", None);
-        let mut g = Game::new();
-        for player in vec![p, q, pp] {
-            r.add_player(&player);
-            g.players.insert(player.uuid(), player);
-        }
-        g.rooms.insert(Coord(0, 0), r);
-
-        println!("{}", g.describe_room(uuid)?);
-    }
-
-    #[test]
-    fn game_test_interpreter() {
-        let mut g = Game::new();
-        let mut r = Room::new("yo", None);
-        let p = Player::new("lol");
-        r.add_player(&p);
-        let uuid = p.uuid();
-        g.add_player(p);
-
-        assert!(g.interpret(uuid, "look").is_some());
-    }
-}
+// #[cfg(test)]
+// mod game_test {
+//     use super::*;
+//     use std::borrow::{Borrow, BorrowMut};
+//     use std::sync::RwLock;
+//     use std::mem::take;
+//
+//     struct Thing {
+//         inner: HashMap<usize, RwLock<Room>>,
+//     }
+//
+//     impl Thing {
+//         fn new() -> Self {
+//             let mut inner = HashMap::new();
+//             let mut g = Game::new();
+//             let r1 = take(g.rooms.get_mut(&Coord(0, 0)).unwrap());
+//             let r2 = take(g.rooms.get_mut(&Coord(0, 1)).unwrap());
+//             inner.insert(0, RwLock::new(r1));
+//             inner.insert(1, RwLock::new(r2));
+//
+//             Thing { inner }
+//         }
+//
+//         // DOES NOT WORK
+//         fn thing(&mut self) -> Option<String> {
+//             let r2 = self.inner.get_mut(&0).unwrap().read().unwrap().borrow();
+//             let mut r1 = self.inner.get(&1).unwrap().write().unwrap().borrow_mut();
+//             r1.add_player(&(7 as u128));
+//             let x = r2.get_item("codpiece").unwrap();
+//             Some(format!("{} {}", r1.players().len(), x.name()))
+//         }
+//     }
+//
+//     #[test]
+//     fn test_interior_mutability() {
+//         assert_eq!(Thing::new().thing(), Some("1 codpiece".to_owned()));
+//     }
+//
+//     fn new_game() -> Game {
+//         let mut g = Game::new();
+//         let p = Player::new("peter");
+//
+//         let uuid = p.uuid();
+//         g.add_player(p);
+//         g
+//     }
+//
+//     #[test]
+//     fn game_test_display_room() {
+//         let p = Player::new("lol");
+//         let uuid = p.uuid();
+//         let q = Player::new("billy");
+//         let pp = Player::new("mindy");
+//
+//         let mut r = Room::new("the room", None);
+//         let mut g = Game::new();
+//         for player in vec![p, q, pp] {
+//             r.add_player(&player);
+//             g.players.insert(player.uuid(), player);
+//         }
+//         g.rooms.insert(Coord(0, 0), r);
+//
+//         println!("{}", g.describe_room(uuid)?);
+//     }
+//
+//     #[test]
+//     fn game_test_interpreter() {
+//         let mut g = Game::new();
+//         let mut r = Room::new("yo", None);
+//         let p = Player::new("lol");
+//         r.add_player(&p);
+//         let uuid = p.uuid();
+//         g.add_player(p);
+//
+//         assert!(g.interpret(uuid, "look").is_some());
+//     }
+// }

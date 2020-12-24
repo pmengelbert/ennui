@@ -1,5 +1,6 @@
 use crate::item::ItemList;
 use crate::map::Coord;
+use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::fmt::{Display, Formatter};
 use std::io::Write;
@@ -7,7 +8,7 @@ use std::net::TcpStream;
 use std::ops::{Deref, DerefMut};
 use uuid::Uuid as CrateUuid;
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub enum MeterKind {
     Hit(Meter),
     Mana(Meter),
@@ -47,7 +48,7 @@ impl AsRef<Coord> for Player {
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 pub struct Meter(pub i64, pub i64);
 
 impl Display for Meter {
@@ -114,7 +115,7 @@ impl MeterKind {
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 pub struct Player {
     uuid: u128,
     name: String,
@@ -122,6 +123,7 @@ pub struct Player {
     loc: Coord,
     items: ItemList,
     clothing: ItemList,
+    #[serde(skip_serializing, skip_deserializing)]
     stream: Option<TcpStream>,
     stats: Vec<MeterKind>,
 }
@@ -142,8 +144,8 @@ impl Write for Player {
     }
 }
 
-#[derive(Debug, Default)]
 #[repr(transparent)]
+#[derive(Debug, Default, Deserialize, Serialize)]
 pub struct PlayerIdList(pub HashSet<u128>);
 impl Deref for PlayerIdList {
     type Target = HashSet<u128>;

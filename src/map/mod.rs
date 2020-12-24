@@ -4,8 +4,13 @@ use crate::player::{Player, PlayerIdList, PlayerList, Uuid};
 use crate::text::Color::*;
 use crate::text::Wrap;
 use crate::PassFail;
+
 use std::collections::{HashMap, HashSet};
 use std::ops::{Deref, DerefMut};
+
+use serde::export::Formatter;
+use serde::{Deserialize, Serialize};
+use std::fmt::Display;
 
 pub trait Locate {
     fn loc(&self) -> Coord;
@@ -67,24 +72,31 @@ pub trait Locate {
         {
             let rooms: &mut RoomList = provider.provide_mut();
             rooms.get_mut(&self.loc())?.players_mut().remove(&u);
-            rooms.get_mut(&next_coord)?.players_mut().insert(u);
+            rooms.get_mut(&next_coord?)?.players_mut().insert(u);
         }
         {
             let players: &mut PlayerList = provider.provide_mut();
-            players.get_mut(&u)?.set_loc(next_coord);
+            players.get_mut(&u)?.set_loc(next_coord?);
         }
 
         Ok(())
     }
-}
 
-impl Provider<RoomList> for RoomList {
-    fn provide(&self) -> &RoomList {
-        self
-    }
-
-    fn provide_mut(&mut self) -> &mut RoomList {
-        self
+    fn exits<T>(&self, provider: &T) -> Vec<MapDir>
+    where
+        T: Provider<RoomList>,
+    {
+        let rooms = provider.provide();
+        MapDir::all()
+            .iter()
+            .filter_map(|d| {
+                if rooms.contains_key(&self.loc().add(*d)?) {
+                    Some(*d)
+                } else {
+                    None
+                }
+            })
+            .collect()
     }
 }
 
@@ -97,7 +109,7 @@ where
     }
 }
 
-#[derive(Eq, PartialEq, Debug, Hash, Default, Clone, Copy)]
+#[derive(Eq, PartialEq, Debug, Deserialize, Serialize, Hash, Default, Clone, Copy)]
 pub struct Coord(pub i64, pub i64);
 impl AsRef<Coord> for Coord {
     fn as_ref(&self) -> &Coord {
@@ -106,7 +118,7 @@ impl AsRef<Coord> for Coord {
 }
 
 #[repr(transparent)]
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Deserialize, Serialize)]
 pub struct RoomList(HashMap<Coord, Room>);
 impl Deref for RoomList {
     type Target = HashMap<Coord, Room>;
@@ -128,7 +140,13 @@ impl AsRef<RoomList> for RoomList {
     }
 }
 
-#[derive(Debug, Default)]
+impl AsMut<RoomList> for RoomList {
+    fn as_mut(&mut self) -> &mut RoomList {
+        self
+    }
+}
+
+#[derive(Debug, Default, Serialize, Deserialize)]
 pub struct Room {
     name: String,
     loc: Coord,
@@ -168,7 +186,7 @@ impl Room {
         }
     }
 
-    pub fn display(&self, p: u128, global_players: &PlayerList) -> String {
+    pub fn display(&self, p: u128, global_players: &PlayerList, rooms: &RoomList) -> String {
         let Room {
             name,
             description,
@@ -197,11 +215,24 @@ impl Room {
             _ => format!("\n{}", items_list.join("\n")),
         });
 
+        let exits = self.exits(rooms);
+
+        let mut exit_str = String::from("\n[");
+        for (i, dir) in exits.iter().enumerate() {
+            let comma = ",";
+            exit_str.push_str(&format!("{}", dir));
+            if i != exits.len() - 1 {
+                exit_str.push_str(", ");
+            }
+        }
+        exit_str.push(']');
+
         let underline = (0..self.name.len()).map(|_| '-').collect::<String>();
 
         format!(
             "{}\n\
             {}\n\
+            {}\
             {}\
             {}\
             {}",
@@ -210,6 +241,7 @@ impl Room {
             description.wrap(80),
             player_list,
             items_list,
+            exit_str,
         )
     }
 
@@ -258,23 +290,23 @@ mod room_test {
     use super::*;
     use crate::player::Player;
 
-    #[test]
-    fn room_display_sample() {
-        use crate::player::PlayerList;
-        let mut pl = PlayerList::new();
-        let p = Player::new("bill");
-        let q = Player::new("mindy");
-        let mut r = Room {
-            name: "the room".to_owned(),
-            description: "this is your room".to_owned(),
-            players: PlayerIdList(HashSet::new()),
-            items: ItemList::new(),
-        };
-        r.players.insert(p.uuid());
-        r.players.insert(q.uuid());
-        pl.insert(p.uuid(), p);
-        pl.insert(q.uuid(), q);
-    }
+    // #[test]
+    // fn room_display_sample() {
+    //     use crate::player::PlayerList;
+    //     let mut pl = PlayerList::new();
+    //     let p = Player::new("bill");
+    //     let q = Player::new("mindy");
+    //     let mut r = Room {
+    //         name: "the room".to_owned(),
+    //         description: "this is your room".to_owned(),
+    //         players: PlayerIdList(HashSet::new()),
+    //         items: ItemList::new(),
+    //     };
+    //     r.players.insert(p.uuid());
+    //     r.players.insert(q.uuid());
+    //     pl.insert(p.uuid(), p);
+    //     pl.insert(q.uuid(), q);
+    // }
 }
 
 impl Coord {
@@ -298,16 +330,16 @@ impl Coord {
         Coord(*x - 1, *y)
     }
 
-    pub fn add(&self, dir: MapDir) -> Self {
+    pub fn add(&self, dir: MapDir) -> Option<Self> {
         use MapDir::*;
 
-        match dir {
+        Some(match dir {
             North => self.north(),
             South => self.south(),
             East => self.east(),
             West => self.west(),
-            _ => return *self,
-        }
+            _ => return None,
+        })
     }
 }
 
@@ -339,6 +371,20 @@ mod coord_test {
 #[cfg(test)]
 mod map_test {
     use super::*;
+    use crate::item::Item;
+    use crate::item::ItemKind::Clothing;
+
+    #[test]
+    fn write_yaml() {
+        let desc = r#"You are at the Temple Yard of Dragonia. Beautiful marble stairs lead up to the Temple of Dragonia. You feel small as you stare up the huge pillars making the entrance to the temple. This place serves as a sanctuary where the people of the city can come and seek refuge, and rest their tired bones. Just north of here is the common square, and the temple opens to the south."#;
+        let mut r = Room::new("the living room", Some(desc), Coord(0, 0));
+        let i = Item::new("a codpiece", Some("description"), "codpiece");
+        r.add_item(Clothing(i));
+        let yaml_string = serde_yaml::to_string(&vec![&r]).unwrap();
+        std::fs::write("/tmp/yaml.yaml", yaml_string);
+        let f = std::fs::File::create("/tmp/butts.cbor").unwrap();
+        serde_cbor::to_writer(f, &r);
+    }
 
     #[test]
     fn map_test() {
