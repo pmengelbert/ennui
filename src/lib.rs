@@ -18,11 +18,14 @@ macro_rules! goto_cleanup_on_fail {
     };
 }
 
+type PassFail = Result<(), std::option::NoneError>;
+
 #[macro_export]
 /// Wrap a block of fallible code, and provide a set of cleanup instructions that will be
 /// executed after the block. The cleanup can be jumped to early if there is a failure,
 /// using the goto_cleanup_on_fail! macro.
 /// ```
+///
 ///enum Quality {
 ///    AfraidOfVacuum,
 ///    FindsSnacksInCatbox,

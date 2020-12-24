@@ -22,6 +22,7 @@ pub enum CommandKind {
     Eval,
     Inventory,
     NotFound,
+    Blank,
     Ouch,
     Quit,
 }
@@ -63,7 +64,9 @@ impl Interpreter {
         let sw = |s, str: &str| str.starts_with(s);
 
         let s = s.as_ref();
+
         match s.to_lowercase().as_str() {
+            "" => Blank,
             s if sw(s, "north") => North,
             s if sw(s, "south") => South,
             s if sw(s, "east") => East,

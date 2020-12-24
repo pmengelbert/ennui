@@ -4,28 +4,66 @@ use std::option::NoneError;
 use std::{io, process};
 
 use crate::interpreter::Interpreter;
-use crate::item::{Item, ItemKind, ItemList};
-use crate::map::{Coord, Room};
+use crate::item::{Holder, Item, ItemKind, ItemList};
+use crate::map::{Coord, Locate, Room, RoomList};
 use crate::player::{Player, PlayerList, Uuid};
 use crate::text::{Color::*, Wrap};
 
+use crate::PassFail;
 use rand::Rng;
 use std::cmp::min;
+use std::fmt::{Display, Formatter};
 use std::io::Write;
+use std::ptr::replace;
 
-type PassFail = Result<(), std::option::NoneError>;
+impl AsRef<Game> for Game {
+    fn as_ref(&self) -> &Game {
+        self
+    }
+}
+
+impl AsMut<Game> for Game {
+    fn as_mut(&mut self) -> &mut Game {
+        self
+    }
+}
+
+pub trait Provider<T> {
+    fn provide(&self) -> &T;
+    fn provide_mut(&mut self) -> &mut T;
+}
+
+impl<T> Provider<PlayerList> for T
+where
+    T: AsRef<Game> + AsMut<Game>,
+{
+    fn provide(&self) -> &PlayerList {
+        &self.as_ref().players
+    }
+
+    fn provide_mut(&mut self) -> &mut PlayerList {
+        &mut self.as_mut().players
+    }
+}
+
+impl<T> Provider<RoomList> for T
+where
+    T: AsRef<Game> + AsMut<Game>,
+{
+    fn provide(&self) -> &RoomList {
+        &self.as_ref().rooms
+    }
+
+    fn provide_mut(&mut self) -> &mut RoomList {
+        &mut self.as_mut().rooms
+    }
+}
 
 pub struct Game {
     players: PlayerList,
-    rooms: HashMap<Coord, Room>,
+    rooms: RoomList,
     interpreter: Interpreter,
 }
-
-pub trait Transfer {
-    fn transfer() -> Option<()>;
-}
-
-// impl Send for Game {}
 
 enum Direction {
     Take,
@@ -35,6 +73,7 @@ enum Direction {
     Remove,
 }
 
+#[derive(Clone, Debug)]
 pub enum MapDir {
     North,
     South,
@@ -46,14 +85,35 @@ pub enum MapDir {
     // etc
 }
 
+impl Display for MapDir {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        use MapDir::*;
+
+        write!(
+            f,
+            "{}",
+            match self {
+                North => "north",
+                South => "south",
+                East => "east",
+                West => "west",
+                Up => "up",
+                Down => "down",
+                NorthEast => "northeast",
+            }
+        )
+    }
+}
+
 impl Game {
     pub fn new() -> Self {
-        let (players, mut rooms) = (HashMap::new(), HashMap::new());
+        let (players, mut rooms) = (HashMap::new(), RoomList::default());
         let desc = r#"You are at the Temple Yard of Dragonia. Beautiful marble stairs lead up to the Temple of Dragonia. You feel small as you stare up the huge pillars making the entrance to the temple. This place serves as a sanctuary where the people of the city can come and seek refuge, and rest their tired bones. Just north of here is the common square, and the temple opens to the south."#;
-        let mut r = Room::new("the living room", Some(desc));
+        let mut r = Room::new("the living room", Some(desc), Coord(0, 0));
         let mut r2 = Room::new(
             "the other room",
             Some(&desc.chars().rev().collect::<String>()),
+            Coord(0, 1),
         );
         let mut p = Player::new("billy");
         p.set_description("this guy is a silly billy, don't you think?");
@@ -64,8 +124,8 @@ impl Game {
             "codpiece",
         ));
         r.add_item(i);
-        rooms.insert(Coord(0, 0), r);
-        rooms.insert(Coord(0, 1), r2);
+        rooms.insert(r.loc(), r);
+        rooms.insert(r2.loc(), r2);
         let mut interpreter = Interpreter::new();
         fill_interpreter(&mut interpreter);
 
@@ -84,7 +144,7 @@ impl Game {
         let mut ret = "".to_owned();
 
         with_cleanup!(('player_cleanup) {
-            let c = player.loc();
+            let c = &player.loc();
             let r = goto_cleanup_on_fail!(self.rooms.get(c), 'player_cleanup);
 
             ret = r.display(p.uuid(), &self.players);
@@ -118,7 +178,7 @@ impl Game {
     }
 
     pub fn add_player(&mut self, p: Player) {
-        self.rooms.entry(*p.loc()).or_default().add_player(&p);
+        self.rooms.entry(p.loc()).or_default().add_player(&p);
         self.players.insert(p.uuid(), p);
     }
 
@@ -140,13 +200,6 @@ impl Game {
             }
             None => Err(std::io::ErrorKind::AddrNotAvailable.into()),
         }
-    }
-
-    fn move_player<U: Uuid>(&self, u: U, from: &mut Room, to: &mut Room) -> Option<()> {
-        let u = &u.uuid();
-        from.players_mut().remove(u);
-        to.add_player(u);
-        Some(())
     }
 
     pub fn broadcast<U>(&mut self, buf: U) -> io::Result<usize>
@@ -174,7 +227,7 @@ impl Game {
     {
         let p = self.get_player(pid.uuid())?;
 
-        let loc = p.loc();
+        let loc = &p.loc();
         let room = self.rooms.get(loc)?;
 
         Some(if let Some(item) = room.get_item(handle) {
@@ -186,135 +239,35 @@ impl Game {
 
     fn dir_func<U: Uuid>(&mut self, u: U, dir: MapDir) -> Option<String> {
         use MapDir::*;
+        let loc = self.loc_of(u.uuid())?;
+
         let u = u.uuid();
-        let loc = self.loc_of(u)?;
-        let other_loc = loc.add(dir);
-
-        let mut fail = true;
-        let mut ret = None;
-        let mut rooms = take(&mut self.rooms);
-
-        with_cleanup!(('rooms) {
-            let mut next_room = take(goto_cleanup_on_fail!(rooms.get_mut(&other_loc), 'rooms));
-            let mut current_room = take(goto_cleanup_on_fail!(rooms.get_mut(&loc), 'rooms));
-            with_cleanup!(('inner) {
-                goto_cleanup_on_fail!(self.move_player(u, &mut current_room, &mut next_room), 'inner);
-                goto_cleanup_on_fail!(self.players.get_mut(&u), 'inner).set_loc(other_loc);
-                fail = false;
-
-            } 'cleanup: {
-                swap(rooms.entry(other_loc).or_default(), &mut next_room);
-                swap(rooms.entry(loc).or_default(), &mut current_room);
-            });
-
-        } 'cleanup: {
-            self.rooms = rooms;
-            ret = Some(if fail {
-                "alas! you cannot go that way".to_owned()
-            } else {
-                self.display_room(u)
-            })
-        });
-
-        ret
+        Some(match loc.move_player(self, u, dir.clone()) {
+            Ok(_) => format!("you go {}{}", dir, self.display_room(u)),
+            Err(_) => format!("alas! you cannot go that way..."),
+        })
     }
 
     fn describe_player<T>(&self, pid: T, other: &str) -> Option<String>
     where
         T: Uuid,
     {
-        let room = {
-            let p = self.get_player(pid.uuid())?;
+        let p = self.loc_of(pid)?.player_by_name(self, other)?;
 
-            let loc = p.loc();
-            self.rooms.get(loc)?
+        let item_list = match p.items().len() {
+            0 => "".to_owned(),
+            _ => format!(
+                "\n{} is holding:\n{}",
+                p.name(),
+                p.items()
+                    .iter()
+                    .map(|i| format!(" --> {}", article(i.name())))
+                    .collect::<Vec<_>>()
+                    .join("\n"),
+            ),
         };
 
-        Some(
-            if let Some(p) = room.players().get_player_by_name(&self.players, other) {
-                let item_list = match p.items().len() {
-                    0 => "".to_owned(),
-                    _ => format!(
-                        "\n{} is holding:\n{}",
-                        p.name(),
-                        p.items()
-                            .iter()
-                            .map(|i| format!(" --> {}", article(i.name())))
-                            .collect::<Vec<_>>()
-                            .join("\n"),
-                    ),
-                };
-
-                format!("{}{}", p.description().to_owned(), item_list)
-            } else {
-                format!("you don't see {} here", other)
-            },
-        )
-    }
-
-    fn transfer<T>(&mut self, u: T, other: Option<&str>, dir: Direction, handle: &str) -> PassFail
-    where
-        T: Uuid,
-    {
-        use Direction::*;
-
-        let mut rooms = take(&mut self.rooms);
-        let mut players = take(&mut self.players);
-
-        let mut ret = Err(NoneError);
-
-        with_cleanup!(('outer_cleanup) {
-            let p = goto_cleanup_on_fail!(players.get_mut(&u.uuid()), 'outer_cleanup);
-            let mut p = take(p);
-
-            let r = goto_cleanup_on_fail!(rooms.get_mut(p.loc()), 'outer_cleanup);
-
-            let mut players_items = p.get_itemlist();
-            let mut players_clothing = p.get_clothinglist();
-            let mut room_items = r.get_itemlist();
-
-            with_cleanup!(('inner_cleanup) {
-                ret = match dir {
-                    Take => {
-                        Self::t_item(&mut room_items, &mut players_items, handle)
-                    }
-                    Drop => {
-                        Self::t_item(&mut players_items, &mut room_items, handle)
-                    }
-                    Give => {
-                        let other = goto_cleanup_on_fail!(other, 'inner_cleanup);
-                        let other_player = goto_cleanup_on_fail!(r.players().get_player_mut_by_name(&mut players, other), 'inner_cleanup);
-
-                        let mut others_items = other_player.get_itemlist();
-                        let inner_result = Self::t_item(&mut players_items, &mut others_items, handle);
-                        other_player.replace_itemlist(others_items);
-
-                        inner_result
-                    }
-                    Wear => {
-                        Self::t_item(&mut players_items, &mut players_clothing, handle)
-                    }
-                    Remove => {
-                        Self::t_item(&mut players_clothing, &mut players_items, handle)
-                    }
-                };
-            } 'cleanup: {
-                // 'inner_cleanup:
-                r.replace_itemlist(room_items);
-                p.replace_itemlist(players_items);
-                p.replace_clothinglist(players_clothing);
-
-                let q = players.entry(u.uuid()).or_default();
-                swap(q, &mut p);
-            });
-
-        } 'cleanup: {
-            // 'outer_cleanup:
-            self.rooms = rooms;
-            self.players = players;
-        });
-
-        ret
+        Some(format!("{}{}", p.description().to_owned(), item_list))
     }
 
     fn list_inventory<T: Uuid>(&self, u: T) -> Option<String> {
@@ -333,17 +286,15 @@ impl Game {
         Some(ret)
     }
 
-    fn t_item(from: &mut ItemList, to: &mut ItemList, handle: &str) -> PassFail {
-        let item = from.get_owned(handle)?;
-        to.push(item);
-        Ok(())
+    fn get_player_mut<U: Uuid>(&mut self, u: U) -> Option<&mut Player> {
+        self.players.get_mut(&u.uuid())
     }
 
     fn loc_of<P>(&self, p: P) -> Option<Coord>
     where
         P: Uuid,
     {
-        Some(*self.players.get(&p.uuid())?.loc())
+        Some(self.players.get(&p.uuid())?.loc())
     }
 
     #[allow(dead_code)]
@@ -352,6 +303,40 @@ impl Game {
         P: Uuid,
     {
         Some(self.players.get(&p.uuid())?.name())
+    }
+
+    fn transfer<T>(&mut self, u: T, other: Option<&str>, dir: Direction, handle: &str) -> PassFail
+    where
+        T: Uuid,
+    {
+        use Direction::*;
+        let loc = &self.loc_of(u.uuid())?;
+        let uuid = &u.uuid();
+
+        let rooms = &mut self.rooms;
+        let mut players = &mut self.players;
+        match dir {
+            Take => {
+                rooms.get_mut(loc)?.transfer(players.get_mut(uuid)?, handle);
+            }
+            Drop => {
+                players.get_mut(uuid)?.transfer(rooms.get_mut(loc)?, handle);
+            }
+            Give => {
+                let item = players.get_mut(uuid)?.remove_item(handle)?;
+                loc.player_by_name_mut(self, other?)?.give_item(item);
+            }
+            Wear => {
+                let (mut items, mut clothing) = players.get_mut(uuid)?.all_items_mut();
+                items.transfer(clothing, handle)?;
+            }
+            Remove => {
+                let (mut items, mut clothing) = players.get_mut(uuid)?.all_items_mut();
+                clothing.transfer(items, handle)?;
+            }
+        }
+
+        Ok(())
     }
 }
 
@@ -511,14 +496,16 @@ fn fill_interpreter(i: &mut Interpreter) {
 
     i.insert("south", |g, u, _| g.dir_func(u, MapDir::South));
 
-    // i.insert("ouch", |g, u, a| {
-    //     const prick: usize = 5;
-    //     g.players.entry(u).or_default().hurt(prick);
+    i.insert("ouch", |g, u, a| {
+        const prick: usize = 5;
+        g.players.entry(u).or_default().hurt(prick);
 
-    //     Some(format!("that hurt a surprising amount"))
-    // });
+        Some(format!("that hurt a surprising amount"))
+    });
 
     i.insert("inventory", |g, u, _a| g.list_inventory(u));
+
+    i.insert("", |_, _, _| Some("".to_owned()));
 
     i.insert("none", |_, _, _| Some(random_insult()));
 
@@ -539,6 +526,48 @@ fn random_insult() -> String {
 #[cfg(test)]
 mod game_test {
     use super::*;
+    use std::borrow::{Borrow, BorrowMut};
+    use std::sync::RwLock;
+
+    struct Thing {
+        inner: HashMap<usize, RwLock<Room>>,
+    }
+
+    impl Thing {
+        fn new() -> Self {
+            let mut inner = HashMap::new();
+            let mut g = Game::new();
+            let r1 = take(g.rooms.get_mut(&Coord(0, 0)).unwrap());
+            let r2 = take(g.rooms.get_mut(&Coord(0, 1)).unwrap());
+            inner.insert(0, RwLock::new(r1));
+            inner.insert(1, RwLock::new(r2));
+
+            Thing { inner }
+        }
+
+        // DOES NOT WORK
+        fn thing(&mut self) -> Option<String> {
+            let r2 = self.inner.get_mut(&0).unwrap().read().unwrap().borrow();
+            let mut r1 = self.inner.get(&1).unwrap().write().unwrap().borrow_mut();
+            r1.add_player(&(7 as u128));
+            let x = r2.get_item("codpiece").unwrap();
+            Some(format!("{} {}", r1.players().len(), x.name()))
+        }
+    }
+
+    #[test]
+    fn test_interior_mutability() {
+        assert_eq!(Thing::new().thing(), Some("1 codpiece".to_owned()));
+    }
+
+    fn new_game() -> Game {
+        let mut g = Game::new();
+        let p = Player::new("peter");
+
+        let uuid = p.uuid();
+        g.add_player(p);
+        g
+    }
 
     #[test]
     fn game_test_display_room() {

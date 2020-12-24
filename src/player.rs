@@ -1,6 +1,8 @@
+use crate::item::Holder;
 use crate::item::ItemList;
 use crate::map::Coord;
 use std::collections::{HashMap, HashSet};
+use std::fmt::{Display, Formatter};
 use std::io::Write;
 use std::net::TcpStream;
 use std::ops::{Deref, DerefMut};
@@ -17,8 +19,43 @@ pub enum MeterKind {
     Height(Meter),
 }
 
+impl Display for MeterKind {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}: {}",
+            self.string().to_uppercase(),
+            self.safe_unwrap()
+        )
+    }
+}
+
+impl AsRef<ItemList> for Player {
+    fn as_ref(&self) -> &ItemList {
+        self.items()
+    }
+}
+
+impl AsMut<ItemList> for Player {
+    fn as_mut(&mut self) -> &mut ItemList {
+        self.items_mut()
+    }
+}
+
+impl AsRef<Coord> for Player {
+    fn as_ref(&self) -> &Coord {
+        &self.loc
+    }
+}
+
 #[derive(Debug, Default)]
 pub struct Meter(pub i64, pub i64);
+
+impl Display for Meter {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "[{} / {}]", self.0, self.1)
+    }
+}
 
 impl Meter {
     pub fn current(&self) -> i64 {
@@ -53,6 +90,18 @@ impl MeterKind {
             Hit(m) | Mana(m) | Movement(m) | Strength(m) | Dexterity(m) | Weight(m) | Height(m) => {
                 m
             }
+        }
+    }
+
+    fn string(&self) -> &'static str {
+        match self {
+            MeterKind::Hit(_) => "hit",
+            MeterKind::Mana(_) => "mana",
+            MeterKind::Movement(_) => "movement",
+            MeterKind::Strength(_) => "strength",
+            MeterKind::Dexterity(_) => "dexterity",
+            MeterKind::Weight(_) => "weight",
+            MeterKind::Height(_) => "height",
         }
     }
 
@@ -267,10 +316,6 @@ impl Player {
         &self.name
     }
 
-    pub fn loc(&self) -> &Coord {
-        &self.loc
-    }
-
     pub fn set_loc(&mut self, new_loc: Coord) {
         self.loc = new_loc;
     }
@@ -281,6 +326,26 @@ impl Player {
 
     pub fn items(&self) -> &ItemList {
         &self.items
+    }
+
+    pub fn items_mut(&mut self) -> &mut ItemList {
+        &mut self.items
+    }
+
+    pub fn clothing(&self) -> &ItemList {
+        &self.clothing
+    }
+
+    pub fn clothing_mut(&mut self) -> &mut ItemList {
+        &mut self.clothing
+    }
+
+    pub fn all_items(&self) -> (&ItemList, &ItemList) {
+        (&self.items, &self.clothing)
+    }
+
+    pub fn all_items_mut(&mut self) -> (&mut ItemList, &mut ItemList) {
+        (&mut self.items, &mut self.clothing)
     }
 
     pub fn description(&self) -> &str {
@@ -311,9 +376,18 @@ impl Player {
 #[cfg(test)]
 mod player_test {
     use super::*;
+    use MeterKind::*;
 
     #[test]
     fn player_test_uuid() {
         assert_ne!(Player::new("").uuid(), 0);
+    }
+
+    #[test]
+    fn test_meter_display() {
+        let x = Meter(100, 100);
+        assert_eq!(format!("{}", x), "[100 / 100]");
+        let y = Hit(x);
+        assert_eq!(format!("{}", y), "HIT: [100 / 100]");
     }
 }
