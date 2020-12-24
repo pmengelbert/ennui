@@ -52,7 +52,7 @@ pub trait Locate {
         T: Provider<RoomList> + Provider<PlayerList>,
         S: AsRef<str>,
     {
-        let mut pl: &mut PlayerList = provider.provide_mut();
+        let pl: &mut PlayerList = provider.provide_mut();
         pl.values_mut()
             .find(|p| p.name() == other.as_ref() && p.loc() == self.loc())
     }
@@ -171,10 +171,10 @@ impl Room {
     pub fn display(&self, p: u128, global_players: &PlayerList) -> String {
         let Room {
             name,
-            loc,
             description,
             players,
             items,
+            ..
         } = self;
 
         let player_list = players
@@ -308,26 +308,6 @@ impl Coord {
             West => self.west(),
             _ => return *self,
         }
-    }
-
-    pub fn north_mut(&mut self) {
-        let Coord(x, y) = self;
-        *y += 1;
-    }
-
-    pub fn south_mut(&mut self) {
-        let Coord(x, y) = self;
-        *y -= 1;
-    }
-
-    pub fn east_mut(&mut self) {
-        let Coord(x, y) = self;
-        *x += 1;
-    }
-
-    pub fn west_mut(&mut self) {
-        let Coord(x, y) = self;
-        *x -= 1;
     }
 }
 

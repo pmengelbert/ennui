@@ -2,7 +2,6 @@ use std::collections::HashMap;
 use std::ops::Deref;
 
 use crate::game::Game;
-use std::mem::{swap, take};
 use std::sync::{Arc, Mutex};
 
 #[derive(Eq, PartialEq, Debug, Hash)]
@@ -28,7 +27,7 @@ pub enum CommandKind {
 }
 
 type CommandFunction = Arc<Mutex<dyn FnMut(&mut Game, u128, &[&str]) -> Option<String>>>;
-struct CommandFunc(CommandFunction);
+pub struct CommandFunc(CommandFunction);
 impl Deref for CommandFunc {
     type Target = CommandFunction;
 
@@ -97,28 +96,8 @@ impl Interpreter {
             .insert(Self::resolve_str(c), b(f));
     }
 
-    pub fn interpret(&mut self, g: &mut Game, pid: u128, s: &str) -> Option<String> {
-        let mut tokens = s.split_whitespace();
-        let (cmd, args) = (tokens.next().unwrap_or(""), tokens.collect::<Vec<_>>());
-        let cmd = Self::resolve_str(cmd);
-
-        let mut ret = None;
-
-        {
-            let mut lk = self.commands.lock().unwrap();
-            let cmd_func = lk.get_mut(&cmd)?;
-            let mut cf = match cmd_func.lock() {
-                Ok(c) => c,
-                Err(e) => {
-                    println!("error: {}", e);
-                    return None;
-                }
-            };
-
-            ret = cf(g, pid, &args)
-        }
-
-        ret
+    pub fn commands(&mut self) -> Arc<Mutex<HashMap<CommandKind, CommandFunc>>> {
+        self.commands.clone()
     }
 }
 

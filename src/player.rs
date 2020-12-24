@@ -1,4 +1,3 @@
-use crate::item::Holder;
 use crate::item::ItemList;
 use crate::map::Coord;
 use std::collections::{HashMap, HashSet};

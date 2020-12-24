@@ -1,4 +1,3 @@
-use crate::map::Locate;
 use crate::PassFail;
 use std::ops::{Deref, DerefMut};
 use ItemKind::*;
@@ -57,7 +56,8 @@ impl Item {
         let description = description.unwrap_or("").to_owned();
         let name = name.to_owned();
         let handle = handle.to_owned();
-        Item {
+
+        Self {
             name,
             handle,
             description,

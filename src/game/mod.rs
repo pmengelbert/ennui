@@ -1,20 +1,15 @@
 use std::collections::HashMap;
-use std::mem::{swap, take};
-use std::option::NoneError;
-use std::{io, process};
+use std::io;
 
 use crate::interpreter::Interpreter;
-use crate::item::{Holder, Item, ItemKind, ItemList};
+use crate::item::{Holder, Item, ItemKind};
 use crate::map::{Coord, Locate, Room, RoomList};
 use crate::player::{Player, PlayerList, Uuid};
-use crate::text::{Color::*, Wrap};
-
 use crate::PassFail;
+
 use rand::Rng;
-use std::cmp::min;
 use std::fmt::{Display, Formatter};
 use std::io::Write;
-use std::ptr::replace;
 
 impl AsRef<Game> for Game {
     fn as_ref(&self) -> &Game {
@@ -110,7 +105,7 @@ impl Game {
         let (players, mut rooms) = (HashMap::new(), RoomList::default());
         let desc = r#"You are at the Temple Yard of Dragonia. Beautiful marble stairs lead up to the Temple of Dragonia. You feel small as you stare up the huge pillars making the entrance to the temple. This place serves as a sanctuary where the people of the city can come and seek refuge, and rest their tired bones. Just north of here is the common square, and the temple opens to the south."#;
         let mut r = Room::new("the living room", Some(desc), Coord(0, 0));
-        let mut r2 = Room::new(
+        let r2 = Room::new(
             "the other room",
             Some(&desc.chars().rev().collect::<String>()),
             Coord(0, 1),
@@ -140,38 +135,28 @@ impl Game {
     }
 
     fn describe_room<P: Uuid>(&mut self, p: P) -> Option<String> {
-        let mut ret = "".to_owned();
         let loc = self.loc_of(p.uuid())?;
 
         let players = &mut self.players;
         let rooms = &self.rooms;
         let r = loc.room(rooms)?;
 
-        ret = r.display(p.uuid(), players);
-
-        Some(ret)
+        Some(r.display(p.uuid(), players))
     }
 
     /// `interpret` will interpret a command (`s`) given by the player `p`, returning
     /// the response to the command.
     pub fn interpret(&mut self, p: u128, s: &str) -> Option<String> {
-        let mut interpreter = take(&mut self.interpreter);
+        let mut words = s.split_whitespace();
+        let cmd_str = words.next()?;
+        let args: Vec<&str> = words.collect();
+        let cmd = Interpreter::resolve_str(cmd_str);
 
-        let mut ret = None;
-        with_cleanup!(('interpreter) {
-            ret = Some(goto_cleanup_on_fail!(interpreter.interpret(self, p, s), 'interpreter));
-        } 'cleanup: {
-            self.interpreter = interpreter;
-        });
+        let commands = self.interpreter.commands();
+        let mut other_commands = commands.lock().ok()?;
+        let mut cmd_func = other_commands.get_mut(&cmd)?.lock().ok()?;
 
-        if ret.is_none() {
-            let quit_string = "quit";
-            if !quit_string.starts_with(&s[..min(s.len(), quit_string.len())]) {
-                ret = Some(random_insult())
-            }
-        }
-
-        ret
+        (*cmd_func)(self, p, &args)
     }
 
     pub fn add_player(&mut self, p: Player) {
@@ -180,7 +165,7 @@ impl Game {
     }
 
     pub fn remove_player<T: Uuid>(&mut self, p: T) -> Option<Player> {
-        self.players.get_mut(&p.uuid())?.flush();
+        self.players.get_mut(&p.uuid())?.flush().ok()?;
         self.players.remove(&p.uuid())
     }
 
@@ -235,12 +220,11 @@ impl Game {
     }
 
     fn dir_func<U: Uuid>(&mut self, u: U, dir: MapDir) -> Option<String> {
-        use MapDir::*;
         let loc = self.loc_of(u.uuid())?;
 
         let u = u.uuid();
         Some(match loc.move_player(self, u, dir.clone()) {
-            Ok(_) => format!("you go {}{}", dir, self.describe_room(u)?),
+            Ok(_) => format!("you go {}\n{}", dir, self.describe_room(u)?),
             Err(_) => format!("alas! you cannot go that way..."),
         })
     }
@@ -283,10 +267,6 @@ impl Game {
         Some(ret)
     }
 
-    fn get_player_mut<U: Uuid>(&mut self, u: U) -> Option<&mut Player> {
-        self.players.get_mut(&u.uuid())
-    }
-
     fn loc_of<P>(&self, p: P) -> Option<Coord>
     where
         P: Uuid,
@@ -307,28 +287,34 @@ impl Game {
         T: Uuid,
     {
         use Direction::*;
-        let loc = &self.loc_of(u.uuid())?;
         let uuid = &u.uuid();
+        let loc = &self.loc_of(u)?;
 
         let rooms = &mut self.rooms;
-        let mut players = &mut self.players;
+        let players = &mut self.players;
         match dir {
             Take => {
-                rooms.get_mut(loc)?.transfer(players.get_mut(uuid)?, handle);
+                rooms
+                    .get_mut(loc)?
+                    .transfer(players.get_mut(uuid)?, handle)
+                    .ok()?;
             }
             Drop => {
-                players.get_mut(uuid)?.transfer(rooms.get_mut(loc)?, handle);
+                players
+                    .get_mut(uuid)?
+                    .transfer(rooms.get_mut(loc)?, handle)
+                    .ok()?;
             }
             Give => {
                 let item = players.get_mut(uuid)?.remove_item(handle)?;
                 loc.player_by_name_mut(self, other?)?.give_item(item);
             }
             Wear => {
-                let (mut items, mut clothing) = players.get_mut(uuid)?.all_items_mut();
+                let (items, clothing) = players.get_mut(uuid)?.all_items_mut();
                 items.transfer(clothing, handle)?;
             }
             Remove => {
-                let (mut items, mut clothing) = players.get_mut(uuid)?.all_items_mut();
+                let (items, clothing) = players.get_mut(uuid)?.all_items_mut();
                 clothing.transfer(items, handle)?;
             }
         }
@@ -369,9 +355,9 @@ fn fill_interpreter(i: &mut Interpreter) {
             let handle = a[0];
             Some(
                 if let Ok(_) = g.transfer(u, None, Direction::Take, handle) {
-                    format!("you take the {}", Red(handle.to_owned()))
+                    format!("you take the {}", handle.to_owned())
                 } else {
-                    format!("you don't see {} here", Green(article(handle)))
+                    format!("you don't see {} here", article(handle))
                 },
             )
         }
@@ -479,12 +465,13 @@ fn fill_interpreter(i: &mut Interpreter) {
     });
 
     i.insert("north", |g, u, _| g.dir_func(u, MapDir::North));
-
     i.insert("south", |g, u, _| g.dir_func(u, MapDir::South));
+    i.insert("east", |g, u, _| g.dir_func(u, MapDir::East));
+    i.insert("west", |g, u, _| g.dir_func(u, MapDir::West));
 
-    i.insert("ouch", |g, u, a| {
-        const prick: usize = 5;
-        g.players.entry(u).or_default().hurt(prick);
+    i.insert("ouch", |g, u, _| {
+        const PRICK: usize = 5;
+        g.players.entry(u).or_default().hurt(PRICK);
 
         Some(format!("that hurt a surprising amount"))
     });
