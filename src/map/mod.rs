@@ -8,9 +8,7 @@ use crate::PassFail;
 use std::collections::{HashMap, HashSet};
 use std::ops::{Deref, DerefMut};
 
-use serde::export::Formatter;
 use serde::{Deserialize, Serialize};
-use std::fmt::Display;
 
 pub trait Locate {
     fn loc(&self) -> Coord;
@@ -219,7 +217,6 @@ impl Room {
 
         let mut exit_str = String::from("\n[");
         for (i, dir) in exits.iter().enumerate() {
-            let comma = ",";
             exit_str.push_str(&format!("{}", dir));
             if i != exits.len() - 1 {
                 exit_str.push_str(", ");

@@ -1,8 +1,7 @@
-use std::net::{TcpListener, TcpStream};
-use std::sync::mpsc::{channel, Sender, Receiver};
-use std::sync::{Mutex, Arc};
-use std::thread::spawn;
 use std::io::{Read, Write};
+use std::net::TcpListener;
+use std::sync::{Arc, Mutex};
+use std::thread::spawn;
 
 use ennui::game::Game;
 use ennui::player::Player;
@@ -18,15 +17,13 @@ trait ReadLine {
 }
 
 impl<T> ReadLine for T
-    where
-        T: Read,
+where
+    T: Read,
 {
     fn read_line(&mut self) -> std::io::Result<String> {
         let mut buf = [0u8; 256];
         let n = self.read(&mut buf)?;
-        Ok(
-            String::from_utf8((&buf[..n-1]).to_owned()).unwrap()
-        )
+        Ok(String::from_utf8((&buf[..n - 1]).to_owned()).unwrap())
     }
 }
 
@@ -60,19 +57,21 @@ fn main() -> std::io::Result<()> {
 
         let stream_clone = stream.try_clone()?;
 
-        join_handles.push(
-            spawn(move || handle_client(stream_clone, uuid, game_clone))
-        );
+        join_handles.push(spawn(move || handle_client(stream_clone, uuid, game_clone)));
     }
 
     for handle in join_handles {
-        handle.join().unwrap();
+        handle.join().unwrap().unwrap_or_default();
     }
 
     Ok(())
 }
 
-fn handle_client<T: ReadLine + Write>(mut stream: T, p: u128, g: Arc<Mutex<Game>>) -> std::io::Result<()> {
+fn handle_client<T: ReadLine + Write>(
+    mut stream: T,
+    p: u128,
+    g: Arc<Mutex<Game>>,
+) -> std::io::Result<()> {
     stream.write(b" > ")?;
     loop {
         let s = stream.read_line()?;

@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::io;
 
 use crate::interpreter::Interpreter;
-use crate::item::{Holder, Item, ItemKind};
+use crate::item::Holder;
 use crate::map::{Coord, Locate, Room, RoomList};
 use crate::player::{Player, PlayerList, Uuid};
 use crate::text::Color::*;
@@ -11,9 +11,6 @@ use crate::{mapdata, PassFail};
 use rand::Rng;
 use std::fmt::{Display, Formatter};
 use std::io::Write;
-
-use serde::{Deserialize, Serialize};
-use std::iter::Map;
 
 impl AsRef<Game> for Game {
     fn as_ref(&self) -> &Game {
@@ -167,8 +164,8 @@ impl Display for MapDir {
 impl Game {
     pub fn new() -> Self {
         let (players, mut rooms) = (HashMap::new(), RoomList::default());
-        let mut v: Vec<Room> = serde_cbor::from_slice(mapdata::MAP.as_ref()).unwrap_or_default();
-        let mut p = Player::new("billy");
+        let v: Vec<Room> = serde_cbor::from_slice(mapdata::MAP.as_ref()).unwrap_or_default();
+        let p = Player::new("billy");
 
         for r in v {
             rooms.insert(r.loc(), r);
