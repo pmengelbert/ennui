@@ -78,6 +78,16 @@ pub trait Locate {
     }
 }
 
+impl Provider<RoomList> for RoomList {
+    fn provide(&self) -> &RoomList {
+        self
+    }
+
+    fn provide_mut(&mut self) -> &mut RoomList {
+        self
+    }
+}
+
 impl<T> Locate for T
 where
     T: AsRef<Coord>,
@@ -109,6 +119,12 @@ impl Deref for RoomList {
 impl DerefMut for RoomList {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.0
+    }
+}
+
+impl AsRef<RoomList> for RoomList {
+    fn as_ref(&self) -> &RoomList {
+        self
     }
 }
 

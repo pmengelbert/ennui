@@ -139,20 +139,17 @@ impl Game {
         ret
     }
 
-    fn display_room<P: Uuid>(&mut self, p: P) -> String {
-        let mut player = take(self.players.entry(p.uuid()).or_default());
+    fn describe_room<P: Uuid>(&mut self, p: P) -> Option<String> {
         let mut ret = "".to_owned();
+        let loc = self.loc_of(p.uuid())?;
 
-        with_cleanup!(('player_cleanup) {
-            let c = &player.loc();
-            let r = goto_cleanup_on_fail!(self.rooms.get(c), 'player_cleanup);
+        let players = &mut self.players;
+        let rooms = &self.rooms;
+        let r = loc.room(rooms)?;
 
-            ret = r.display(p.uuid(), &self.players);
-        } 'cleanup: {
-            swap(self.players.entry(p.uuid()).or_default(), &mut player);
-        });
+        ret = r.display(p.uuid(), players);
 
-        ret
+        Some(ret)
     }
 
     /// `interpret` will interpret a command (`s`) given by the player `p`, returning
@@ -243,7 +240,7 @@ impl Game {
 
         let u = u.uuid();
         Some(match loc.move_player(self, u, dir.clone()) {
-            Ok(_) => format!("you go {}{}", dir, self.display_room(u)),
+            Ok(_) => format!("you go {}{}", dir, self.describe_room(u)?),
             Err(_) => format!("alas! you cannot go that way..."),
         })
     }
@@ -352,7 +349,7 @@ fn article(noun: &str) -> String {
 fn fill_interpreter(i: &mut Interpreter) {
     i.insert("look", |g, u, args| {
         Some(match args.len() {
-            0 => g.display_room(u),
+            0 => g.describe_room(u)?,
             1 => {
                 if let Some(item) = g.describe_item(u, args[0]) {
                     item.to_owned()
@@ -573,7 +570,7 @@ mod game_test {
         }
         g.rooms.insert(Coord(0, 0), r);
 
-        println!("{}", g.display_room(uuid));
+        println!("{}", g.describe_room(uuid)?);
     }
 
     #[test]
