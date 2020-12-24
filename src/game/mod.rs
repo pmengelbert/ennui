@@ -440,30 +440,20 @@ fn fill_interpreter(i: &mut Interpreter) {
     });
 
     i.insert("say", |g, u, a| {
-        let statement = a.join(" ");
+        let message = a.join(" ");
         let loc = g.loc_of(u)?;
-        let name = g.players.get(&u)?.name().to_owned();
+        let name = g.name_of(u)?.to_owned();
+        let players: Vec<u128> = loc.player_ids(g)?.iter().cloned().collect();
 
-        let mut ret = Some(format!("there's a pretty serious error here"));
-
-        let rooms = take(&mut g.rooms);
-        with_cleanup!(('rooms_cleanup) {
-            let s = format!("{} says '{}'", name, statement);
-            let r = goto_cleanup_on_fail!(rooms.get(&loc), 'rooms_cleanup).players();
-
-            for id in &**r {
-                if *id == u {
-                    continue;
-                }
-
-                g.send_to_player(*id, s.clone()).ok()?;
+        for p in players {
+            if p == u {
+                continue;
             }
-            ret = Some(format!("you say '{}'", statement));
-        } 'cleanup: {
-            g.rooms = rooms;
-        });
 
-        ret
+            g.send_to_player(p, format!("\n{} says '{}'\n", name, message));
+        }
+
+        Some(format!("you say '{}'", message))
     });
 
     i.insert("chat", |g, u, a| {
