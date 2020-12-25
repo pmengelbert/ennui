@@ -27,6 +27,7 @@ pub struct Game {
     interpreter: Interpreter,
 }
 
+#[derive(Clone)]
 enum Direction {
     Take,
     Give,
@@ -176,6 +177,13 @@ impl Game {
         let r = loc.room(rooms)?;
 
         Some(r.display(p.uuid(), players, rooms))
+    }
+
+    fn id_of(&self, name: &str) -> Option<u128> {
+        self.players
+            .iter()
+            .find(|(_, p)| p.name() == name)
+            .map(|(_, p)| p.uuid())
     }
 
     pub fn interpret(&mut self, p: u128, s: &str) -> Option<String> {
@@ -343,13 +351,34 @@ impl Game {
     {
         use crate::item::error::Error::*;
         use Direction::*;
+
         let uuid = &u.uuid();
         let loc = &self.loc_of(u).unwrap_or_default();
+        let oid = self.id_of(other.unwrap_or_default());
+        let other_id = oid.unwrap_or_default();
+
+        if let Give = dir.clone() {
+            match (other, oid) {
+                (Some(_), None) => {
+                    return Err(Arc::new(PlayerNotFound(
+                        other.unwrap_or_default().to_owned(),
+                    )))
+                }
+                _ => (),
+            }
+
+            match self.loc_of(other_id) {
+                Some(other_loc) if &other_loc != loc => {
+                    return Err(Arc::new(PlayerNotFound(
+                        other.unwrap_or_default().to_owned(),
+                    )))
+                }
+                _ => (),
+            }
+        }
 
         let rooms = &mut self.rooms;
         let players = &mut self.players;
-
-        let other = other.unwrap_or_default();
 
         match dir {
             Take => {
@@ -387,9 +416,13 @@ impl Game {
                 };
 
                 let item_name = item.name().to_owned();
-                let other_p = match loc.player_by_name_mut(self, other) {
+                let other_p = match players.get_mut(&other_id) {
                     Some(p) => p,
-                    None => return Err(Arc::new(PlayerNotFound(other.to_owned()))),
+                    None => {
+                        return Err(Arc::new(PlayerNotFound(
+                            other.unwrap_or_default().to_owned(),
+                        )))
+                    }
                 };
 
                 other_p.give_item(item);
