@@ -1,3 +1,5 @@
+use super::item::Direction;
+
 use super::*;
 use crate::item::error::Error::*;
 use crate::text::message::{Audience, Msg};
