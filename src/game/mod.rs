@@ -12,11 +12,11 @@ use crate::text::article;
 use crate::text::Color::*;
 use crate::{mapdata, PassFail, WriteResult};
 
+use crate::text::message::{Broadcast, Broadcast2, Message, Messenger};
 use rand::Rng;
+use serde::private::de::TagContentOtherField;
 use std::fmt::{Display, Formatter};
 use std::io::Write;
-use serde::private::de::TagContentOtherField;
-use crate::text::message::{Broadcast, Broadcast2, Messenger, Message};
 
 pub struct Game {
     players: PlayerList,
@@ -128,9 +128,13 @@ where
 
 impl<T> Broadcast2 for T
 where
-    T: AsMut<Game>
+    T: AsMut<Game>,
 {
-    fn send<A, M>(&mut self, audience: A, message: M) -> Vec<WriteResult> where A: Messenger, M: Message {
+    fn send<A, M>(&mut self, audience: A, message: M) -> Vec<WriteResult>
+    where
+        A: Messenger,
+        M: Message,
+    {
         let mut g = self.as_mut();
         let mut v = vec![];
         let self_id = audience.id().unwrap_or_default();
@@ -140,13 +144,13 @@ where
         let other_msg = message.to_others();
 
         if let Some(p) = g.players.get_mut(&self_id) {
-            v.push(p.write(self_msg.as_bytes()));
+            v.push(p.write(to_buf(self_msg).as_slice()));
         }
 
         if let Some(msg) = other_msg {
             for id in other_ids {
                 if let Some(p) = g.players.get_mut(&id) {
-                    v.push(p.write(msg.as_bytes()));
+                    v.push(p.write(to_buf(&msg).as_slice()));
                 }
             }
         }
@@ -158,7 +162,7 @@ where
 fn to_buf<T: AsRef<str>>(msg: T) -> Vec<u8> {
     let buf = msg.as_ref().as_bytes();
     let mut b = vec![];
-    b.extend_from_slice(b"\n\n".as_ref());
+    b.extend_from_slice(b"\n".as_ref());
     b.extend_from_slice(buf.as_ref());
     b.extend_from_slice(b"\n\n > ".as_ref());
     b
@@ -310,11 +314,11 @@ impl Game {
     }
 
     #[allow(dead_code)]
-    fn name_of<P>(&self, p: P) -> Option<&str>
+    fn name_of<P>(&self, p: P) -> Option<String>
     where
         P: Uuid,
     {
-        Some(self.players.get(&p.uuid())?.name())
+        Some(self.players.get(&p.uuid())?.name().into())
     }
 
     fn transfer<T>(&mut self, u: T, other: Option<&str>, dir: Direction, handle: &str) -> PassFail

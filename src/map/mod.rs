@@ -8,8 +8,8 @@ use crate::{PassFail, Provider};
 use std::collections::{HashMap, HashSet};
 use std::ops::{Deref, DerefMut};
 
-use serde::{Deserialize, Serialize};
 use crate::text::message::Messenger;
+use serde::{Deserialize, Serialize};
 
 impl<T> Provider<RoomList> for T
 where
@@ -24,30 +24,30 @@ where
     }
 }
 
-impl<T> Messenger for T
-where
-    T: Locate + Uuid + AsRef<RoomList>,
-{
-    fn id(&self) -> Option<u128> {
-        match self.uuid() {
-            0 => None,
-            u => Some(u),
-        }
-    }
-
-    fn others(&self) -> Option<Vec<u128>> {
-        let list = self.room(self.as_ref())?.players
-            .iter()
-            .cloned()
-            .collect::<Vec<_>>();
-        let mut v = vec![];
-        for id in list {
-            v.push(id);
-        }
-
-        if v.is_empty() { None } else { Some(v) }
-    }
-}
+// impl<T> Messenger for T
+// where
+//     T: Locate + Uuid + AsRef<RoomList>,
+// {
+//     fn id(&self) -> Option<u128> {
+//         match self.uuid() {
+//             0 => None,
+//             u => Some(u),
+//         }
+//     }
+//
+//     fn others(&self) -> Option<Vec<u128>> {
+//         let list = self.room(self.as_ref())?.players
+//             .iter()
+//             .cloned()
+//             .collect::<Vec<_>>();
+//         let mut v = vec![];
+//         for id in list {
+//             v.push(id);
+//         }
+//
+//         if v.is_empty() { None } else { Some(v) }
+//     }
+// }
 
 impl Uuid for Room {
     fn uuid(&self) -> u128 {
@@ -63,7 +63,11 @@ impl Uuid for Room {
             v.push(*id)
         }
 
-        if v.is_empty() { None } else { Some(v) }
+        if v.is_empty() {
+            None
+        } else {
+            Some(v)
+        }
     }
 }
 
@@ -81,7 +85,11 @@ impl Uuid for &Room {
             v.push(*id)
         }
 
-        if v.is_empty() { None } else { Some(v) }
+        if v.is_empty() {
+            None
+        } else {
+            Some(v)
+        }
     }
 }
 
@@ -107,11 +115,11 @@ pub trait Locate {
         rooms.get(&self.loc())
     }
 
-    fn player_ids<'a, T>(&self, rooms: &'a T) -> Option<&'a PlayerIdList>
+    fn player_ids<T>(&self, rooms: &T) -> Option<PlayerIdList>
     where
         T: Provider<RoomList>,
     {
-        Some(self.room(rooms)?.players())
+        Some(self.room(rooms)?.players().clone())
     }
 
     fn players<'a, T>(&self, provider: &'a T) -> Vec<&'a Player>

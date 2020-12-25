@@ -1,5 +1,6 @@
 use crate::item::ItemList;
 use crate::map::{Coord, RoomList};
+use crate::text::message::Messenger;
 use crate::Provider;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
@@ -8,7 +9,6 @@ use std::io::Write;
 use std::net::TcpStream;
 use std::ops::{Deref, DerefMut};
 use uuid::Uuid as CrateUuid;
-use crate::text::message::Messenger;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub enum MeterKind {
@@ -21,7 +21,8 @@ pub enum MeterKind {
     Height(Meter),
 }
 
-impl<T> Provider<PlayerList> for T where
+impl<T> Provider<PlayerList> for T
+where
     T: AsRef<PlayerList> + AsMut<PlayerList>,
 {
     fn provide(&self) -> &PlayerList {
@@ -182,7 +183,26 @@ impl Uuid for &PlayerIdList {
 
     fn others(&self) -> Option<Vec<u128>> {
         let v: Vec<u128> = self.iter().cloned().collect();
-        if v.is_empty() { None } else { Some(v) }
+        if v.is_empty() {
+            None
+        } else {
+            Some(v)
+        }
+    }
+}
+
+impl Uuid for PlayerIdList {
+    fn uuid(&self) -> u128 {
+        0
+    }
+
+    fn others(&self) -> Option<Vec<u128>> {
+        let v: Vec<u128> = self.iter().cloned().collect();
+        if v.is_empty() {
+            None
+        } else {
+            Some(v)
+        }
     }
 }
 
@@ -212,7 +232,9 @@ impl PlayerIdList {
 
 pub trait Uuid {
     fn uuid(&self) -> u128;
-    fn others(&self) -> Option<Vec<u128>> { None }
+    fn others(&self) -> Option<Vec<u128>> {
+        None
+    }
 }
 
 impl Uuid for u128 {
@@ -233,11 +255,9 @@ impl Uuid for &Player {
     }
 }
 
-
 #[derive(Default)]
 #[repr(transparent)]
 pub struct PlayerList(pub HashMap<u128, Player>);
-pub type PlayerListRaw = HashMap<u128, Player>;
 
 impl Deref for PlayerList {
     type Target = HashMap<u128, Player>;
@@ -256,6 +276,36 @@ impl DerefMut for PlayerList {
 impl PlayerList {
     pub fn new() -> Self {
         PlayerList(HashMap::new())
+    }
+}
+
+impl Uuid for &PlayerList {
+    fn uuid(&self) -> u128 {
+        0
+    }
+
+    fn others(&self) -> Option<Vec<u128>> {
+        let v: Vec<_> = self.keys().cloned().collect();
+        if v.is_empty() {
+            None
+        } else {
+            Some(v)
+        }
+    }
+}
+
+impl Uuid for PlayerList {
+    fn uuid(&self) -> u128 {
+        0
+    }
+
+    fn others(&self) -> Option<Vec<u128>> {
+        let v: Vec<_> = self.keys().cloned().collect();
+        if v.is_empty() {
+            None
+        } else {
+            Some(v)
+        }
     }
 }
 

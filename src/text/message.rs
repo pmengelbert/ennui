@@ -1,7 +1,7 @@
-use std::io;
 use crate::map::{Locate, RoomList};
-use crate::player::{Player, PlayerList, Uuid, PlayerIdList};
+use crate::player::{Player, PlayerIdList, PlayerList, Uuid};
 use crate::Provider;
+use std::io;
 use std::net::TcpStream;
 
 type WriteResult = io::Result<usize>;
@@ -40,16 +40,18 @@ where
 
 pub trait Messenger {
     fn id(&self) -> Option<u128>;
-    fn others(&self) -> Option<Vec<u128>>;
+    fn others(&self) -> Option<Vec<u128>> {
+        None
+    }
 }
 
-impl Uuid for Vec<u128> {
+impl Uuid for Option<Vec<u128>> {
     fn uuid(&self) -> u128 {
         0
     }
 
     fn others(&self) -> Option<Vec<u128>> {
-        Some(self.clone())
+        self.clone()
     }
 }
 
@@ -61,10 +63,22 @@ pub trait Broadcast {
 }
 
 pub trait Broadcast2 {
-    fn send<A, M>(&mut self, audience: A, message: M) -> Vec<WriteResult> where A: Messenger, M: Message;
+    fn send<A, M>(&mut self, audience: A, message: M) -> Vec<WriteResult>
+    where
+        A: Messenger,
+        M: Message;
 }
 
-pub struct Audience<T, U>(pub T, pub U) where T: Uuid, U: Uuid;
+impl Messenger for u128 {
+    fn id(&self) -> Option<u128> {
+        Some(*self)
+    }
+}
+
+pub struct Audience<T, U>(pub T, pub U)
+where
+    T: Uuid,
+    U: Uuid;
 impl<T, U> Messenger for Audience<T, U>
 where
     T: Uuid,
@@ -80,8 +94,18 @@ where
     }
 
     fn others(&self) -> Option<Vec<u128>> {
-        let v: Vec<u128> = self.1.others()?.iter().cloned().filter(|&id| Some(id) != self.id()).collect();
-        if v.is_empty() { None } else { Some(v) }
+        let v: Vec<u128> = self
+            .1
+            .others()?
+            .iter()
+            .cloned()
+            .filter(|&id| Some(id) != self.id())
+            .collect();
+        if v.is_empty() {
+            None
+        } else {
+            Some(v)
+        }
     }
 }
 
@@ -104,10 +128,7 @@ where
     U: AsRef<str>,
 {
     fn new<'a>(msg: Msg<T, U>) -> Self {
-        Self::Player (Msg {
-            s: msg.s,
-            o: msg.o,
-        })
+        Self::Player(Msg { s: msg.s, o: msg.o })
     }
 }
 
@@ -128,12 +149,9 @@ mod test_message {
 
     #[test]
     fn test_message<'a>() {
-        let msg: Massage<&str, &str> =
-        Massage::new(Msg{
+        let msg: Massage<&str, &str> = Massage::new(Msg {
             s: "oh fuck",
             o: Some(&String::from("gai")),
         });
-
-
     }
 }
