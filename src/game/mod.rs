@@ -6,7 +6,7 @@ use std::collections::HashMap;
 use std::io;
 
 use crate::interpreter::Interpreter;
-use crate::map::{Coord, Locate, Room, RoomList};
+use crate::map::{coord::Coord, Locate, Room, RoomList};
 use crate::player::{Player, PlayerList, Uuid};
 use crate::text::article;
 use crate::text::Color::*;

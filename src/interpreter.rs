@@ -108,37 +108,3 @@ where
 {
     CommandFunc(Arc::new(Mutex::new(cf)))
 }
-
-// #[cfg(test)]
-// // mod interpreter_test {
-// //     use super::*;
-// //
-// //     #[test]
-// //     fn interpreter_new_test() {
-// //         use CommandKind::*;
-// //         let mut i = Interpreter::new();
-// //         i.commands
-// //             .insert(Look, b(|g, pid, args| Some("you have looked".to_owned())));
-// //     }
-// //
-// //     #[test]
-// //     fn interpreter_shortened_commands_resolve_correctly() {
-// //         assert_eq!(Interpreter::resolve_str("look"), CommandKind::Look);
-// //         assert_eq!(Interpreter::resolve_str("loo"), CommandKind::Look);
-// //         assert_eq!(Interpreter::resolve_str("lo"), CommandKind::Look);
-// //         assert_eq!(Interpreter::resolve_str("l"), CommandKind::Look);
-// //     }
-// //
-// //     #[test]
-// //     fn interpreter_resolve_String_works_too() {
-// //         assert_eq!(
-// //             Interpreter::resolve_str(String::from("look")),
-// //             CommandKind::Look
-// //         );
-// //     }
-// //
-// //     #[test]
-// //     fn interpreter_resolves_case_insensitively() {
-// //         assert_eq!(Interpreter::resolve_str("tA"), CommandKind::Take);
-// //     }
-// }

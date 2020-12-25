@@ -1,5 +1,5 @@
 use crate::item::ItemList;
-use crate::map::Coord;
+use crate::map::coord::Coord;
 use crate::text::message::Messenger;
 use crate::Provider;
 use serde::{Deserialize, Serialize};

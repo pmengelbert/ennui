@@ -2,7 +2,8 @@ use super::Error;
 use crate::game::Game;
 use crate::item::error::Error::ItemNotFound;
 use crate::item::{Holder, ItemKind};
-use crate::map::{Coord, RoomList};
+use crate::map::coord::Coord;
+use crate::map::RoomList;
 use crate::player::{PlayerList, Uuid};
 use std::sync::Arc;
 
