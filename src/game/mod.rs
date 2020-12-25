@@ -5,17 +5,21 @@ use std::collections::HashMap;
 use std::io;
 
 use crate::interpreter::Interpreter;
-use crate::item::Holder;
+use crate::item::{Holder, ItemKind};
 use crate::map::{Coord, Locate, Room, RoomList};
 use crate::player::{Player, PlayerList, Uuid};
 use crate::text::article;
 use crate::text::Color::*;
 use crate::{mapdata, WriteResult};
 
+use crate::item::error::Error::ItemNotFound;
 use crate::text::message::{Audience, Broadcast, Message, Messenger, Msg};
 use rand::Rng;
 use std::fmt::{Display, Formatter};
 use std::io::Write;
+use std::sync::Arc;
+
+type Error = Arc<crate::item::error::Error>;
 
 pub struct Game {
     players: PlayerList,
@@ -280,20 +284,21 @@ impl Game {
     {
         let p = self.loc_of(pid)?.player_by_name(self, other)?;
 
-        let item_list = match p.items().len() {
-            0 => "".to_owned(),
-            _ => format!(
-                "\n{} is holding:\n{}",
-                p.name(),
-                p.items()
-                    .iter()
-                    .map(|i| format!(" --> {}", article(i.name())))
-                    .collect::<Vec<_>>()
-                    .join("\n"),
-            ),
-        };
+        let mut item_list = format!("{} is holding:", p.name());
+        if p.items().len() > 0 {
+            item_list.push('\n');
+        }
 
-        Some(format!("{}{}", p.description().to_owned(), item_list))
+        item_list.push_str(
+            p.items()
+                .iter()
+                .map(|i| format!(" --> {}", article(i.name())))
+                .collect::<Vec<_>>()
+                .join("\n")
+                .as_str(),
+        );
+
+        Some(format!("{}{}", p.description(), item_list))
     }
 
     fn list_inventory<T: Uuid>(&self, u: T) -> Option<String> {
@@ -332,10 +337,11 @@ impl Game {
         other: Option<&str>,
         dir: Direction,
         handle: &str,
-    ) -> Result<String, String>
+    ) -> Result<String, Error>
     where
         T: Uuid,
     {
+        use crate::item::error::Error::*;
         use Direction::*;
         let uuid = &u.uuid();
         let loc = &self.loc_of(u).unwrap_or_default();
@@ -349,41 +355,41 @@ impl Game {
             Take => {
                 let room = match rooms.get_mut(loc) {
                     Some(r) => r,
-                    None => return Err(handle.to_owned()),
+                    None => return Err(a(handle)),
                 };
                 let player = match players.get_mut(uuid) {
                     Some(p) => p,
-                    None => return Err(handle.to_owned()),
+                    None => return Err(a(handle)),
                 };
-                room.transfer(player, handle)
+                room.transfer(player, handle).map_err(|e| a(&e))
             }
             Drop => {
                 let room = match rooms.get_mut(loc) {
                     Some(r) => r,
-                    None => return Err(handle.to_owned()),
+                    None => return Err(a(handle)),
                 };
                 let player = match players.get_mut(uuid) {
                     Some(p) => p,
-                    None => return Err(handle.to_owned()),
+                    None => return Err(a(handle)),
                 };
-                player.transfer(room, handle)
+                player.transfer(room, handle).map_err(|e| a(&e))
             }
             Give => {
                 let item = {
                     let p = match players.get_mut(uuid) {
                         Some(p) => p,
-                        None => return Err(handle.to_owned()),
+                        None => return Err(a(handle)),
                     };
                     match p.remove_item(handle) {
                         Some(i) => i,
-                        None => return Err(handle.to_owned()),
+                        None => return Err(a(handle)),
                     }
                 };
 
                 let item_name = item.name().to_owned();
                 let other_p = match loc.player_by_name_mut(self, other) {
                     Some(p) => p,
-                    None => return Err(handle.to_owned()),
+                    None => return Err(Arc::new(PlayerNotFound(other.to_owned()))),
                 };
 
                 other_p.give_item(item);
@@ -393,24 +399,35 @@ impl Game {
                 let (items, clothing) = {
                     match players.get_mut(uuid) {
                         Some(p) => p,
-                        None => return Err(handle.to_owned()),
+                        None => return Err(a(handle)),
                     }
                     .all_items_mut()
                 };
-                items.transfer(clothing, handle)
+                match items.get(handle) {
+                    Some(ItemKind::Clothing(_)) => (),
+                    None => return Err(a(handle)),
+                    _ => return Err(Arc::new(Clothing(handle.to_owned()))),
+                }
+                let ret = items.transfer(clothing, handle).map_err(|e| a(&e));
+                ret
             }
             Remove => {
                 let (items, clothing) = {
                     match players.get_mut(uuid) {
                         Some(p) => p,
-                        None => return Err(handle.to_owned()),
+                        None => return Err(a(handle)),
                     }
                     .all_items_mut()
                 };
-                clothing.transfer(items, handle)
+                clothing.transfer(items, handle).map_err(|e| a(&e))
             }
         }
     }
+}
+
+fn a<T: AsRef<str>>(s: T) -> Error {
+    let s = s.as_ref().to_owned();
+    Arc::new(ItemNotFound(s))
 }
 
 fn random_insult() -> String {

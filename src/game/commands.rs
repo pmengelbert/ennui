@@ -1,4 +1,5 @@
 use super::*;
+use crate::item::error::Error::*;
 use crate::text::message::{Audience, Msg};
 
 pub fn fill_interpreter(i: &mut Interpreter) {
@@ -34,10 +35,13 @@ pub fn fill_interpreter(i: &mut Interpreter) {
                 let handle = a[0];
                 match g.transfer(u, None, Direction::Take, handle) {
                     Ok(handle) => {
-                        other_msg = Some(format!("{} picks up a {}", name, article(&handle)));
+                        other_msg =
+                            Some(format!("{} picks up a {}", name, article(&handle.clone())));
                         format!("you take the {}", handle)
                     }
-                    Err(handle) => format!("you don't see {} here", article(&handle)),
+                    Err(err) => match err {
+                        _ => format!("you don't see {} here", article(&handle)),
+                    },
                 }
             }
             _ => "be more specific. or less specific.".to_owned(),
@@ -59,6 +63,8 @@ pub fn fill_interpreter(i: &mut Interpreter) {
         let loc = g.loc_of(u)?;
         let aud = Audience(u, loc.player_ids(&g.rooms)?);
 
+        use crate::item::error::Error::*;
+
         let mut other_msg = None;
         let self_msg = match a.len() {
             0 => "there seems to be an error".to_owned(),
@@ -69,7 +75,12 @@ pub fn fill_interpreter(i: &mut Interpreter) {
                         other_msg = Some(format!("{} puts on {}", name, article(&item_name)));
                         format!("you wear the {}", handle)
                     }
-                    Err(handle) => format!("you're not holding {}", article(&handle)),
+                    Err(err) => match &*err {
+                        Clothing(s) => format!("you can't wear {}!", article(s)),
+                        ItemNotFound(s) | PlayerNotFound(s) => {
+                            format!("you're not holding {}", article(s))
+                        }
+                    },
                 }
             }
             _ => "be more specific. or less specific.".to_owned(),
@@ -99,7 +110,9 @@ pub fn fill_interpreter(i: &mut Interpreter) {
                     other_msg = Some(format!("{} takes off {}", name, article(&handle)));
                     format!("you take off the {}", handle)
                 }
-                Err(handle) => format!("you're not wearing {}", article(&handle)),
+                Err(err) => match err {
+                    _ => format!("you're not wearing {}", article(&handle)),
+                },
             }
         } else {
             "be more specific. or less specific.".to_owned()
@@ -157,15 +170,22 @@ pub fn fill_interpreter(i: &mut Interpreter) {
         let p_msg = if a.len() == 2 {
             let (other, handle) = (a[0], a[1]);
 
-            other_id = Some(vec![loc.player_by_name(&g, other)?.uuid()]);
-
             match g.transfer(u, Some(other), Direction::Give, handle) {
                 Ok(h) => {
                     let art = article(&h);
+
+                    other_id = Some(vec![loc.player_by_name(&g, other)?.uuid()]);
                     other_msg = Some(format!("{} gives you {}", name, art));
+
                     format!("you give {} {}", other, art)
                 }
-                Err(_) => "that person or thing isn't here".to_owned(),
+                Err(err) => match &*err {
+                    ItemNotFound(s) => format!("you're not holding {}", article(&s)),
+                    PlayerNotFound(s) => {
+                        format!("now where did {} go? you don't see them here...", s)
+                    }
+                    Clothing(_) => format!("they must not like the look of it"),
+                },
             }
         } else {
             "E - NUN - CI - ATE".to_owned()

@@ -72,6 +72,7 @@ impl Interpreter {
             s if sw(s, "west") => West,
             s if sw(s, "look") => Look,
             s if sw(s, "take") => Take,
+            s if sw(s, "get") => Take,
             s if sw(s, "drop") => Drop,
             s if sw(s, "give") => Give,
             s if sw(s, "wear") => Wear,

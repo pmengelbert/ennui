@@ -1,3 +1,4 @@
+pub mod error;
 mod handle;
 
 use crate::item::handle::Handle;
