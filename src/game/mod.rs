@@ -10,7 +10,7 @@ use crate::map::{Coord, Locate, Room, RoomList};
 use crate::player::{Player, PlayerList, Uuid};
 use crate::text::article;
 use crate::text::Color::*;
-use crate::{mapdata, PassFail, WriteResult};
+use crate::{mapdata, WriteResult};
 
 use crate::text::message::{Audience, Broadcast, Message, Messenger, Msg};
 use rand::Rng;
@@ -237,7 +237,9 @@ impl Game {
         let loc = self.loc_of(u)?;
         let name = self.name_of(u)?;
 
+        #[allow(unused_assignments)]
         let mut other_msg = None;
+
         let msg = match loc.move_player(self, u, dir.clone()) {
             Ok(_) => {
                 other_msg = Some(format!("{} exits {}", name, dir));
@@ -251,23 +253,21 @@ impl Game {
 
         let others = loc.player_ids(&self)?;
         let aud = Audience(u, &others);
-        self.send(
-            aud,
-            Msg {
-                s: msg,
-                o: other_msg,
-            },
-        );
+        let msg = Msg {
+            s: msg,
+            o: other_msg,
+        };
+        self.send(aud, msg);
 
         let next_room_players = loc.add(dir)?.players_except(u, &self)?;
 
-        let other_msg = format!("{} enters the room", name);
+        let for_others = format!("{} enters the room", name);
         let msg = "";
         self.send(
             next_room_players,
             Msg {
                 s: msg,
-                o: Some(other_msg),
+                o: Some(for_others),
             },
         );
 
@@ -300,14 +300,14 @@ impl Game {
         let mut ret = String::new();
         ret.push_str("you are holding:\n");
         let items = self.players.get(&u.uuid())?.items();
-        let ret = items
-            .iter()
-            .map(|i| {
-                let name = i.name();
-                format!("{}", article(name))
-            })
-            .collect::<Vec<_>>()
-            .join("\n");
+        ret.push_str(
+            items
+                .iter()
+                .map(|i| article(i.name()))
+                .collect::<Vec<_>>()
+                .join("\n")
+                .as_str(),
+        );
 
         Some(ret)
     }
@@ -326,44 +326,90 @@ impl Game {
         Some(self.players.get(&p.uuid())?.name().into())
     }
 
-    fn transfer<T>(&mut self, u: T, other: Option<&str>, dir: Direction, handle: &str) -> PassFail
+    fn transfer<T>(
+        &mut self,
+        u: T,
+        other: Option<&str>,
+        dir: Direction,
+        handle: &str,
+    ) -> Result<String, String>
     where
         T: Uuid,
     {
         use Direction::*;
         let uuid = &u.uuid();
-        let loc = &self.loc_of(u)?;
+        let loc = &self.loc_of(u).unwrap_or_default();
 
         let rooms = &mut self.rooms;
         let players = &mut self.players;
+
+        let other = other.unwrap_or_default();
+
         match dir {
             Take => {
-                rooms
-                    .get_mut(loc)?
-                    .transfer(players.get_mut(uuid)?, handle)
-                    .ok()?;
+                let room = match rooms.get_mut(loc) {
+                    Some(r) => r,
+                    None => return Err(handle.to_owned()),
+                };
+                let player = match players.get_mut(uuid) {
+                    Some(p) => p,
+                    None => return Err(handle.to_owned()),
+                };
+                room.transfer(player, handle)
             }
             Drop => {
-                players
-                    .get_mut(uuid)?
-                    .transfer(rooms.get_mut(loc)?, handle)
-                    .ok()?;
+                let room = match rooms.get_mut(loc) {
+                    Some(r) => r,
+                    None => return Err(handle.to_owned()),
+                };
+                let player = match players.get_mut(uuid) {
+                    Some(p) => p,
+                    None => return Err(handle.to_owned()),
+                };
+                player.transfer(room, handle)
             }
             Give => {
-                let item = players.get_mut(uuid)?.remove_item(handle)?;
-                loc.player_by_name_mut(self, other?)?.give_item(item);
+                let item = {
+                    let p = match players.get_mut(uuid) {
+                        Some(p) => p,
+                        None => return Err(handle.to_owned()),
+                    };
+                    match p.remove_item(handle) {
+                        Some(i) => i,
+                        None => return Err(handle.to_owned()),
+                    }
+                };
+
+                let item_name = item.name().to_owned();
+                let other_p = match loc.player_by_name_mut(self, other) {
+                    Some(p) => p,
+                    None => return Err(handle.to_owned()),
+                };
+
+                other_p.give_item(item);
+                Ok(item_name)
             }
             Wear => {
-                let (items, clothing) = players.get_mut(uuid)?.all_items_mut();
-                items.transfer(clothing, handle)?;
+                let (items, clothing) = {
+                    match players.get_mut(uuid) {
+                        Some(p) => p,
+                        None => return Err(handle.to_owned()),
+                    }
+                    .all_items_mut()
+                };
+                items.transfer(clothing, handle)
             }
             Remove => {
-                let (items, clothing) = players.get_mut(uuid)?.all_items_mut();
-                clothing.transfer(items, handle)?;
+                let (items, clothing) = {
+                    match players.get_mut(uuid) {
+                        Some(p) => p,
+                        None => return Err(handle.to_owned()),
+                    }
+                    .all_items_mut()
+                };
+                clothing.transfer(items, handle)
             }
         }
-
-        Ok(())
     }
 }
 

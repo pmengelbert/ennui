@@ -1,8 +1,9 @@
+use serde::{Deserialize, Serialize};
 use std::ops::{Deref, DerefMut};
 
 #[repr(transparent)]
-#[derive(Debug)]
-pub struct Handle(Vec<String>);
+#[derive(Debug, Serialize, Deserialize, Default)]
+pub struct Handle(pub Vec<String>);
 
 impl Deref for Handle {
     type Target = Vec<String>;
@@ -20,12 +21,24 @@ impl DerefMut for Handle {
 
 impl PartialEq<&str> for Handle {
     fn eq(&self, other: &&str) -> bool {
-        self.contains(&(*other).to_owned())
+        self.iter().find(|h| h == other).is_some()
     }
 }
 
 impl PartialEq<Handle> for &str {
     fn eq(&self, other: &Handle) -> bool {
+        other.eq(self)
+    }
+}
+
+impl PartialEq<&str> for &Handle {
+    fn eq(&self, other: &&str) -> bool {
+        self.iter().find(|h| h == other).is_some()
+    }
+}
+
+impl PartialEq<&Handle> for &str {
+    fn eq(&self, other: &&Handle) -> bool {
         other.eq(self)
     }
 }

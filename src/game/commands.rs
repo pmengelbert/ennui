@@ -32,11 +32,12 @@ pub fn fill_interpreter(i: &mut Interpreter) {
             0 => "there seems to be an error".to_owned(),
             1 => {
                 let handle = a[0];
-                if g.transfer(u, None, Direction::Take, handle).is_ok() {
-                    other_msg = Some(format!("{} picks up a {}", name, article(handle)));
-                    format!("you take the {}", handle)
-                } else {
-                    format!("you don't see {} here", article(handle))
+                match g.transfer(u, None, Direction::Take, handle) {
+                    Ok(handle) => {
+                        other_msg = Some(format!("{} picks up a {}", name, article(&handle)));
+                        format!("you take the {}", handle)
+                    }
+                    Err(handle) => format!("you don't see {} here", article(&handle)),
                 }
             }
             _ => "be more specific. or less specific.".to_owned(),
@@ -63,11 +64,12 @@ pub fn fill_interpreter(i: &mut Interpreter) {
             0 => "there seems to be an error".to_owned(),
             1 => {
                 let handle = a[0];
-                if let Ok(_) = g.transfer(u, None, Direction::Wear, handle) {
-                    other_msg = Some(format!("{} puts on {}", name, article(handle)));
-                    format!("you wear the {}", handle)
-                } else {
-                    format!("you're not holding {}", article(handle))
+                match g.transfer(u, None, Direction::Wear, handle) {
+                    Ok(item_name) => {
+                        other_msg = Some(format!("{} puts on {}", name, article(&item_name)));
+                        format!("you wear the {}", handle)
+                    }
+                    Err(handle) => format!("you're not holding {}", article(&handle)),
                 }
             }
             _ => "be more specific. or less specific.".to_owned(),
@@ -91,13 +93,13 @@ pub fn fill_interpreter(i: &mut Interpreter) {
 
         let msg = if a.len() == 1 {
             let handle = a[0];
-            let art = article(handle);
 
-            if let Ok(_) = g.transfer(u, None, Direction::Remove, handle) {
-                other_msg = Some(format!("{} takes off {}", name, art));
-                format!("you take off the {}", handle)
-            } else {
-                format!("you're not wearing {}", art)
+            match g.transfer(u, None, Direction::Remove, handle) {
+                Ok(handle) => {
+                    other_msg = Some(format!("{} takes off {}", name, article(&handle)));
+                    format!("you take off the {}", handle)
+                }
+                Err(handle) => format!("you're not wearing {}", article(&handle)),
             }
         } else {
             "be more specific. or less specific.".to_owned()
@@ -122,12 +124,12 @@ pub fn fill_interpreter(i: &mut Interpreter) {
 
         let msg = if a.len() == 1 {
             let handle = a[0];
-            let art = article(handle);
-            if g.transfer(u, None, Direction::Drop, handle).is_ok() {
-                other_msg = Some(format!("{} drops {}", name, art));
-                format!("you drop the {}", handle)
-            } else {
-                format!("you don't see {} here", art)
+            match g.transfer(u, None, Direction::Drop, handle) {
+                Ok(handle) => {
+                    other_msg = Some(format!("{} drops {}", name, article(&handle)));
+                    format!("you drop the {}", handle)
+                }
+                Err(_) => format!("you don't see {} here", article(handle)),
             }
         } else {
             "be more specific. or less specific.".to_owned()
@@ -154,15 +156,16 @@ pub fn fill_interpreter(i: &mut Interpreter) {
 
         let p_msg = if a.len() == 2 {
             let (other, handle) = (a[0], a[1]);
-            let art = article(handle);
 
             other_id = Some(vec![loc.player_by_name(&g, other)?.uuid()]);
 
-            if g.transfer(u, Some(other), Direction::Give, handle).is_ok() {
-                other_msg = Some(format!("{} gives you {}", name, art));
-                format!("you give {} {}", other, art)
-            } else {
-                "that person or thing isn't here".to_owned()
+            match g.transfer(u, Some(other), Direction::Give, handle) {
+                Ok(h) => {
+                    let art = article(&h);
+                    other_msg = Some(format!("{} gives you {}", name, art));
+                    format!("you give {} {}", other, art)
+                }
+                Err(_) => "that person or thing isn't here".to_owned(),
             }
         } else {
             "E - NUN - CI - ATE".to_owned()

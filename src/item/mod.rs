@@ -1,10 +1,9 @@
 mod handle;
 
-use crate::PassFail;
+use crate::item::handle::Handle;
 use serde::{Deserialize, Serialize};
 use std::ops::{Deref, DerefMut};
 use ItemKind::*;
-use serde::de::Unexpected::Str;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub enum ItemKind {
@@ -17,29 +16,38 @@ pub struct Item {
     name: String,
     display: String,
     description: String,
-    handle: String,
+    handle: Handle,
 }
 
 pub trait Holder {
     fn items(&self) -> &ItemList;
     fn items_mut(&mut self) -> &mut ItemList;
+
     fn remove_item<S>(&mut self, handle: S) -> Option<ItemKind>
     where
         S: AsRef<str>,
     {
         self.items_mut().get_owned(handle)
     }
+
     fn give_item(&mut self, item: ItemKind) {
         self.items_mut().push(item);
     }
-    fn transfer<H, S>(&mut self, mut other: H, handle: S) -> PassFail
+
+    fn transfer<H, S>(&mut self, mut other: H, handle: S) -> Result<String, String>
     where
         H: Holder,
         S: AsRef<str>,
     {
-        let item = self.remove_item(handle)?;
+        let handle = handle.as_ref();
+        let item = match self.remove_item(handle) {
+            Some(i) => i,
+            None => return Err(handle.to_owned()),
+        };
+
+        let name = item.name().to_owned();
         other.give_item(item);
-        Ok(())
+        Ok(name)
     }
 }
 
@@ -57,20 +65,20 @@ where
 }
 
 impl Item {
-    pub fn new(name: &str, description: Option<&str>, handle: &str) -> Self {
+    pub fn new(name: &str, description: Option<&str>, handle: Handle) -> Self {
         let description = description.unwrap_or_default().to_owned();
         let name = name.to_owned();
-        let handle = handle.to_owned();
+        let display = String::new();
 
         Self {
             name,
-            handle,
             description,
-            display: String::new(),
+            handle,
+            display,
         }
     }
 
-    pub fn handle(&self) -> &str {
+    pub fn handle(&self) -> &Handle {
         &self.handle
     }
 }
@@ -128,7 +136,7 @@ impl ItemKind {
         &self.safe_unwrap().name
     }
 
-    pub fn handle(&self) -> &str {
+    pub fn handle(&self) -> &Handle {
         &self.safe_unwrap().handle
     }
 

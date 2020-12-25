@@ -292,7 +292,7 @@ impl Room {
             _ => format!("\n{}", player_list.join("\n")),
         });
 
-        let items_list = items.iter().map(|i| i.name()).collect::<Vec<_>>();
+        let items_list = items.iter().map(|i| i.display()).collect::<Vec<_>>();
         let items_list = Green(match items_list.len() {
             0 => "".to_owned(),
             1 => format!("\n{}", items_list[0]),
