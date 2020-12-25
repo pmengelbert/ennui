@@ -244,7 +244,7 @@ impl Game {
                 format!("you go {:?}\n\n{}", dir, self.describe_room(u)?)
             }
             Err(_) => {
-                g.send(u, format!("alas! you cannot go that way..."));
+                self.send(u, format!("alas! you cannot go that way..."));
                 return Some("".into());
             }
         };

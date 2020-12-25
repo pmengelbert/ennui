@@ -1,7 +1,10 @@
+mod handle;
+
 use crate::PassFail;
 use serde::{Deserialize, Serialize};
 use std::ops::{Deref, DerefMut};
 use ItemKind::*;
+use serde::de::Unexpected::Str;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub enum ItemKind {
@@ -12,6 +15,7 @@ pub enum ItemKind {
 #[derive(Debug, Default, Serialize, Deserialize)]
 pub struct Item {
     name: String,
+    display: String,
     description: String,
     handle: String,
 }
@@ -54,7 +58,7 @@ where
 
 impl Item {
     pub fn new(name: &str, description: Option<&str>, handle: &str) -> Self {
-        let description = description.unwrap_or("").to_owned();
+        let description = description.unwrap_or_default().to_owned();
         let name = name.to_owned();
         let handle = handle.to_owned();
 
@@ -62,6 +66,7 @@ impl Item {
             name,
             handle,
             description,
+            display: String::new(),
         }
     }
 
@@ -129,6 +134,10 @@ impl ItemKind {
 
     pub fn description(&self) -> &str {
         &self.safe_unwrap().description
+    }
+
+    pub fn display(&self) -> &str {
+        &self.safe_unwrap().display
     }
 
     fn safe_unwrap(&self) -> &Item {
