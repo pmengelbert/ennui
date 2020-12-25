@@ -12,7 +12,7 @@ use crate::text::article;
 use crate::text::Color::*;
 use crate::{mapdata, PassFail, WriteResult};
 
-use crate::text::message::{Broadcast, Broadcast2, Message, Messenger};
+use crate::text::message::{Broadcast, Broadcast2, Message, Messenger, Audience, Msg};
 use rand::Rng;
 use serde::private::de::TagContentOtherField;
 use std::fmt::{Display, Formatter};
@@ -259,13 +259,43 @@ impl Game {
     }
 
     fn dir_func<U: Uuid>(&mut self, u: U, dir: MapDir) -> Option<String> {
-        let loc = self.loc_of(u.uuid())?;
-
         let u = u.uuid();
-        Some(match loc.move_player(self, u, dir.clone()) {
-            Ok(_) => format!("you go {:?}\n\n{}", dir, self.describe_room(u)?),
+        let loc = self.loc_of(u)?;
+        let name = self.name_of(u)?;
+
+        let mut other_msg = None;
+        let msg = match loc.move_player(self, u, dir.clone()) {
+            Ok(_) => {
+                other_msg = Some(format!("{} exits {}", name, dir));
+                format!("you go {:?}\n\n{}", dir, self.describe_room(u)?)
+            }
             Err(_) => format!("alas! you cannot go that way..."),
-        })
+        };
+
+        let aud_new_room = {
+            let new_room = loc.add(dir)?;
+            new_room.players_except(u, &self)?
+        };
+
+        {
+            let others = loc.player_ids(&self)?;
+            let aud = Audience(u, &others);
+            self.send(aud, Msg {
+                s: msg,
+                o: other_msg,
+            });
+        }
+        {
+            let other_msg = format!("{} enters the room", name);
+            let msg = "";
+            self.send(aud_new_room, Msg {
+                s: msg,
+                o: Some(other_msg),
+            });
+        }
+
+
+        Some("".into())
     }
 
     fn describe_player<T>(&self, pid: T, other: &str) -> Option<String>
@@ -313,7 +343,6 @@ impl Game {
         Some(self.players.get(&p.uuid())?.loc())
     }
 
-    #[allow(dead_code)]
     fn name_of<P>(&self, p: P) -> Option<String>
     where
         P: Uuid,

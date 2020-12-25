@@ -92,12 +92,14 @@ pub fn fill_interpreter(i: &mut Interpreter) {
         let msg = if a.len() == 1 {
             let handle = a[0];
             let art = article(handle);
+
             if let Ok(_) = g.transfer(u, None, Direction::Remove, handle) {
                 other_msg = Some(format!("{} takes off {}", name, art));
                 format!("you take off the {}", handle)
             } else {
                 format!("you're not wearing {}", art)
             }
+
         } else {
             "be more specific. or less specific.".to_owned()
         };
@@ -114,19 +116,34 @@ pub fn fill_interpreter(i: &mut Interpreter) {
         Some("".into())
     });
 
-    i.insert("drop", |g, u, a| match a.len() {
-        0 => Some("there seems to be an error".to_owned()),
-        1 => {
+    i.insert("drop", |g, u, a| {
+        let name = g.name_of(u)?;
+        let loc = g.loc_of(u)?;
+        let mut other_msg = None;
+
+        let msg = if a.len() == 1 {
             let handle = a[0];
-            Some(
-                if let Ok(_) = g.transfer(u, None, Direction::Drop, handle) {
-                    format!("you drop the {}", handle)
-                } else {
-                    format!("you don't see {} here", article(handle))
-                },
-            )
-        }
-        _ => Some("be more specific. or less specific.".to_owned()),
+            let art = article(handle);
+            if g.transfer(u, None, Direction::Drop, handle).is_ok() {
+                other_msg = Some(format!("{} drops {}", name, art));
+                format!("you drop the {}", handle)
+            } else {
+                format!("you don't see {} here", art)
+            }
+        } else {
+            "be more specific. or less specific.".to_owned()
+        };
+
+        let others = loc.player_ids(&g)?;
+        let aud = Audience(u, &others);
+        let msg = Msg {
+            s: msg,
+            o: other_msg,
+        };
+
+        g.send(aud, msg);
+
+        Some("".into())
     });
 
     i.insert("give", |g, u, a| {
@@ -179,7 +196,7 @@ pub fn fill_interpreter(i: &mut Interpreter) {
         let ret = Some(msg.s.to_owned());
 
         g.send(aud, msg);
-        ret
+        Some("".into())
     });
 
     i.insert("chat", |g, u, a| {
@@ -204,8 +221,9 @@ pub fn fill_interpreter(i: &mut Interpreter) {
         for meter in p.stats() {
             s.push_str(&format!("{:#?}", meter));
         }
+        g.send(u, &s);
 
-        Some(s)
+        Some("".into())
     });
 
     i.insert("north", |g, u, _| g.dir_func(u, MapDir::North));

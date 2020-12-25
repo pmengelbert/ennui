@@ -94,8 +94,8 @@ where
     }
 
     fn others(&self) -> Option<Vec<u128>> {
-        let v: Vec<u128> = self
-            .1
+        let id = self.id();
+        let v: Vec<u128> = self.1
             .others()?
             .iter()
             .cloned()

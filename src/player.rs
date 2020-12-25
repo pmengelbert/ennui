@@ -206,6 +206,16 @@ impl Uuid for PlayerIdList {
     }
 }
 
+impl Messenger for PlayerIdList {
+    fn id(&self) -> Option<u128> {
+        None
+    }
+
+    fn others(&self) -> Option<Vec<u128>> {
+        Some(self.iter().cloned().collect())
+    }
+}
+
 impl PlayerIdList {
     pub fn get_player_by_name<'a>(&self, pl: &'a PlayerList, name: &str) -> Option<&'a Player> {
         let u = self.id_of_name(pl, name)?;

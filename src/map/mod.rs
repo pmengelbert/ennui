@@ -122,6 +122,23 @@ pub trait Locate {
         Some(self.room(rooms)?.players().clone())
     }
 
+    fn players_except<T, U>(&self, u: U, rooms: &T) -> Option<PlayerIdList>
+    where
+        T: Provider<RoomList>,
+        U: Uuid,
+    {
+        let u = u.uuid();
+        let mut ret = PlayerIdList::default();
+        for &id in self.player_ids(rooms)?.iter() {
+            if id == u {
+                continue;
+            }
+            ret.insert(id);
+        }
+
+        Some(ret)
+    }
+
     fn players<'a, T>(&self, provider: &'a T) -> Vec<&'a Player>
     where
         T: Provider<RoomList> + Provider<PlayerList>,
