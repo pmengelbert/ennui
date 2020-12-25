@@ -1,3 +1,6 @@
+mod commands;
+mod util;
+
 use std::collections::HashMap;
 use std::io;
 
@@ -5,79 +8,15 @@ use crate::interpreter::Interpreter;
 use crate::item::Holder;
 use crate::map::{Coord, Locate, Room, RoomList};
 use crate::player::{Player, PlayerList, Uuid};
+use crate::text::article;
 use crate::text::Color::*;
-use crate::{mapdata, PassFail};
+use crate::{mapdata, PassFail, WriteResult};
 
 use rand::Rng;
 use std::fmt::{Display, Formatter};
 use std::io::Write;
-
-impl AsRef<Game> for Game {
-    fn as_ref(&self) -> &Game {
-        self
-    }
-}
-
-impl AsMut<Game> for Game {
-    fn as_mut(&mut self) -> &mut Game {
-        self
-    }
-}
-
-pub trait Provider<T> {
-    fn provide(&self) -> &T;
-    fn provide_mut(&mut self) -> &mut T;
-}
-
-impl<T> Provider<PlayerList> for T
-where
-    T: AsRef<PlayerList> + AsMut<PlayerList>,
-{
-    fn provide(&self) -> &PlayerList {
-        self.as_ref()
-    }
-
-    fn provide_mut(&mut self) -> &mut PlayerList {
-        self.as_mut()
-    }
-}
-
-impl<T> Provider<RoomList> for T
-where
-    T: AsRef<RoomList> + AsMut<RoomList>,
-{
-    fn provide(&self) -> &RoomList {
-        self.as_ref()
-    }
-
-    fn provide_mut(&mut self) -> &mut RoomList {
-        self.as_mut()
-    }
-}
-
-impl AsRef<RoomList> for Game {
-    fn as_ref(&self) -> &RoomList {
-        &self.rooms
-    }
-}
-
-impl AsRef<PlayerList> for Game {
-    fn as_ref(&self) -> &PlayerList {
-        &self.players
-    }
-}
-
-impl AsMut<RoomList> for Game {
-    fn as_mut(&mut self) -> &mut RoomList {
-        &mut self.rooms
-    }
-}
-
-impl AsMut<PlayerList> for Game {
-    fn as_mut(&mut self) -> &mut PlayerList {
-        &mut self.players
-    }
-}
+use serde::private::de::TagContentOtherField;
+use crate::text::message::{Broadcast, Broadcast2, Messenger, Message};
 
 pub struct Game {
     players: PlayerList,
@@ -161,6 +100,70 @@ impl Display for MapDir {
     }
 }
 
+impl<T> Broadcast for T
+where
+    T: AsMut<Game>,
+{
+    fn send_to_player<U, S>(&mut self, u: U, msg: S) -> WriteResult
+    where
+        U: Uuid,
+        S: AsRef<str>,
+    {
+        let g = self.as_mut();
+        let buf = msg.as_ref().as_bytes();
+        match g.players.get_mut(&u.uuid()) {
+            Some(p) => {
+                let mut b = vec![];
+                b.extend_from_slice(b"\n\n".as_ref());
+                b.extend_from_slice(buf.as_ref());
+                b.extend_from_slice(b"\n\n > ".as_ref());
+                let res = p.write(b.as_ref())?;
+                p.flush()?;
+                Ok(res)
+            }
+            None => Err(std::io::ErrorKind::AddrNotAvailable.into()),
+        }
+    }
+}
+
+impl<T> Broadcast2 for T
+where
+    T: AsMut<Game>
+{
+    fn send<A, M>(&mut self, audience: A, message: M) -> Vec<WriteResult> where A: Messenger, M: Message {
+        let mut g = self.as_mut();
+        let mut v = vec![];
+        let self_id = audience.id().unwrap_or_default();
+        let other_ids = audience.others().unwrap_or_default();
+
+        let self_msg = message.to_self();
+        let other_msg = message.to_others();
+
+        if let Some(p) = g.players.get_mut(&self_id) {
+            v.push(p.write(self_msg.as_bytes()));
+        }
+
+        if let Some(msg) = other_msg {
+            for id in other_ids {
+                if let Some(p) = g.players.get_mut(&id) {
+                    v.push(p.write(msg.as_bytes()));
+                }
+            }
+        }
+
+        v
+    }
+}
+
+fn to_buf<T: AsRef<str>>(msg: T) -> Vec<u8> {
+    let buf = msg.as_ref().as_bytes();
+    let mut b = vec![];
+    b.extend_from_slice(b"\n\n".as_ref());
+    b.extend_from_slice(buf.as_ref());
+    b.extend_from_slice(b"\n\n > ".as_ref());
+    b
+}
+
 impl Game {
     pub fn new() -> Self {
         let (players, mut rooms) = (HashMap::new(), RoomList::default());
@@ -171,7 +174,7 @@ impl Game {
             rooms.insert(r.loc(), r);
         }
         let mut interpreter = Interpreter::new();
-        fill_interpreter(&mut interpreter);
+        commands::fill_interpreter(&mut interpreter);
 
         let mut ret = Self {
             players: PlayerList(players),
@@ -193,11 +196,9 @@ impl Game {
         Some(r.display(p.uuid(), players, rooms))
     }
 
-    /// `interpret` will interpret a command (`s`) given by the player `p`, returning
-    /// the response to the command.
     pub fn interpret(&mut self, p: u128, s: &str) -> Option<String> {
         let mut words = s.split_whitespace();
-        let cmd_str = words.next()?;
+        let cmd_str = words.next().unwrap_or_default();
         let args: Vec<&str> = words.collect();
         let cmd = Interpreter::resolve_str(cmd_str);
 
@@ -216,21 +217,6 @@ impl Game {
     pub fn remove_player<T: Uuid>(&mut self, p: T) -> Option<Player> {
         self.players.get_mut(&p.uuid())?.flush().ok()?;
         self.players.remove(&p.uuid())
-    }
-
-    pub fn send_to_player<P, U>(&mut self, p: P, buf: U) -> std::io::Result<usize>
-    where
-        P: Uuid,
-        U: AsRef<[u8]>,
-    {
-        match self.players.get_mut(&p.uuid()) {
-            Some(p) => {
-                let res = p.write(buf.as_ref())?;
-                p.flush()?;
-                Ok(res)
-            }
-            None => Err(std::io::ErrorKind::AddrNotAvailable.into()),
-        }
     }
 
     pub fn broadcast<U>(&mut self, buf: U) -> io::Result<usize>
@@ -273,7 +259,7 @@ impl Game {
 
         let u = u.uuid();
         Some(match loc.move_player(self, u, dir.clone()) {
-            Ok(_) => format!("\nyou go {:?}\n\n{}", dir, self.describe_room(u)?),
+            Ok(_) => format!("you go {:?}\n\n{}", dir, self.describe_room(u)?),
             Err(_) => format!("alas! you cannot go that way..."),
         })
     }
@@ -370,168 +356,6 @@ impl Game {
 
         Ok(())
     }
-}
-
-fn article(noun: &str) -> String {
-    let suffix = match noun.to_lowercase().chars().next().unwrap_or('\0') {
-        'a' | 'e' | 'i' | 'o' | 'u' => "n",
-        _ => "",
-    };
-
-    format!("a{} {}", suffix, noun)
-}
-
-fn fill_interpreter(i: &mut Interpreter) {
-    i.insert("look", |g, u, args| {
-        Some(match args.len() {
-            0 => g.describe_room(u)?,
-            1 => {
-                if let Some(item) = g.describe_item(u, args[0]) {
-                    item.to_owned()
-                } else if let Some(person) = g.describe_player(u, args[0]) {
-                    person.to_owned()
-                } else {
-                    format!("i don't see {} here...", article(args[0]))
-                }
-            }
-            _ => "be more specific. or less specific.".to_owned(),
-        })
-    });
-
-    i.insert("take", |g, u, a| match a.len() {
-        0 => Some("there seems to be an error".to_owned()),
-        1 => {
-            let handle = a[0];
-            Some(
-                if let Ok(_) = g.transfer(u, None, Direction::Take, handle) {
-                    format!("you take the {}", handle.to_owned())
-                } else {
-                    format!("you don't see {} here", article(handle))
-                },
-            )
-        }
-        _ => Some("be more specific. or less specific.".to_owned()),
-    });
-
-    i.insert("wear", |g, u, a| match a.len() {
-        0 => Some("there seems to be an error".to_owned()),
-        1 => {
-            let handle = a[0];
-            Some(
-                if let Ok(_) = g.transfer(u, None, Direction::Wear, handle) {
-                    format!("you wear the {}", handle)
-                } else {
-                    format!("you're not holding {}", article(handle))
-                },
-            )
-        }
-        _ => Some("be more specific. or less specific.".to_owned()),
-    });
-
-    i.insert("remove", |g, u, a| match a.len() {
-        1 => {
-            let handle = a[0];
-            Some(
-                if let Ok(_) = g.transfer(u, None, Direction::Remove, handle) {
-                    format!("you take off the {}", handle)
-                } else {
-                    format!("you're not wearing {}", article(handle))
-                },
-            )
-        }
-        _ => Some("be more specific. or less specific.".to_owned()),
-    });
-
-    i.insert("drop", |g, u, a| match a.len() {
-        0 => Some("there seems to be an error".to_owned()),
-        1 => {
-            let handle = a[0];
-            Some(
-                if let Ok(_) = g.transfer(u, None, Direction::Drop, handle) {
-                    format!("you drop the {}", handle)
-                } else {
-                    format!("you don't see {} here", article(handle))
-                },
-            )
-        }
-        _ => Some("be more specific. or less specific.".to_owned()),
-    });
-
-    i.insert("give", |g, u, a| match a.len() {
-        2 => {
-            let (other, handle) = (a[0], a[1]);
-            Some(
-                if g.transfer(u, Some(other), Direction::Give, handle).is_ok() {
-                    format!("you give {} {}", other, article(handle))
-                } else {
-                    "that person or thing isn't here".to_owned()
-                },
-            )
-        }
-        _ => Some("E - NUN - CI - ATE".to_owned()),
-    });
-
-    i.insert("say", |g, u, a| {
-        let message = a.join(" ");
-        let loc = g.loc_of(u)?;
-        let name = g.name_of(u)?.to_owned();
-        let players: Vec<u128> = loc.player_ids(g)?.iter().cloned().collect();
-
-        for p in players {
-            if p == u {
-                continue;
-            }
-
-            g.send_to_player(p, format!("\n{} says '{}'\n", name, message))
-                .ok()?;
-        }
-
-        Some(format!("you say '{}'", message))
-    });
-
-    i.insert("chat", |g, u, a| {
-        let statement = a.join(" ");
-        let name = g.name_of(u)?.to_owned();
-
-        let all_players: Vec<u128> = g.players.keys().filter(|id| **id != u).cloned().collect();
-        for p in all_players {
-            g.send_to_player(p, format!("{} chats '{}'", name, statement))
-                .ok()?;
-        }
-
-        Some(format!("you chat '{}'", statement))
-    });
-
-    i.insert("evaluate", |g, u, _| {
-        let p = g.get_player(u)?;
-
-        let mut s = String::new();
-        for meter in p.stats() {
-            s.push_str(&format!("{:#?}", meter));
-        }
-
-        Some(s)
-    });
-
-    i.insert("north", |g, u, _| g.dir_func(u, MapDir::North));
-    i.insert("south", |g, u, _| g.dir_func(u, MapDir::South));
-    i.insert("east", |g, u, _| g.dir_func(u, MapDir::East));
-    i.insert("west", |g, u, _| g.dir_func(u, MapDir::West));
-
-    i.insert("ouch", |g, u, _| {
-        const PRICK: usize = 5;
-        g.players.entry(u).or_default().hurt(PRICK);
-
-        Some(format!("{}", Red("that hurt a surprising amount".into())))
-    });
-
-    i.insert("inventory", |g, u, _a| g.list_inventory(u));
-
-    i.insert("", |_, _, _| Some("".to_owned()));
-
-    i.insert("none", |_, _, _| Some(random_insult()));
-
-    i.insert("quit", |_, _, _| return None)
 }
 
 fn random_insult() -> String {

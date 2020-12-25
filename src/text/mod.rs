@@ -1,3 +1,5 @@
+pub mod message;
+
 use std::fmt::{Debug, Display, Formatter};
 
 #[derive(Debug)]
@@ -110,4 +112,13 @@ mod text_test {
         assert_eq!(desc, second.wrap(80));
         assert_ne!(desc, second.wrap(75));
     }
+}
+
+pub fn article(noun: &str) -> String {
+    let suffix = match noun.to_lowercase().chars().next().unwrap_or('\0') {
+        'a' | 'e' | 'i' | 'o' | 'u' => "n",
+        _ => "",
+    };
+
+    format!("a{} {}", suffix, noun)
 }

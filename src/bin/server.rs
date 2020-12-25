@@ -5,6 +5,7 @@ use std::thread::spawn;
 
 use ennui::game::Game;
 use ennui::player::Player;
+use ennui::text::message::Broadcast;
 
 macro_rules! arc_mutex(
     ($wrapped:expr) => {
@@ -86,12 +87,12 @@ fn handle_client<T: ReadLine + Write>(
             };
 
             let resp = g.interpret(p, &s);
-            if let Some(response) = resp {
-                g.send_to_player(p, format!("\n{}\n\n > ", response))?;
-            } else {
-                g.remove_player(p);
-                break;
+            if let Some(_) = resp {
+                continue;
             }
+
+            g.remove_player(p);
+            break;
         }
     }
 

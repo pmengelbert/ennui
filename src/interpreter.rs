@@ -40,7 +40,7 @@ unsafe impl Send for CommandFunc {}
 
 impl Default for CommandFunc {
     fn default() -> Self {
-        b(|_, _, _| None)
+        b(|_, _, _| Some("".into()))
     }
 }
 
@@ -65,7 +65,7 @@ impl Interpreter {
         let s = s.as_ref();
 
         match s.to_lowercase().as_str() {
-            "" => Blank,
+            s if s.is_empty() => NotFound,
             s if sw(s, "north") => North,
             s if sw(s, "south") => South,
             s if sw(s, "east") => East,

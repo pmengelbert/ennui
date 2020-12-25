@@ -1,5 +1,6 @@
 use crate::item::ItemList;
-use crate::map::Coord;
+use crate::map::{Coord, RoomList};
+use crate::Provider;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::fmt::{Display, Formatter};
@@ -7,6 +8,7 @@ use std::io::Write;
 use std::net::TcpStream;
 use std::ops::{Deref, DerefMut};
 use uuid::Uuid as CrateUuid;
+use crate::text::message::Messenger;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub enum MeterKind {
@@ -17,6 +19,18 @@ pub enum MeterKind {
     Dexterity(Meter),
     Weight(Meter),
     Height(Meter),
+}
+
+impl<T> Provider<PlayerList> for T where
+    T: AsRef<PlayerList> + AsMut<PlayerList>,
+{
+    fn provide(&self) -> &PlayerList {
+        self.as_ref()
+    }
+
+    fn provide_mut(&mut self) -> &mut PlayerList {
+        self.as_mut()
+    }
 }
 
 impl Display for MeterKind {
@@ -145,7 +159,7 @@ impl Write for Player {
 }
 
 #[repr(transparent)]
-#[derive(Debug, Default, Deserialize, Serialize)]
+#[derive(Debug, Default, Deserialize, Serialize, Clone)]
 pub struct PlayerIdList(pub HashSet<u128>);
 impl Deref for PlayerIdList {
     type Target = HashSet<u128>;
@@ -158,6 +172,17 @@ impl Deref for PlayerIdList {
 impl DerefMut for PlayerIdList {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.0
+    }
+}
+
+impl Uuid for &PlayerIdList {
+    fn uuid(&self) -> u128 {
+        0
+    }
+
+    fn others(&self) -> Option<Vec<u128>> {
+        let v: Vec<u128> = self.iter().cloned().collect();
+        if v.is_empty() { None } else { Some(v) }
     }
 }
 
@@ -187,11 +212,18 @@ impl PlayerIdList {
 
 pub trait Uuid {
     fn uuid(&self) -> u128;
+    fn others(&self) -> Option<Vec<u128>> { None }
+}
+
+impl Uuid for u128 {
+    fn uuid(&self) -> u128 {
+        *self
+    }
 }
 
 impl Uuid for Player {
     fn uuid(&self) -> u128 {
-        self.uuid()
+        self.uuid
     }
 }
 
@@ -201,17 +233,6 @@ impl Uuid for &Player {
     }
 }
 
-impl Uuid for &mut Player {
-    fn uuid(&self) -> u128 {
-        self.uuid
-    }
-}
-
-impl Uuid for u128 {
-    fn uuid(&self) -> u128 {
-        *self
-    }
-}
 
 #[derive(Default)]
 #[repr(transparent)]

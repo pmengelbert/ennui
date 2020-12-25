@@ -1,14 +1,101 @@
-use crate::game::{MapDir, Provider};
+use crate::game::MapDir;
 use crate::item::{ItemKind, ItemList};
 use crate::player::{Player, PlayerIdList, PlayerList, Uuid};
 use crate::text::Color::*;
 use crate::text::Wrap;
-use crate::PassFail;
+use crate::{PassFail, Provider};
 
 use std::collections::{HashMap, HashSet};
 use std::ops::{Deref, DerefMut};
 
 use serde::{Deserialize, Serialize};
+use crate::text::message::Messenger;
+
+impl<T> Provider<RoomList> for T
+where
+    T: AsRef<RoomList> + AsMut<RoomList>,
+{
+    fn provide(&self) -> &RoomList {
+        self.as_ref()
+    }
+
+    fn provide_mut(&mut self) -> &mut RoomList {
+        self.as_mut()
+    }
+}
+
+impl<T> Messenger for T
+where
+    T: Locate + Uuid + AsRef<RoomList>,
+{
+    fn id(&self) -> Option<u128> {
+        match self.uuid() {
+            0 => None,
+            u => Some(u),
+        }
+    }
+
+    fn others(&self) -> Option<Vec<u128>> {
+        let list = self.room(self.as_ref())?.players
+            .iter()
+            .cloned()
+            .collect::<Vec<_>>();
+        let mut v = vec![];
+        for id in list {
+            v.push(id);
+        }
+
+        if v.is_empty() { None } else { Some(v) }
+    }
+}
+
+impl Uuid for Room {
+    fn uuid(&self) -> u128 {
+        0
+    }
+
+    fn others(&self) -> Option<Vec<u128>> {
+        let mut v = vec![];
+        for id in self.players.iter() {
+            if *id == self.uuid() {
+                continue;
+            }
+            v.push(*id)
+        }
+
+        if v.is_empty() { None } else { Some(v) }
+    }
+}
+
+impl Uuid for &Room {
+    fn uuid(&self) -> u128 {
+        0
+    }
+
+    fn others(&self) -> Option<Vec<u128>> {
+        let mut v = vec![];
+        for id in self.players.iter() {
+            if *id == self.uuid() {
+                continue;
+            }
+            v.push(*id)
+        }
+
+        if v.is_empty() { None } else { Some(v) }
+    }
+}
+
+impl Uuid for Coord {
+    fn uuid(&self) -> u128 {
+        0
+    }
+}
+
+impl Uuid for RoomList {
+    fn uuid(&self) -> u128 {
+        0
+    }
+}
 
 pub trait Locate {
     fn loc(&self) -> Coord;
@@ -224,17 +311,12 @@ impl Room {
         }
         exit_str.push(']');
 
-        let underline = (0..self.name.len()).map(|_| '-').collect::<String>();
-
         format!(
-            "{}\n\
-            {}\n\
-            {}\
+            "{}\n    {}\
             {}\
             {}\
             {}",
-            name,
-            underline,
+            Cyan(name.to_owned()),
             description.wrap(80),
             player_list,
             items_list,
@@ -370,18 +452,6 @@ mod map_test {
     use super::*;
     use crate::item::Item;
     use crate::item::ItemKind::Clothing;
-
-    #[test]
-    fn write_yaml() {
-        let desc = r#"You are at the Temple Yard of Dragonia. Beautiful marble stairs lead up to the Temple of Dragonia. You feel small as you stare up the huge pillars making the entrance to the temple. This place serves as a sanctuary where the people of the city can come and seek refuge, and rest their tired bones. Just north of here is the common square, and the temple opens to the south."#;
-        let mut r = Room::new("the living room", Some(desc), Coord(0, 0));
-        let i = Item::new("a codpiece", Some("description"), "codpiece");
-        r.add_item(Clothing(i));
-        let yaml_string = serde_yaml::to_string(&vec![&r]).unwrap();
-        std::fs::write("/tmp/yaml.yaml", yaml_string);
-        let f = std::fs::File::create("/tmp/butts.cbor").unwrap();
-        serde_cbor::to_writer(f, &r);
-    }
 
     #[test]
     fn map_test() {
