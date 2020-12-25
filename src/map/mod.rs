@@ -8,7 +8,6 @@ use crate::{PassFail, Provider};
 use std::collections::{HashMap, HashSet};
 use std::ops::{Deref, DerefMut};
 
-use crate::text::message::Messenger;
 use serde::{Deserialize, Serialize};
 
 impl<T> Provider<RoomList> for T
@@ -23,31 +22,6 @@ where
         self.as_mut()
     }
 }
-
-// impl<T> Messenger for T
-// where
-//     T: Locate + Uuid + AsRef<RoomList>,
-// {
-//     fn id(&self) -> Option<u128> {
-//         match self.uuid() {
-//             0 => None,
-//             u => Some(u),
-//         }
-//     }
-//
-//     fn others(&self) -> Option<Vec<u128>> {
-//         let list = self.room(self.as_ref())?.players
-//             .iter()
-//             .cloned()
-//             .collect::<Vec<_>>();
-//         let mut v = vec![];
-//         for id in list {
-//             v.push(id);
-//         }
-//
-//         if v.is_empty() { None } else { Some(v) }
-//     }
-// }
 
 impl Uuid for Room {
     fn uuid(&self) -> u128 {

@@ -5,7 +5,6 @@ use std::thread::spawn;
 
 use ennui::game::Game;
 use ennui::player::Player;
-use ennui::text::message::Broadcast;
 
 macro_rules! arc_mutex(
     ($wrapped:expr) => {

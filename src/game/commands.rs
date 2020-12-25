@@ -99,7 +99,6 @@ pub fn fill_interpreter(i: &mut Interpreter) {
             } else {
                 format!("you're not wearing {}", art)
             }
-
         } else {
             "be more specific. or less specific.".to_owned()
         };
@@ -193,8 +192,6 @@ pub fn fill_interpreter(i: &mut Interpreter) {
             o: Some(format!("{} says '{}'", name, message)),
         };
 
-        let ret = Some(msg.s.to_owned());
-
         g.send(aud, msg);
         Some("".into())
     });
@@ -235,7 +232,11 @@ pub fn fill_interpreter(i: &mut Interpreter) {
         const PRICK: usize = 5;
         g.players.entry(u).or_default().hurt(PRICK);
 
-        Some(format!("{}", Red("that hurt a surprising amount".into())))
+        g.send(
+            u,
+            format!("{}", Red("that hurt a surprising amount".into())),
+        );
+        Some("".into())
     });
 
     i.insert("inventory", |g, u, _a| {

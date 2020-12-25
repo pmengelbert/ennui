@@ -12,9 +12,8 @@ use crate::text::article;
 use crate::text::Color::*;
 use crate::{mapdata, PassFail, WriteResult};
 
-use crate::text::message::{Broadcast, Broadcast2, Message, Messenger, Audience, Msg};
+use crate::text::message::{Audience, Broadcast, Message, Messenger, Msg};
 use rand::Rng;
-use serde::private::de::TagContentOtherField;
 use std::fmt::{Display, Formatter};
 use std::io::Write;
 
@@ -104,38 +103,12 @@ impl<T> Broadcast for T
 where
     T: AsMut<Game>,
 {
-    fn send_to_player<U, S>(&mut self, u: U, msg: S) -> WriteResult
-    where
-        U: Uuid,
-        S: AsRef<str>,
-    {
-        let g = self.as_mut();
-        let buf = msg.as_ref().as_bytes();
-        match g.players.get_mut(&u.uuid()) {
-            Some(p) => {
-                let mut b = vec![];
-                b.extend_from_slice(b"\n\n".as_ref());
-                b.extend_from_slice(buf.as_ref());
-                b.extend_from_slice(b"\n\n > ".as_ref());
-                let res = p.write(b.as_ref())?;
-                p.flush()?;
-                Ok(res)
-            }
-            None => Err(std::io::ErrorKind::AddrNotAvailable.into()),
-        }
-    }
-}
-
-impl<T> Broadcast2 for T
-where
-    T: AsMut<Game>,
-{
     fn send<A, M>(&mut self, audience: A, message: M) -> Vec<WriteResult>
     where
         A: Messenger,
         M: Message,
     {
-        let mut g = self.as_mut();
+        let g = self.as_mut();
         let mut v = vec![];
         let self_id = audience.id().unwrap_or_default();
         let other_ids = audience.others().unwrap_or_default();
@@ -177,6 +150,7 @@ impl Game {
         for r in v {
             rooms.insert(r.loc(), r);
         }
+
         let mut interpreter = Interpreter::new();
         commands::fill_interpreter(&mut interpreter);
 
@@ -269,31 +243,33 @@ impl Game {
                 other_msg = Some(format!("{} exits {}", name, dir));
                 format!("you go {:?}\n\n{}", dir, self.describe_room(u)?)
             }
-            Err(_) => format!("alas! you cannot go that way..."),
+            Err(_) => {
+                g.send(u, format!("alas! you cannot go that way..."));
+                return Some("".into());
+            }
         };
 
-        let aud_new_room = {
-            let new_room = loc.add(dir)?;
-            new_room.players_except(u, &self)?
-        };
-
-        {
-            let others = loc.player_ids(&self)?;
-            let aud = Audience(u, &others);
-            self.send(aud, Msg {
+        let others = loc.player_ids(&self)?;
+        let aud = Audience(u, &others);
+        self.send(
+            aud,
+            Msg {
                 s: msg,
                 o: other_msg,
-            });
-        }
-        {
-            let other_msg = format!("{} enters the room", name);
-            let msg = "";
-            self.send(aud_new_room, Msg {
+            },
+        );
+
+        let next_room_players = loc.add(dir)?.players_except(u, &self)?;
+
+        let other_msg = format!("{} enters the room", name);
+        let msg = "";
+        self.send(
+            next_room_players,
+            Msg {
                 s: msg,
                 o: Some(other_msg),
-            });
-        }
-
+            },
+        );
 
         Some("".into())
     }
@@ -401,81 +377,3 @@ fn random_insult() -> String {
     }
     .to_owned()
 }
-
-// #[cfg(test)]
-// mod game_test {
-//     use super::*;
-//     use std::borrow::{Borrow, BorrowMut};
-//     use std::sync::RwLock;
-//     use std::mem::take;
-//
-//     struct Thing {
-//         inner: HashMap<usize, RwLock<Room>>,
-//     }
-//
-//     impl Thing {
-//         fn new() -> Self {
-//             let mut inner = HashMap::new();
-//             let mut g = Game::new();
-//             let r1 = take(g.rooms.get_mut(&Coord(0, 0)).unwrap());
-//             let r2 = take(g.rooms.get_mut(&Coord(0, 1)).unwrap());
-//             inner.insert(0, RwLock::new(r1));
-//             inner.insert(1, RwLock::new(r2));
-//
-//             Thing { inner }
-//         }
-//
-//         // DOES NOT WORK
-//         fn thing(&mut self) -> Option<String> {
-//             let r2 = self.inner.get_mut(&0).unwrap().read().unwrap().borrow();
-//             let mut r1 = self.inner.get(&1).unwrap().write().unwrap().borrow_mut();
-//             r1.add_player(&(7 as u128));
-//             let x = r2.get_item("codpiece").unwrap();
-//             Some(format!("{} {}", r1.players().len(), x.name()))
-//         }
-//     }
-//
-//     #[test]
-//     fn test_interior_mutability() {
-//         assert_eq!(Thing::new().thing(), Some("1 codpiece".to_owned()));
-//     }
-//
-//     fn new_game() -> Game {
-//         let mut g = Game::new();
-//         let p = Player::new("peter");
-//
-//         let uuid = p.uuid();
-//         g.add_player(p);
-//         g
-//     }
-//
-//     #[test]
-//     fn game_test_display_room() {
-//         let p = Player::new("lol");
-//         let uuid = p.uuid();
-//         let q = Player::new("billy");
-//         let pp = Player::new("mindy");
-//
-//         let mut r = Room::new("the room", None);
-//         let mut g = Game::new();
-//         for player in vec![p, q, pp] {
-//             r.add_player(&player);
-//             g.players.insert(player.uuid(), player);
-//         }
-//         g.rooms.insert(Coord(0, 0), r);
-//
-//         println!("{}", g.describe_room(uuid)?);
-//     }
-//
-//     #[test]
-//     fn game_test_interpreter() {
-//         let mut g = Game::new();
-//         let mut r = Room::new("yo", None);
-//         let p = Player::new("lol");
-//         r.add_player(&p);
-//         let uuid = p.uuid();
-//         g.add_player(p);
-//
-//         assert!(g.interpret(uuid, "look").is_some());
-//     }
-// }
