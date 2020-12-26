@@ -1,7 +1,7 @@
 pub mod coord;
 
 use crate::game::MapDir;
-use crate::item::{ItemKind, ItemList};
+use crate::item::{Holder, ItemKind, ItemList};
 use crate::player::{Player, PlayerIdList, PlayerList, Uuid};
 use crate::text::Color::*;
 use crate::text::Wrap;
@@ -12,6 +12,41 @@ use std::ops::{Deref, DerefMut};
 
 use crate::map::coord::Coord;
 use serde::{Deserialize, Serialize};
+
+pub trait Space: Locate + Holder {
+    fn players(&self) -> &PlayerIdList;
+
+    fn players_except<T>(&self, u: T) -> Vec<u128>
+    where
+        T: Uuid,
+    {
+        let u = u.uuid();
+        let mut l = Vec::new();
+        for &id in self.players().iter() {
+            if id == u {
+                continue;
+            }
+
+            l.push(id);
+        }
+        l
+    }
+
+    fn player_by_name<T>(&self, players: T, name: &str) -> Option<u128>
+    where
+        T: Provider<PlayerList>,
+    {
+        let players = players.provide();
+        let ids = self.players();
+        players.iter().find_map(|(id, p)| {
+            if p.name() == name && ids.contains(id) {
+                Some(*id)
+            } else {
+                None
+            }
+        })
+    }
+}
 
 impl<T> Provider<RoomList> for T
 where
@@ -91,36 +126,6 @@ pub trait Locate {
         T: Provider<RoomList>,
     {
         Some(self.room(rooms)?.players().clone())
-    }
-
-    fn players_except<T, U>(&self, u: U, rooms: &T) -> Option<PlayerIdList>
-    where
-        T: Provider<RoomList>,
-        U: Uuid,
-    {
-        let u = u.uuid();
-        let mut ret = PlayerIdList::default();
-        for &id in self.player_ids(rooms)?.iter() {
-            if id == u {
-                continue;
-            }
-            ret.insert(id);
-        }
-
-        Some(ret)
-    }
-
-    fn players<'a, T>(&self, provider: &'a T) -> Vec<&'a Player>
-    where
-        T: Provider<RoomList> + Provider<PlayerList>,
-    {
-        let players: &PlayerList = provider.provide();
-        let room = self.room(provider);
-        room.unwrap_or(&Room::default())
-            .players()
-            .iter()
-            .filter_map(|id| players.get(id))
-            .collect()
     }
 
     fn player_by_name<'a, T, S>(&self, provider: &'a T, other: S) -> Option<&'a Player>
@@ -237,6 +242,12 @@ impl AsRef<Coord> for Room {
     }
 }
 
+impl Space for Room {
+    fn players(&self) -> &PlayerIdList {
+        &self.players
+    }
+}
+
 impl Room {
     pub fn new(name: &str, description: Option<&str>, loc: Coord) -> Self {
         let name = name.to_owned();
@@ -303,10 +314,6 @@ impl Room {
         )
     }
 
-    pub fn players(&self) -> &PlayerIdList {
-        &self.players
-    }
-
     pub fn players_mut(&mut self) -> &mut PlayerIdList {
         &mut self.players
     }
@@ -332,10 +339,6 @@ impl Room {
 
     pub fn items_mut(&mut self) -> &mut ItemList {
         &mut self.items
-    }
-
-    pub fn get_itemlist(&mut self) -> ItemList {
-        std::mem::replace(&mut self.items, ItemList::new())
     }
 
     pub fn replace_itemlist(&mut self, i: ItemList) {

@@ -6,7 +6,7 @@ use std::collections::HashMap;
 use std::io;
 
 use crate::interpreter::Interpreter;
-use crate::map::{coord::Coord, Locate, Room, RoomList};
+use crate::map::{coord::Coord, Locate, Room, RoomList, Space};
 use crate::player::{Player, PlayerList, Uuid};
 use crate::text::article;
 use crate::text::Color::*;
@@ -14,6 +14,7 @@ use crate::{mapdata, WriteResult};
 
 use crate::text::message::{Audience, Broadcast, Message, Messenger, Msg};
 use rand::Rng;
+use std::borrow::BorrowMut;
 use std::fmt::{Display, Formatter};
 use std::io::Write;
 use std::sync::Arc;
@@ -96,14 +97,14 @@ impl Display for MapDir {
 
 impl<T> Broadcast for T
 where
-    T: AsMut<Game>,
+    T: BorrowMut<Game>,
 {
     fn send<A, M>(&mut self, audience: A, message: M) -> Vec<WriteResult>
     where
         A: Messenger,
         M: Message,
     {
-        let g = self.as_mut();
+        let g = self.borrow_mut();
         let mut v = vec![];
         let self_id = audience.id().unwrap_or_default();
         let other_ids = audience.others().unwrap_or_default();
@@ -261,12 +262,15 @@ impl Game {
         };
         self.send(aud, msg);
 
-        let next_room_players = loc.add(dir)?.players_except(u, &self)?;
+        let next_room_aud = {
+            let next_room = self.rooms.get(&loc.add(dir)?)?;
+            Audience(0, Some(next_room.players_except(u)))
+        };
 
         let for_others = format!("{} enters the room", name);
         let msg = "";
         self.send(
-            next_room_players,
+            next_room_aud,
             Msg {
                 s: msg,
                 o: Some(for_others),
