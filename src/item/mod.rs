@@ -154,11 +154,7 @@ impl ItemKind {
 
     fn safe_unwrap(&self) -> &Item {
         match self {
-            Clothing(item)
-            | Weapon(item)
-            | Scenery(item)
-            | Holdable(item)
-            | Edible(item) => &item,
+            Clothing(item) | Weapon(item) | Scenery(item) | Holdable(item) | Edible(item) => &item,
         }
     }
 }

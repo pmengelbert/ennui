@@ -8,8 +8,8 @@ use std::io;
 use crate::interpreter::Interpreter;
 use crate::map::{coord::Coord, Locate, Room, RoomList, Space};
 use crate::player::{Player, PlayerList, Uuid};
-use crate::text::article;
 use crate::text::Color::*;
+use crate::text::{article, Wrap};
 use crate::WriteResult;
 
 use crate::text::message::{Audience, Broadcast, Message, Messenger, Msg};
@@ -113,10 +113,12 @@ where
         let other_msg = message.to_others();
 
         if let Some(p) = g.players.get_mut(&self_id) {
+            let self_msg = self_msg.wrap(90);
             v.push(p.write(to_buf(self_msg).as_slice()));
         }
 
         if let Some(msg) = other_msg {
+            let msg = msg.wrap(90);
             for id in other_ids {
                 if let Some(p) = g.players.get_mut(&id) {
                     v.push(p.write(to_buf(&msg).as_slice()));
@@ -295,7 +297,7 @@ impl Game {
         item_list.push_str(
             p.items()
                 .iter()
-                .map(|i| format!(" --> {}", article(i.name())))
+                .map(|i| format!("{}", article(i.name())))
                 .collect::<Vec<_>>()
                 .join("\n")
                 .as_str(),

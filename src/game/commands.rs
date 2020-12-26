@@ -80,9 +80,7 @@ pub fn fill_interpreter(i: &mut Interpreter) {
                     }
                     Err(err) => match &*err {
                         Clothing(s) => format!("you can't wear {}!", article(s)),
-                        s => {
-                            format!("you're not holding {}", article(s.safe_unwrap()))
-                        }
+                        s => format!("you're not holding {}", article(s.safe_unwrap())),
                     },
                 }
             }

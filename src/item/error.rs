@@ -22,10 +22,7 @@ impl Error {
         use Error::*;
 
         match self {
-            Clothing(s)
-            | ItemNotFound(s)
-            | PlayerNotFound(s)
-            | TooHeavy(s) => s,
+            Clothing(s) | ItemNotFound(s) | PlayerNotFound(s) | TooHeavy(s) => s,
         }
     }
 }

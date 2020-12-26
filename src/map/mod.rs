@@ -307,7 +307,7 @@ impl Room {
             {}\
             {}",
             Cyan(name.to_owned()),
-            description.wrap(80),
+            description,
             items_list,
             player_list,
             exit_str,

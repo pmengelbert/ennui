@@ -1,12 +1,12 @@
 use super::Error;
 use crate::game::Game;
 use crate::item::error::Error::{ItemNotFound, TooHeavy};
+use crate::item::ItemKind::Scenery;
 use crate::item::{Holder, ItemKind};
 use crate::map::coord::Coord;
 use crate::map::RoomList;
 use crate::player::{PlayerList, Uuid};
 use std::sync::Arc;
-use crate::item::ItemKind::Scenery;
 
 #[derive(Clone)]
 pub enum Direction {

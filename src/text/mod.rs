@@ -34,9 +34,13 @@ where
         let mut ret = String::with_capacity(s.len() + s.len() / line_length);
 
         while x <= y && y < s.len() {
-            let last_space = (&s[x..y]).rfind(&[' ', '\n'][..]).unwrap_or(s[x..y].len());
+            let mut range_end = (&s[x..y]).rfind(' ').unwrap_or(s[x..y].len());
+            let newline = (&s[x..y]).rfind('\n');
+            if let Some(n) = newline {
+                range_end = n;
+            }
 
-            y = x + last_space;
+            y = x + range_end;
 
             ret.push_str(&s[x..y]);
             ret.push('\n');
@@ -99,6 +103,11 @@ mod text_test {
     #[test]
     fn test_line_wrap() {
         assert_eq!("abcd".wrap(7), "abcd");
+        assert_eq!(
+            "1 3 5 7 9 1 39234 290 290 5 7 9".wrap(10),
+            "1 3 5 7 9\n1 39234\n290 290 5\n7 9"
+        );
+
         assert_eq!(
             "1 3 5 7 9 1 39234 290 290 5 7 9".wrap(10),
             "1 3 5 7 9\n1 39234\n290 290 5\n7 9"
