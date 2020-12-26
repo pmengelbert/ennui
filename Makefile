@@ -1,8 +1,9 @@
+TARGET = x86_64-unknown-linux-gnu
 MAPFILE = sample.yaml
 OUTFILE = data/map.cbor
 
 target/release/ennui: data/map.cbor
-	cargo build --release
+	cargo build --release --target $(TARGET)
 
 .PHONY ennui: target/release/ennui
 
@@ -10,13 +11,19 @@ target/release/ennui: data/map.cbor
 	rm target/release/convert || true
 	rm target/release/ennui || true
 	rm target/release/server || true
-	rm data/map.cbor || true
+	rm -rf data || true
 
-target/release/convert:
+target/release/convert: datafile
 	cargo build --release --bin convert
 
-data/map.cbor: target/release/convert
-	target/release/convert $(MAPFILE) data/map.cbor
+data/map.cbor: convert
+	target/release/convert $(MAPFILE) $(OUTFILE)
+
+data:
+	mkdir data || true
+
+.PHONY datafile: data
+	touch data/map.cbor
 
 target/release/server:
 	cargo build --release --bin server

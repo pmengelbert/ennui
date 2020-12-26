@@ -140,8 +140,8 @@ fn to_buf<T: AsRef<str>>(msg: T) -> Vec<u8> {
 impl Game {
     pub fn new() -> Self {
         let (players, mut rooms) = (HashMap::new(), RoomList::default());
-        let bytes = include_bytes!("../../sample.yaml");
-        let v: Vec<Room> = serde_yaml::from_slice(bytes).unwrap_or_default();
+        let bytes = include_bytes!("../../data/map.cbor");
+        let v: Vec<Room> = serde_cbor::from_slice(bytes).unwrap_or_default();
         let p = Player::new("billy");
 
         for r in v {
