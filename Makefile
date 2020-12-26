@@ -1,21 +1,22 @@
 MAPFILE = sample.yaml
+OUTFILE = data/map.cbor
 
-target/release/ennui: src/mapdata.rs
-	cargo build --release --bin ennui
+target/release/ennui: data/map.cbor
+	cargo build --release
 
 .PHONY ennui: target/release/ennui
 
 .PHONY clean:
 	rm target/release/convert || true
 	rm target/release/ennui || true
-	rm src/mapdata.rs || true
-	echo "pub const MAP: [u8; 0] = [];" > src/mapdata.rs
+	rm target/release/server || true
+	rm data/map.cbor || true
 
 target/release/convert:
 	cargo build --release --bin convert
 
-src/mapdata.rs: target/release/convert
-	target/release/convert $(MAPFILE) src/mapdata.rs
+data/map.cbor: target/release/convert
+	target/release/convert $(MAPFILE) data/map.cbor
 
 target/release/server:
 	cargo build --release --bin server

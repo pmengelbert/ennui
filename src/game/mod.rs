@@ -10,7 +10,7 @@ use crate::map::{coord::Coord, Locate, Room, RoomList, Space};
 use crate::player::{Player, PlayerList, Uuid};
 use crate::text::article;
 use crate::text::Color::*;
-use crate::{mapdata, WriteResult};
+use crate::WriteResult;
 
 use crate::text::message::{Audience, Broadcast, Message, Messenger, Msg};
 use rand::Rng;
@@ -140,7 +140,8 @@ fn to_buf<T: AsRef<str>>(msg: T) -> Vec<u8> {
 impl Game {
     pub fn new() -> Self {
         let (players, mut rooms) = (HashMap::new(), RoomList::default());
-        let v: Vec<Room> = serde_cbor::from_slice(mapdata::MAP.as_ref()).unwrap_or_default();
+        let bytes = include_bytes!("../../sample.yaml");
+        let v: Vec<Room> = serde_yaml::from_slice(bytes).unwrap_or_default();
         let p = Player::new("billy");
 
         for r in v {
