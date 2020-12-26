@@ -1,11 +1,12 @@
 use super::Error;
 use crate::game::Game;
-use crate::item::error::Error::ItemNotFound;
+use crate::item::error::Error::{ItemNotFound, TooHeavy};
 use crate::item::{Holder, ItemKind};
 use crate::map::coord::Coord;
 use crate::map::RoomList;
 use crate::player::{PlayerList, Uuid};
 use std::sync::Arc;
+use crate::item::ItemKind::Scenery;
 
 #[derive(Clone)]
 pub enum Direction {
@@ -59,6 +60,11 @@ impl Game {
             Some(r) => r,
             None => return Err(a(handle)),
         };
+
+        if let Some(Scenery(_)) = room.items().get(handle) {
+            return Err(Arc::new(TooHeavy(handle.to_owned())));
+        }
+
         let player = match players.get_mut(&uuid) {
             Some(p) => p,
             None => return Err(a(handle)),

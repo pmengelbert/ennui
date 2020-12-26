@@ -41,7 +41,8 @@ pub fn fill_interpreter(i: &mut Interpreter) {
                             Some(format!("{} picks up a {}", name, article(&handle.clone())));
                         format!("you take the {}", handle)
                     }
-                    Err(err) => match err {
+                    Err(err) => match &*err {
+                        TooHeavy(s) => format!("you can't pick up {}. It's too heavy", article(&s)),
                         _ => format!("you don't see {} here", article(&handle)),
                     },
                 }
@@ -79,8 +80,8 @@ pub fn fill_interpreter(i: &mut Interpreter) {
                     }
                     Err(err) => match &*err {
                         Clothing(s) => format!("you can't wear {}!", article(s)),
-                        ItemNotFound(s) | PlayerNotFound(s) => {
-                            format!("you're not holding {}", article(s))
+                        s => {
+                            format!("you're not holding {}", article(s.safe_unwrap()))
                         }
                     },
                 }
@@ -187,6 +188,7 @@ pub fn fill_interpreter(i: &mut Interpreter) {
                         format!("now where did {} go? you don't see them here...", s)
                     }
                     Clothing(_) => format!("they must not like the look of it"),
+                    TooHeavy(_) => format!("they can't hold that! it's too heavy"),
                 },
             }
         } else {

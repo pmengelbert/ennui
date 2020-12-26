@@ -6,6 +6,7 @@ pub enum Error {
     Clothing(String),
     ItemNotFound(String),
     PlayerNotFound(String),
+    TooHeavy(String),
 }
 
 impl Display for Error {
@@ -15,3 +16,16 @@ impl Display for Error {
 }
 
 impl std::error::Error for Error {}
+
+impl Error {
+    pub fn safe_unwrap(&self) -> &String {
+        use Error::*;
+
+        match self {
+            Clothing(s)
+            | ItemNotFound(s)
+            | PlayerNotFound(s)
+            | TooHeavy(s) => s,
+        }
+    }
+}

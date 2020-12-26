@@ -31,3 +31,6 @@ target/release/server:
 .PHONY convert: target/release/convert
 
 .PHONY server: target/release/server
+
+.PHONY pi: data/map.cbor
+	cargo build --release --target armv7-unknown-linux-gnueabihf

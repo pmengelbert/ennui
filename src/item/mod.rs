@@ -10,6 +10,9 @@ use ItemKind::*;
 pub enum ItemKind {
     Clothing(Item),
     Weapon(Item),
+    Scenery(Item),
+    Edible(Item),
+    Holdable(Item),
 }
 
 #[derive(Debug, Default, Serialize, Deserialize, Clone)]
@@ -151,7 +154,11 @@ impl ItemKind {
 
     fn safe_unwrap(&self) -> &Item {
         match self {
-            Clothing(item) | Weapon(item) => &item,
+            Clothing(item)
+            | Weapon(item)
+            | Scenery(item)
+            | Holdable(item)
+            | Edible(item) => &item,
         }
     }
 }
