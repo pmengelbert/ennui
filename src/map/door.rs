@@ -1,7 +1,7 @@
 use crate::game::MapDir;
 use crate::map::coord::Coord;
 use crate::map::door::DoorState::{Locked, Open};
-use crate::map::Locate;
+use crate::map::{Locate, StateResult};
 use crate::player::Uuid;
 use serde::export::Formatter;
 use serde::{Deserialize, Serialize};
@@ -10,13 +10,23 @@ use std::collections::HashMap;
 use std::error::Error;
 use std::fmt::Debug;
 use std::ops::{Deref, DerefMut};
+use std::option::NoneError;
+
+pub trait Keyhole<T, U>: ObstacleState<T>
+where
+    U: PartialEq<Self::Lock>,
+{
+    type Lock: PartialEq<U>;
+
+    fn unlock(&mut self, new_state: T, key: Option<U>) -> StateResult<T>;
+    fn is_locked(&self) -> bool;
+}
 
 pub trait ObstacleState<T> {
     fn state(&self) -> T;
-    fn is_blocked(&self) -> bool;
 }
 
-pub trait Obstacle<T, U> : ObstacleState<U> {
+pub trait Obstacle<T, U>: ObstacleState<U> {
     type Other: PartialEq<T>;
 
     fn dir(&self) -> MapDir;
@@ -34,50 +44,42 @@ pub trait Obstacle<T, U> : ObstacleState<U> {
     }
 }
 
-impl<T, U> Obstacle<T, DoorState> for Door<U>
-where
-    U: PartialEq<T> + Clone + Debug,
-    T: PartialEq<U>,
-{
-    type Other = U;
+// impl<T, U> Obstacle<T, DoorState> for Door<U>
+// where
+//     U: PartialEq<T> + Clone + Debug,
+//     T: PartialEq<U>,
+// {
+//     type Other = U;
+//
+//     fn dir(&self) -> MapDir {
+//         self.dir
+//     }
+//
+//     fn alt_dest(&self) -> Option<Coord> {
+//         self.alt_dest
+//     }
+// }
 
-    fn dir(&self) -> MapDir {
-        self.dir
-    }
-
-    fn alt_dest(&self) -> Option<Coord> {
-        self.alt_dest
-    }
-
-    fn change_state(&mut self, new_state: DoorState, tool: Option<T>) -> Result<(), DoorState>
-    where
-        T: PartialEq<Self::Other>,
-    {
-        if self.state == new_state {
-            return Ok(());
-        }
-
-        match (self.keyhole.clone(), tool) {
-            (Some(h), Some(k)) if h == k => {
-                self.state = new_state;
-                Ok(())
-            }
-            (None, _) => {
-                self.state = new_state;
-                Ok(())
-            }
-            _ => Err(Locked),
-        }
-    }
-}
-
-#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub enum DoorState {
     Open,
     Closed,
     Locked,
     MagicallySealed,
     PermaLocked,
+    None,
+}
+
+impl From<std::option::NoneError> for DoorState {
+    fn from(_: NoneError) -> Self {
+        DoorState::None
+    }
+}
+
+impl ObstacleState<DoorState> for DoorState {
+    fn state(&self) -> DoorState {
+        *self
+    }
 }
 
 impl Default for DoorState {
@@ -95,19 +97,43 @@ impl std::fmt::Display for DoorState {
 impl Error for DoorState {}
 
 #[derive(Eq, PartialEq, Serialize, Deserialize, Default, Debug, Clone)]
-pub struct Door<U: Debug> {
+pub struct Door {
+    // name
     dir: MapDir,
     state: DoorState,
     alt_dest: Option<Coord>,
-    keyhole: Option<U>,
+    // the key's id must match the Keyhole's id
+    keyhole: Option<u64>,
 }
 
-impl<U: Debug> ObstacleState<DoorState> for Door<U> {
+impl ObstacleState<DoorState> for Door {
     fn state(&self) -> DoorState {
         self.state.clone()
     }
+}
 
-    fn is_blocked(&self) -> bool {
+impl Keyhole<DoorState, u64> for Door {
+    type Lock = u64;
+
+    fn unlock(&mut self, new_state: DoorState, key: Option<u64>) -> StateResult<DoorState> {
+        if self.state == new_state {
+            return Err(self.state);
+        }
+
+        match (self.keyhole.clone(), key) {
+            (Some(h), Some(k)) if h == k => {
+                self.state = new_state;
+                Ok(())
+            }
+            (None, _) => {
+                self.state = new_state;
+                Ok(())
+            }
+            _ => Err(Locked),
+        }
+    }
+
+    fn is_locked(&self) -> bool {
         match self.state {
             Open => false,
             _ => true,
@@ -117,17 +143,17 @@ impl<U: Debug> ObstacleState<DoorState> for Door<U> {
 
 #[repr(transparent)]
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
-pub struct DoorList<U: Eq + Clone + Debug>(Vec<Door<U>>);
+pub struct DoorList(Vec<Door>);
 
-impl<U: Eq + Clone + Debug> Deref for DoorList<U> {
-    type Target = Vec<Door<U>>;
+impl Deref for DoorList {
+    type Target = Vec<Door>;
 
     fn deref(&self) -> &Self::Target {
         &self.0
     }
 }
 
-impl<U: Eq + Clone + Debug> DerefMut for DoorList<U> {
+impl DerefMut for DoorList {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.0
     }
@@ -171,28 +197,45 @@ mod test_doors {
 
     #[test]
     fn test_door_api_3() {
-        let mut d: Door<u128> = Door {
+        let mut d: Door = Door {
             dir: North,
             state: DoorState::Locked,
             alt_dest: None,
-            keyhole: Some(8_u128),
+            keyhole: Some(8),
         };
 
-        let n: u128 = 8;
-        let res = d.change_state(DoorState::Open, Some(n));
+        let n: u64 = 8;
+        let res = d.unlock(DoorState::Open, Some(n));
         assert_eq!(res, Ok(()));
         assert_eq!(d.state(), DoorState::Open);
-        let res = d.change_state(Locked, Some(72));
-        assert_eq!(
-            res,
-            Err(Locked)
-        );
+        let res = d.unlock(Locked, Some(72));
+        assert_eq!(res, Err(Locked));
         assert_eq!(d.state(), DoorState::Open);
-        let res = d.change_state(Locked, None);
-        assert_eq!(
-            res,
-            Err(Locked)
-        );
+        let res = d.unlock(Locked, None);
+        assert_eq!(res, Err(Locked));
         assert_eq!(d.state(), DoorState::Open);
+        let res = d.unlock(Open, None);
+        assert_eq!(res, Err(Open));
+    }
+
+    #[test]
+    fn door_yaml() {
+        let mut h = HashMap::new();
+        let mut d: Door = Door {
+            dir: North,
+            state: DoorState::Locked,
+            alt_dest: Some(Coord(7, 7)),
+            keyhole: Some(8),
+        };
+        let mut e: Door = Door {
+            dir: West,
+            state: DoorState::Locked,
+            alt_dest: Some(Coord(7, 9)),
+            keyhole: Some(4),
+        };
+        h.insert(d.dir, d);
+        h.insert(e.dir, e);
+        let x = serde_yaml::to_vec(&h).unwrap();
+        std::fs::write("/tmp/doormap.yaml", x);
     }
 }

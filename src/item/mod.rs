@@ -2,9 +2,18 @@ pub mod error;
 mod handle;
 
 use crate::item::handle::Handle;
+use serde::export::fmt::Debug;
+use serde::export::Formatter;
 use serde::{Deserialize, Serialize};
 use std::ops::{Deref, DerefMut};
 use ItemKind::*;
+
+pub trait ItemTrait {
+    fn name(&self) -> &str;
+    fn display(&self) -> &str;
+    fn description(&self) -> &str;
+    fn handle(&self) -> &Handle;
+}
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum ItemKind {

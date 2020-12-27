@@ -1,5 +1,5 @@
 pub mod coord;
-mod door;
+pub mod door;
 
 use crate::game::MapDir;
 use crate::item::{Holder, ItemKind, ItemList};
@@ -12,8 +12,12 @@ use std::collections::{HashMap, HashSet};
 use std::ops::{Deref, DerefMut};
 
 use crate::map::coord::Coord;
-use crate::map::door::Door;
+use crate::map::door::{Door, DoorState, Obstacle, ObstacleState};
 use serde::{Deserialize, Serialize};
+use std::mem::take;
+use std::sync::Arc;
+
+type StateResult<T> = Result<(), T>;
 
 pub trait Space: Locate + Holder {
     fn players(&self) -> &PlayerIdList;
@@ -151,18 +155,29 @@ pub trait Locate {
             .find(|p| p.name() == other.as_ref() && p.loc() == self.loc())
     }
 
-    fn move_player<T, U>(&self, provider: &mut T, u: U, dir: MapDir) -> PassFail
+    fn move_player<T, U>(&self, provider: &mut T, u: U, dir: MapDir) -> StateResult<DoorState>
     where
         T: Provider<RoomList> + Provider<PlayerList>,
         U: Uuid,
     {
         let u = u.uuid();
         let next_coord = self.loc().add(dir);
+
         {
             let rooms: &mut RoomList = provider.provide_mut();
-            rooms.get_mut(&self.loc())?.players_mut().remove(&u);
+            {
+                let src_room = rooms.get_mut(&self.loc())?;
+                if let Some(door) = src_room.doors.get(&dir) {
+                    match door.state() {
+                        DoorState::None | DoorState::Open => (),
+                        s => return Err(s),
+                    }
+                }
+                src_room.players_mut().remove(&u);
+            }
             rooms.get_mut(&next_coord?)?.players_mut().insert(u);
         }
+
         {
             let players: &mut PlayerList = provider.provide_mut();
             players.get_mut(&u)?.set_loc(next_coord?);
@@ -225,7 +240,7 @@ pub struct Room {
     description: String,
     players: PlayerIdList,
     items: ItemList,
-    doors: HashMap<MapDir, Door<u128>>,
+    doors: HashMap<MapDir, Door>,
 }
 
 impl AsMut<ItemList> for Room {

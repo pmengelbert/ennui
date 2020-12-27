@@ -5,7 +5,9 @@ mod util;
 use std::collections::HashMap;
 use std::io;
 
+use crate::game::MapDir::South;
 use crate::interpreter::Interpreter;
+use crate::item::ItemTrait;
 use crate::map::{coord::Coord, Locate, Room, RoomList, Space};
 use crate::player::{Player, PlayerList, Uuid};
 use crate::text::message::{Audience, Broadcast, Message, Messenger, Msg};
@@ -13,10 +15,9 @@ use crate::text::Color::*;
 use crate::text::{article, Wrap};
 use crate::WriteResult;
 
-use crate::game::MapDir::South;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
-use std::borrow::BorrowMut;
+use std::borrow::{BorrowMut, Cow};
 use std::fmt::{Display, Formatter};
 use std::io::Write;
 use std::sync::Arc;
@@ -254,13 +255,26 @@ impl Game {
         #[allow(unused_assignments)]
         let mut other_msg = None;
 
-        let msg = match loc.move_player(self, u, dir.clone()) {
+        let msg: Cow<'static, str> = match loc.move_player(self, u, dir.clone()) {
             Ok(_) => {
                 other_msg = Some(format!("{} exits {}", name, dir));
-                format!("you go {:?}\n\n{}", dir, self.describe_room(u)?)
+                format!("you go {:?}\n\n{}", dir, self.describe_room(u)?).into()
             }
-            Err(_) => {
-                self.send(u, format!("alas! you cannot go that way..."));
+            Err(s) => {
+                use crate::map::door::DoorState::*;
+                let err_msg = match s {
+                    None => "alas! you cannot go that way...",
+                    Closed => "a door blocks your way",
+                    Locked => "a door blocks your way",
+                    Open => "it's already open",
+                    MagicallySealed => {
+                        "a door blocks your way. it's sealed with a mysterious force"
+                    }
+                    PermaLocked => {
+                        "a door blocks your way. it's not going to budge, and there's no keyhole"
+                    }
+                };
+                self.send(u, err_msg);
                 return Some("".into());
             }
         };
