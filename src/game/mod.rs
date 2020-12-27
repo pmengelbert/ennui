@@ -8,12 +8,14 @@ use std::io;
 use crate::interpreter::Interpreter;
 use crate::map::{coord::Coord, Locate, Room, RoomList, Space};
 use crate::player::{Player, PlayerList, Uuid};
+use crate::text::message::{Audience, Broadcast, Message, Messenger, Msg};
 use crate::text::Color::*;
 use crate::text::{article, Wrap};
 use crate::WriteResult;
 
-use crate::text::message::{Audience, Broadcast, Message, Messenger, Msg};
+use crate::game::MapDir::South;
 use rand::Rng;
+use serde::{Deserialize, Serialize};
 use std::borrow::BorrowMut;
 use std::fmt::{Display, Formatter};
 use std::io::Write;
@@ -27,7 +29,7 @@ pub struct Game {
     interpreter: Interpreter,
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Serialize, Deserialize, Eq, PartialEq, Hash)]
 pub enum MapDir {
     North,
     South,
@@ -37,6 +39,12 @@ pub enum MapDir {
     Down,
     NorthEast,
     // etc
+}
+
+impl Default for MapDir {
+    fn default() -> Self {
+        South
+    }
 }
 
 impl MapDir {

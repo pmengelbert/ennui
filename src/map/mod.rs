@@ -1,4 +1,5 @@
 pub mod coord;
+mod door;
 
 use crate::game::MapDir;
 use crate::item::{Holder, ItemKind, ItemList};
@@ -11,10 +12,12 @@ use std::collections::{HashMap, HashSet};
 use std::ops::{Deref, DerefMut};
 
 use crate::map::coord::Coord;
+use crate::map::door::Door;
 use serde::{Deserialize, Serialize};
 
 pub trait Space: Locate + Holder {
     fn players(&self) -> &PlayerIdList;
+    // fn has_door(&self, MapDir) -> bool;
 
     fn players_except<T>(&self, u: T) -> Vec<u128>
     where
@@ -222,6 +225,7 @@ pub struct Room {
     description: String,
     players: PlayerIdList,
     items: ItemList,
+    doors: HashMap<MapDir, Door<u128>>,
 }
 
 impl AsMut<ItemList> for Room {
@@ -258,6 +262,7 @@ impl Room {
             loc: loc,
             players: PlayerIdList(HashSet::new()),
             items: ItemList::new(),
+            doors: HashMap::new(),
         }
     }
 
@@ -355,6 +360,7 @@ mod room_test {
 #[cfg(test)]
 mod map_test {
     use super::*;
+    use crate::game::MapDir::South;
     use crate::item::Item;
     use crate::item::ItemKind::Clothing;
 
@@ -366,5 +372,19 @@ mod map_test {
     #[test]
     fn locate() {
         assert_eq!(Coord(0, 0).loc(), Coord(0, 0));
+    }
+
+    #[test]
+    fn write_sample_yaml() {
+        // let mut doors = HashMap::new();
+        // doors.insert(South, Door {});
+        // let r = Room {
+        //     name: "".to_string(),
+        //     loc: Default::default(),
+        //     description: "".to_string(),
+        //     players: Default::default(),
+        //     items: Default::default(),
+        //     doors,
+        // };
     }
 }
