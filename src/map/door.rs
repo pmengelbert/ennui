@@ -11,22 +11,17 @@ use std::error::Error;
 use std::fmt::Debug;
 use std::ops::{Deref, DerefMut};
 
-pub trait Block<T> {
+pub trait ObstacleState<T> {
+    fn state(&self) -> T;
+    fn is_blocked(&self) -> bool;
+}
+
+pub trait Obstacle<T, U> : ObstacleState<U> {
     type Other: PartialEq<T>;
 
     fn dir(&self) -> MapDir;
-    fn state(&self) -> DoorState;
     fn alt_dest(&self) -> Option<Coord>;
-    fn change_state(&mut self, state: DoorState, tool: Option<T>) -> Result<(), DoorState>
-    where
-        T: PartialEq<Self::Other>;
-
-    fn is_blocked(&self) -> bool {
-        match self.state() {
-            Open(_) => false,
-            _ => true,
-        }
-    }
+    fn change_state(&mut self, state: U, tool: Option<T>) -> Result<(), U>;
 
     fn destination<L>(&self, loc: L) -> Option<Coord>
     where
@@ -39,7 +34,7 @@ pub trait Block<T> {
     }
 }
 
-impl<T, U> Block<T> for Door<U>
+impl<T, U> Obstacle<T, DoorState> for Door<U>
 where
     U: PartialEq<T> + Clone + Debug,
     T: PartialEq<U>,
@@ -48,10 +43,6 @@ where
 
     fn dir(&self) -> MapDir {
         self.dir
-    }
-
-    fn state(&self) -> DoorState {
-        self.state.clone()
     }
 
     fn alt_dest(&self) -> Option<Coord> {
@@ -75,25 +66,23 @@ where
                 self.state = new_state;
                 Ok(())
             }
-            _ => Err(Locked(
-                "the door cannot be made to open by that method".into(),
-            )),
+            _ => Err(Locked),
         }
     }
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub enum DoorState {
-    Open(Cow<'static, str>),
-    Closed(Cow<'static, str>),
-    Locked(Cow<'static, str>),
-    MagicallySealed(Cow<'static, str>),
-    PermaLocked(Cow<'static, str>),
+    Open,
+    Closed,
+    Locked,
+    MagicallySealed,
+    PermaLocked,
 }
 
 impl Default for DoorState {
     fn default() -> Self {
-        Open("".into())
+        Open
     }
 }
 
@@ -111,6 +100,19 @@ pub struct Door<U: Debug> {
     state: DoorState,
     alt_dest: Option<Coord>,
     keyhole: Option<U>,
+}
+
+impl<U: Debug> ObstacleState<DoorState> for Door<U> {
+    fn state(&self) -> DoorState {
+        self.state.clone()
+    }
+
+    fn is_blocked(&self) -> bool {
+        match self.state {
+            Open => false,
+            _ => true,
+        }
+    }
 }
 
 #[repr(transparent)]
@@ -171,30 +173,26 @@ mod test_doors {
     fn test_door_api_3() {
         let mut d: Door<u128> = Door {
             dir: North,
-            state: DoorState::Locked("lol".into()),
+            state: DoorState::Locked,
             alt_dest: None,
             keyhole: Some(8_u128),
         };
 
         let n: u128 = 8;
-        let res = d.change_state(DoorState::Open("".into()), Some(n));
+        let res = d.change_state(DoorState::Open, Some(n));
         assert_eq!(res, Ok(()));
-        assert_eq!(d.state(), DoorState::Open("".into()));
-        let res = d.change_state(Locked("".into()), Some(72));
+        assert_eq!(d.state(), DoorState::Open);
+        let res = d.change_state(Locked, Some(72));
         assert_eq!(
             res,
-            Err(Locked(
-                "the door cannot be made to open by that method".into()
-            ))
+            Err(Locked)
         );
-        assert_eq!(d.state(), DoorState::Open("".into()));
-        let res = d.change_state(Locked("".into()), None);
+        assert_eq!(d.state(), DoorState::Open);
+        let res = d.change_state(Locked, None);
         assert_eq!(
             res,
-            Err(Locked(
-                "the door cannot be made to open by that method".into()
-            ))
+            Err(Locked)
         );
-        assert_eq!(d.state(), DoorState::Open("".into()));
+        assert_eq!(d.state(), DoorState::Open);
     }
 }
