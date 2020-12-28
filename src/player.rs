@@ -503,6 +503,10 @@ impl ItemTrait for Player {
     fn handle(&self) -> &Handle {
         &self.handle
     }
+
+    fn is_container(&self) -> bool {
+        false
+    }
 }
 
 impl ItemListTrait for Player {
@@ -510,6 +514,10 @@ impl ItemListTrait for Player {
 
     fn get(&self, handle: &str) -> Option<&Item> {
         self.items.iter().find(|i| i.handle() == handle)
+    }
+
+    fn get_mut(&mut self, handle: &str) -> Option<&mut Item> {
+        self.items.iter_mut().find(|i| i.handle() == handle)
     }
 
     fn get_owned(&mut self, handle: &str) -> Option<Item> {

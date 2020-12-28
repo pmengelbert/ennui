@@ -8,7 +8,7 @@ use crate::map::Room;
 use serde::export::fmt::Debug;
 use serde::export::Formatter;
 use serde::{Deserialize, Serialize};
-use std::borrow::{Borrow, Cow};
+use std::borrow::{Borrow, BorrowMut, Cow};
 use std::ops::{Deref, DerefMut};
 use BasicItemKind::*;
 
@@ -17,6 +17,7 @@ pub trait ItemTrait: Send + Sync + Debug {
     fn display(&self) -> &str;
     fn description(&self) -> &str;
     fn handle(&self) -> &Handle;
+    fn is_container(&self) -> bool;
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -76,6 +77,13 @@ impl ItemTrait for Item {
             Key(i) => i.handle(),
         }
     }
+
+    fn is_container(&self) -> bool {
+        match self {
+            Item::Container(_) => true,
+            _ => false,
+        }
+    }
 }
 
 impl Default for BasicItemKind {
@@ -108,6 +116,10 @@ impl ItemTrait for BasicItem {
     fn handle(&self) -> &Handle {
         &self.handle
     }
+
+    fn is_container(&self) -> bool {
+        false
+    }
 }
 
 pub trait Holder: ItemTrait {
@@ -115,34 +127,7 @@ pub trait Holder: ItemTrait {
 
     fn items(&self) -> &Self::Kind;
     fn items_mut(&mut self) -> &mut Self::Kind;
-
-    // fn transfer(&mut self, other: &mut ItemListTrait<Other = ItemList2>, handle: &str) -> Result<String, String>
-    // where
-    // {
-    //     let handle = handle.as_ref();
-    //     let item = match self.items_mut().get_owned(handle) {
-    //         Some(i) => i,
-    //         None => return Err(handle.to_owned()),
-    //     };
-
-    //     let name = item.name().to_owned();
-    //     other.items_mut().insert(item);
-    //     Ok(name)
-    // }
 }
-
-// impl<T> Holder<ItemList2, Cow<'static, str>> for T
-// where
-//     T: AsRef<ItemList2> + AsMut<ItemList2> + ItemTrait,
-// {
-//     fn items(&self) -> &ItemList2 {
-//         self.as_ref()
-//     }
-//
-//     fn items_mut(&mut self) -> &mut ItemList2 {
-//         self.as_mut()
-//     }
-// }
 
 impl BasicItem {
     pub fn new(name: &str, description: Option<&str>, handle: Handle) -> Self {
@@ -254,11 +239,19 @@ impl ItemTrait for BasicItemKind {
     fn handle(&self) -> &Handle {
         &self.safe_unwrap().map(|i| i.handle()).as_ref().unwrap()
     }
+
+    fn is_container(&self) -> bool {
+        match self {
+            Container(_) => true,
+            _ => false,
+        }
+    }
 }
 
 pub trait ItemListTrait: ItemTrait + Debug {
     type Kind: Debug;
     fn get(&self, handle: &str) -> Option<&Item>;
+    fn get_mut(&mut self, handle: &str) -> Option<&mut Item>;
     fn get_owned(&mut self, handle: &str) -> Option<Item>;
     fn insert(&mut self, item: Item);
     fn list(&self) -> &Self::Kind;
@@ -316,6 +309,10 @@ impl ItemTrait for ItemList {
     fn handle(&self) -> &Handle {
         self.info.handle()
     }
+
+    fn is_container(&self) -> bool {
+        true
+    }
 }
 
 impl ItemListTrait for ItemList {
@@ -324,6 +321,12 @@ impl ItemListTrait for ItemList {
         self.iter()
             .find(|i| i.handle() == handle)
             .map(|i| i.borrow())
+    }
+
+    fn get_mut(&mut self, handle: &str) -> Option<&mut Item> {
+        self.iter_mut()
+            .find(|i| i.handle() == handle)
+            .map(|i| i.borrow_mut())
     }
 
     fn get_owned(&mut self, handle: &str) -> Option<Item> {
@@ -339,6 +342,15 @@ impl ItemListTrait for ItemList {
         &self
     }
 }
+
+// impl IntoIterator for ItemList {
+//     type Item = Item;
+//     type IntoIter = std::vec::IntoIter<Self::Item>;
+//
+//     fn into_iter(self) -> Self::IntoIter {
+//         self.list().into_iter()
+//     }
+// }
 
 impl ItemList {
     pub fn new() -> Self {
@@ -422,15 +434,3 @@ impl AsMut<ItemList> for ItemList {
         self
     }
 }
-
-// impl Holder for ItemList2 {
-//     type Kind = Self;
-//
-//     fn items(&self) -> &ItemList2 {
-//         self
-//     }
-//
-//     fn items_mut(&mut self) -> &mut ItemList2 {
-//         &mut self
-//     }
-// }

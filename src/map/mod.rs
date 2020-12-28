@@ -15,7 +15,7 @@ use std::ops::{Deref, DerefMut};
 
 use crate::item::handle::Handle;
 use crate::map::coord::Coord;
-use crate::map::door::{Door, DoorState, Obstacle, ObstacleState};
+use crate::map::door::{Door, DoorState, Obstacle, ObstacleState, DoorList};
 use serde::{Deserialize, Serialize};
 use std::borrow::{Borrow, Cow};
 use std::mem::take;
@@ -26,7 +26,7 @@ type StateResult<T> = Result<(), T>;
 
 pub trait Space: Locate + ItemListTrait {
     fn players(&self) -> &PlayerIdList;
-    // fn has_door(&self, MapDir) -> bool;
+    fn doors(&mut self) -> &mut DoorList;
     fn players_except(&self, u: u128) -> Vec<u128> {
         let u = u.uuid();
         let mut l = Vec::new();
@@ -39,6 +39,7 @@ pub trait Space: Locate + ItemListTrait {
         }
         l
     }
+
 }
 
 impl<T> Provider<RoomList> for T
@@ -229,7 +230,7 @@ pub struct Room {
     items: ItemList,
     inner_items: Option<GenericItemList>,
     #[serde(default)]
-    doors: HashMap<MapDir, Door>,
+    doors: DoorList,
     #[serde(skip_serializing, skip_deserializing)]
     handle: Handle,
 }
@@ -256,6 +257,10 @@ impl Space for Room {
     fn players(&self) -> &PlayerIdList {
         &self.players
     }
+
+    fn doors(&mut self) -> &mut DoorList {
+        &mut self.doors
+    }
 }
 
 impl Room {
@@ -269,7 +274,7 @@ impl Room {
             players: PlayerIdList(HashSet::new()),
             items: ItemList::new(),
             inner_items: None,
-            doors: HashMap::new(),
+            doors: DoorList(HashMap::new()),
             handle: Handle::default(),
         }
     }
@@ -439,6 +444,10 @@ impl ItemTrait for Room {
     fn handle(&self) -> &Handle {
         &self.handle
     }
+
+    fn is_container(&self) -> bool {
+        false
+    }
 }
 
 impl ItemListTrait for Room {
@@ -446,6 +455,10 @@ impl ItemListTrait for Room {
 
     fn get(&self, handle: &str) -> Option<&Item> {
         self.items.iter().find(|i| i.handle() == handle)
+    }
+
+    fn get_mut(&mut self, handle: &str) -> Option<&mut Item> {
+        self.items.iter_mut().find(|i| i.handle() == handle)
     }
 
     fn get_owned(&mut self, handle: &str) -> Option<Item> {

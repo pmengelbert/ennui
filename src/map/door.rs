@@ -180,11 +180,11 @@ impl Keyhole<DoorState, u64> for Door {
 }
 
 #[repr(transparent)]
-#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
-pub struct DoorList(Vec<Door>);
+#[derive(Debug, Default, Clone, Eq, PartialEq, Serialize, Deserialize)]
+pub struct DoorList(pub HashMap<MapDir, Door>);
 
 impl Deref for DoorList {
-    type Target = Vec<Door>;
+    type Target = HashMap<MapDir, Door>;
 
     fn deref(&self) -> &Self::Target {
         &self.0

@@ -3,6 +3,8 @@ use super::item::Direction;
 use super::*;
 use crate::item::error::Error::*;
 use crate::text::message::{Audience, Msg};
+use crate::map::door::{Keyhole, DoorState};
+use crate::map::door::DoorState::Open;
 
 pub fn fill_interpreter(i: &mut Interpreter) {
     i.insert("look", |g, u, args| {
@@ -45,6 +47,43 @@ pub fn fill_interpreter(i: &mut Interpreter) {
                         TooHeavy(s) => format!("you can't pick up {}. It's too heavy", article(&s)),
                         _ => format!("you don't see {} here", article(&handle)),
                     },
+                }
+            }
+            2 => {
+                let rooms = &mut g.rooms;
+                let players = &mut g.players;
+                let (object, container) = (a[0], a[1]);
+                // find container
+                let room = rooms.get_mut(&loc)?;
+                let player = players.get_mut(&u)?;
+
+                match room.get_mut(container) {
+                    Some(c) => {
+                        if let Item::Container(cont) = c {
+                            match cont.get(object) {
+                                Some(item) => match cont.transfer(player, object) {
+                                    Ok(handle) => {
+                                        other_msg = Some(format!(
+                                            "{} takes {} from {}",
+                                            name,
+                                            article(object),
+                                            article(container),
+                                        ));
+                                        format!("you take the {}", handle)
+                                    }
+                                    Err(err) => format!("ERRRRRROR"),
+                                },
+                                None => format!(
+                                    "you don't see {} in the {}",
+                                    article(object),
+                                    container
+                                ),
+                            }
+                        } else {
+                            format!("{} is not a container!", article(container))
+                        }
+                    }
+                    None => format!("you don't see {} here", article(container)),
                 }
             }
             _ => "be more specific. or less specific.".to_owned(),
@@ -244,6 +283,51 @@ pub fn fill_interpreter(i: &mut Interpreter) {
             s.push_str(&format!("{:#?}", meter));
         }
         g.send(u, &s);
+
+        Some("".into())
+    });
+
+
+    i.insert("open", |g, u, a| {
+        use crate::map::door::DoorState::*;
+        let loc = g.loc_of(u)?;
+        let name = g.name_of(u)?;
+        let mut other_msg = std::option::Option::None;
+        let self_msg = match a.len() {
+            0 => format!("ok, what do you want to open?"),
+            1 => {
+                let rooms = &mut g.rooms;
+                let room = rooms.get_mut(&loc)?;
+
+                if room.doors().len() > 1 {
+                    format!("which door do you want to open?")
+                } else {
+                    let (_, door) = room.doors().iter_mut().next()?;
+                    match door.unlock(Open, std::option::Option::None) {
+                        Ok((_)) => {
+                            other_msg = Some(format!("{} opens a door", name));
+                            format!("the door swings open")
+                        },
+                        Err(err) => match err {
+                            Locked => format!("that door is locked"),
+                            Open => format!("it's already open"),
+                            MagicallySealed => format!("it's sealed by some unfamiliar magic"),
+                            PermaLocked => format!("it ain't gonna budge"),
+                            _ => format!("wtf"),
+                        }
+                    }
+                }
+            }
+            2 => format!(""),
+            _ => format!("I'm not sure what you're getting at")
+        };
+
+        let aud = Audience(u, loc.player_ids(&g.rooms)?);
+        let msg = Msg {
+            s: self_msg,
+            o: other_msg,
+        };
+        g.send(aud, msg);
 
         Some("".into())
     });

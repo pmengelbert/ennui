@@ -24,6 +24,7 @@ pub enum CommandKind {
     NotFound,
     Blank,
     Ouch,
+    Open,
     Quit,
 }
 
@@ -79,6 +80,7 @@ impl Interpreter {
             s if sw(s, "wear") => Wear,
             s if sw(s, "chat") => Chat,
             s if sw(s, "say") => Say,
+            s if sw(s, "open") => Open,
             s if sw(s, "remove") => Remove,
             s if sw(s, "inventory") => Inventory,
             s if sw(s, "evaluate") => Eval,

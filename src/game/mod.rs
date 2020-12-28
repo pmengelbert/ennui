@@ -24,6 +24,7 @@ use std::fmt::{Display, Formatter};
 use std::io::Write;
 use std::mem::take;
 use std::sync::Arc;
+use crate::item::BasicItemKind::Container;
 
 type Error = Arc<crate::item::error::Error>;
 
@@ -165,7 +166,9 @@ impl Game {
                 let key = SkeletonKey {
                     handle: Handle(vec!["key".into(), "skeleton".into()]),
                 };
-                r.items_mut().insert(Item::Key(Box::new(key)))
+                if let Some(Item::Container(cont)) = r.get_mut("corpse") {
+                    cont.insert(Item::Key(Box::new(key)))
+                }
             }
             rooms.insert(r.loc(), r);
             count += 1;

@@ -27,6 +27,10 @@ impl ItemTrait for SkeletonKey {
     fn handle(&self) -> &Handle {
         &self.handle
     }
+
+    fn is_container(&self) -> bool {
+        false
+    }
 }
 
 impl Key<u64> for SkeletonKey {
