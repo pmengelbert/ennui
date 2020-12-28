@@ -1,5 +1,6 @@
 pub mod error;
 mod handle;
+pub mod key;
 
 use crate::item::handle::Handle;
 use serde::export::fmt::Debug;
@@ -8,6 +9,7 @@ use serde::{Deserialize, Serialize};
 use std::ops::{Deref, DerefMut};
 use ItemKind::*;
 use std::borrow::Borrow;
+use crate::item::key::Key;
 
 pub trait ItemTrait : Send + Sync {
     fn name(&self) -> &str;
@@ -25,6 +27,75 @@ pub enum ItemKind {
     Edible(Item),
     Holdable(Item),
     Container,
+}
+
+pub enum ItemKind2 {
+    Clothing(Box<dyn ItemTrait>),
+    Weapon(Box<dyn ItemTrait>),
+    Scenery(Box<dyn ItemTrait>),
+    Edible(Box<dyn ItemTrait>),
+    Holdable(Box<dyn ItemTrait>),
+    Container(Box<dyn ItemTrait>),
+    Key(Box<dyn Key<u64>>)
+}
+
+impl ItemTrait for ItemKind2 {
+    fn name(&self) -> &str {
+        use ItemKind2::*;
+        match self {
+            Clothing(i)
+            | Weapon(i)
+            | Scenery(i)
+            | Edible(i)
+            | Holdable(i)
+            | Container(i) => i.name(),
+            Key(i) => i.name(),
+        }
+    }
+
+    fn display(&self) -> &str {
+        use ItemKind2::*;
+        match self {
+            Clothing(i)
+            | Weapon(i)
+            | Scenery(i)
+            | Edible(i)
+            | Holdable(i)
+            | Container(i) => i.display(),
+            Key(i) => i.display(),
+        }
+    }
+
+    fn description(&self) -> &str {
+        use ItemKind2::*;
+        match self {
+            Clothing(i)
+            | Weapon(i)
+            | Scenery(i)
+            | Edible(i)
+            | Holdable(i)
+            | Container(i) => i.description(),
+            Key(i) => i.description(),
+        }
+    }
+
+    fn kind(&self) -> ItemKind {
+        use ItemKind::*;
+        Clothing(Item::default())
+    }
+
+    fn handle(&self) -> &Handle {
+        use ItemKind2::*;
+        match self {
+            Clothing(i)
+            | Weapon(i)
+            | Scenery(i)
+            | Edible(i)
+            | Holdable(i)
+            | Container(i) => i.handle(),
+            Key(i) => i.handle(),
+        }
+    }
 }
 
 impl Default for ItemKind {

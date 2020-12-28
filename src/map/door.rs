@@ -12,6 +12,7 @@ use std::fmt::Debug;
 use std::ops::{Deref, DerefMut};
 use std::option::NoneError;
 use crate::interpreter::CommandKind;
+use crate::item::key::{Key, SkeletonKey};
 
 pub trait Keyhole<T, U>: ObstacleState<T>
 where
@@ -21,6 +22,44 @@ where
 
     fn unlock(&mut self, new_state: T, key: Option<U>) -> StateResult<T>;
     fn is_locked(&self) -> bool;
+}
+
+pub trait Keyhole2<T, U>: ObstacleState<T>
+    where
+        U: Key<Self::Lock>,
+{
+    type Lock;
+
+    fn unlock2(&mut self, new_state: T, key: Option<U>) -> StateResult<T>;
+    fn is_locked2(&self) -> bool;
+    fn validator(&self) -> Option<Box<dyn Fn(&Self, T, U) -> bool>>;
+}
+
+impl Keyhole2<DoorState, SkeletonKey> for Door {
+    type Lock = u64;
+
+    fn unlock2(&mut self, new_state: DoorState, key: Option<SkeletonKey>) -> StateResult<DoorState> {
+        match (*self.validator()?)(self, new_state, key?) {
+            true => {
+                Ok(())
+            }
+            false => {
+                Err(self.state())
+            }
+        }
+    }
+
+    fn is_locked2(&self) -> bool {
+        unimplemented!()
+    }
+
+    fn validator(&self) -> Option<Box<dyn Fn(&Self, DoorState, SkeletonKey) -> bool>> {
+        Some(Box::new(
+            |d, state, key| {
+                d.keyhole.map(|n| n == key.key()).unwrap_or(false)
+            }
+        ))
+    }
 }
 
 pub trait ObstacleState<T> {

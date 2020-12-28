@@ -22,6 +22,7 @@ use std::fmt::{Display, Formatter};
 use std::io::Write;
 use std::sync::Arc;
 use std::mem::take;
+use crate::item::key::SkeletonKey;
 
 type Error = Arc<crate::item::error::Error>;
 
@@ -156,9 +157,17 @@ impl Game {
         let v: Vec<Room> = serde_cbor::from_slice(bytes).unwrap_or_default();
         let p = Player::new("billy");
 
+        let mut count = 0;
         for mut r in v {
             r.init();
+            if count == 0 {
+                let key = SkeletonKey {
+                    handle: Handle(Vec::new()),
+                };
+                r.items_mut().insert(key)
+            }
             rooms.insert(r.loc(), r);
+            count += 1;
         }
 
         let mut interpreter = Interpreter::new();
