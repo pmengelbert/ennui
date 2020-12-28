@@ -241,7 +241,7 @@ pub struct Room {
     players: PlayerIdList,
     #[serde(skip_serializing, skip_deserializing)]
     items: ItemList2,
-    pub itemz: ItemList,
+    inner_items: Option<ItemList>,
     #[serde(default)]
     doors: HashMap<MapDir, Door>,
 }
@@ -280,9 +280,14 @@ impl Room {
             loc: loc,
             players: PlayerIdList(HashSet::new()),
             items: ItemList2::new(),
-            itemz: ItemList::new(),
+            inner_items: None,
             doors: HashMap::new(),
         }
+    }
+
+    pub fn init(&mut self) {
+        let mut inner = self.inner_items.take().unwrap_or_default();
+        self.items = inner.into();
     }
 
     pub fn display(&self, p: u128, global_players: &PlayerList, rooms: &RoomList) -> String {

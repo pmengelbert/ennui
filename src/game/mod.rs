@@ -157,10 +157,7 @@ impl Game {
         let p = Player::new("billy");
 
         for mut r in v {
-            let itemz = take(&mut r.itemz);
-            for i in &*itemz {
-                r.items_mut().insert(Box::new(i.clone()));
-            }
+            r.init();
             rooms.insert(r.loc(), r);
         }
 
@@ -257,7 +254,6 @@ impl Game {
         let loc = self.loc_of(u)?;
         let name = self.name_of(u)?;
 
-        #[allow(unused_assignments)]
         let mut other_msg = None;
 
         let msg: Cow<'static, str> = match loc.move_player(self, u, dir.clone()) {
