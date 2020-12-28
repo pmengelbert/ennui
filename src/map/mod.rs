@@ -241,6 +241,8 @@ pub struct Room {
     players: PlayerIdList,
     #[serde(skip_serializing, skip_deserializing)]
     items: ItemList2,
+    pub itemz: ItemList,
+    #[serde(default)]
     doors: HashMap<MapDir, Door>,
 }
 
@@ -278,6 +280,7 @@ impl Room {
             loc: loc,
             players: PlayerIdList(HashSet::new()),
             items: ItemList2::new(),
+            itemz: ItemList::new(),
             doors: HashMap::new(),
         }
     }

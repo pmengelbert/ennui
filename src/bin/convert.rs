@@ -13,7 +13,7 @@ fn main() -> io::Result<()> {
                 std::process::exit(1)
             }
         };
-        println!("{:#?}", r);
+        // println!("{:#?}", r);
         let buf = match serde_cbor::to_vec(&r) {
             Ok(y) => y,
             Err(err) => {

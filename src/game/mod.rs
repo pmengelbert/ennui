@@ -21,6 +21,7 @@ use std::borrow::{BorrowMut, Cow};
 use std::fmt::{Display, Formatter};
 use std::io::Write;
 use std::sync::Arc;
+use std::mem::take;
 
 type Error = Arc<crate::item::error::Error>;
 
@@ -155,7 +156,11 @@ impl Game {
         let v: Vec<Room> = serde_cbor::from_slice(bytes).unwrap_or_default();
         let p = Player::new("billy");
 
-        for r in v {
+        for mut r in v {
+            let itemz = take(&mut r.itemz);
+            for i in &*itemz {
+                r.items_mut().insert(Box::new(i.clone()));
+            }
             rooms.insert(r.loc(), r);
         }
 

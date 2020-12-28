@@ -9,7 +9,7 @@ use std::ops::{Deref, DerefMut};
 use ItemKind::*;
 use std::borrow::Borrow;
 
-pub trait ItemTrait {
+pub trait ItemTrait : Send + Sync {
     fn name(&self) -> &str;
     fn display(&self) -> &str;
     fn description(&self) -> &str;
