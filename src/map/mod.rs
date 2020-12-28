@@ -2,7 +2,7 @@ pub mod coord;
 pub mod door;
 
 use crate::game::MapDir;
-use crate::item::{Holder, ItemKind, ItemList, ItemTrait, ItemList2, ItemListTrait};
+use crate::item::{Holder, ItemKind, ItemList, ItemTrait, ItemList2, ItemListTrait, ItemKind2};
 use crate::player::{Player, PlayerIdList, PlayerList, Uuid};
 use crate::text::Color::*;
 use crate::text::Wrap;
@@ -354,7 +354,7 @@ impl Room {
         self.players.insert(p.uuid())
     }
 
-    pub fn get_item(&self, handle: &str) -> Option<&dyn ItemTrait> {
+    pub fn get_item(&self, handle: &str) -> Option<&ItemKind2> {
         self.items().get(handle)
     }
 

@@ -7,7 +7,7 @@ use std::io;
 
 use crate::game::MapDir::South;
 use crate::interpreter::Interpreter;
-use crate::item::{ItemTrait, ItemList2, ItemListTrait};
+use crate::item::{ItemTrait, ItemList2, ItemListTrait, ItemKind2};
 use crate::map::{coord::Coord, Locate, Room, RoomList, Space};
 use crate::player::{Player, PlayerList, Uuid};
 use crate::text::message::{Audience, Broadcast, Message, Messenger, Msg};
@@ -23,6 +23,7 @@ use std::io::Write;
 use std::sync::Arc;
 use std::mem::take;
 use crate::item::key::SkeletonKey;
+use crate::item::handle::Handle;
 
 type Error = Arc<crate::item::error::Error>;
 
@@ -162,9 +163,9 @@ impl Game {
             r.init();
             if count == 0 {
                 let key = SkeletonKey {
-                    handle: Handle(Vec::new()),
+                    handle: Handle(vec!["key".into(), "skeleton".into()]),
                 };
-                r.items_mut().insert(key)
+                r.items_mut().insert(ItemKind2::Key(Box::new(key)))
             }
             rooms.insert(r.loc(), r);
             count += 1;

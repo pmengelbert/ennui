@@ -1,5 +1,5 @@
 pub mod error;
-mod handle;
+pub mod handle;
 pub mod key;
 
 use crate::item::handle::Handle;
@@ -110,6 +110,28 @@ pub struct Item {
     display: String,
     description: String,
     handle: Handle,
+}
+
+impl ItemTrait for Item {
+    fn name(&self) -> &str {
+        &self.name
+    }
+
+    fn display(&self) -> &str {
+        &self.display
+    }
+
+    fn description(&self) -> &str {
+        &self.description
+    }
+
+    fn kind(&self) -> ItemKind {
+        Container
+    }
+
+    fn handle(&self) -> &Handle {
+        &self.handle
+    }
 }
 
 pub trait Holder {
@@ -241,9 +263,9 @@ impl ItemTrait for ItemKind {
 }
 
 pub trait ItemListTrait : ItemTrait {
-    fn get(&self, handle: &str) -> Option<&dyn ItemTrait>;
-    fn get_owned(&mut self, handle: &str) -> Option<Box<ItemTrait>>;
-    fn insert(&mut self, item: Box<dyn ItemTrait>);
+    fn get(&self, handle: &str) -> Option<&ItemKind2>;
+    fn get_owned(&mut self, handle: &str) -> Option<ItemKind2>;
+    fn insert(&mut self, item: ItemKind2);
 
     fn transfer(&mut self, other: &mut Self, handle: &str) -> Result<String, String> {
         let handle = handle.as_ref();
@@ -260,12 +282,12 @@ pub trait ItemListTrait : ItemTrait {
 
 #[derive(Default)]
 pub struct ItemList2 {
-    inner: Vec<Box<dyn ItemTrait>>,
+    inner: Vec<ItemKind2>,
     info: ItemKind,
 }
 
 impl Deref for ItemList2 {
-    type Target = Vec<Box<dyn ItemTrait>>;
+    type Target = Vec<ItemKind2>;
 
     fn deref(&self) -> &Self::Target {
         &self.inner
@@ -302,16 +324,16 @@ impl ItemTrait for ItemList2 {
 
 
 impl ItemListTrait for ItemList2 {
-    fn get(&self, handle: &str) -> Option<&dyn ItemTrait> {
+    fn get(&self, handle: &str) -> Option<&ItemKind2> {
         self.iter().find(|i| i.handle() == handle).map(|i| i.borrow())
     }
 
-    fn get_owned(&mut self, handle: &str) -> Option<Box<dyn ItemTrait>> {
+    fn get_owned(&mut self, handle: &str) -> Option<ItemKind2> {
         let pos = self.iter().position(|i| i.handle() == handle)?;
-        Some(self.remove(pos))
+        Some(self.inner.remove(pos))
     }
 
-    fn insert(&mut self, item: Box<dyn ItemTrait>) {
+    fn insert(&mut self, item: ItemKind2) {
         self.inner.push(item);
     }
 }
@@ -327,9 +349,17 @@ impl ItemList2 {
 
 impl From<ItemList> for ItemList2 {
     fn from(l: ItemList) -> Self {
-        let mut v: Vec<Box<dyn ItemTrait>> = Vec::new();
+        let mut v: Vec<ItemKind2> = Vec::new();
         for i in &*l {
-            v.push(Box::new(i.clone()));
+            let i = match i {
+                Clothing(i) => ItemKind2::Clothing(Box::new(i.clone())),
+                Weapon(i) => ItemKind2::Weapon(Box::new(i.clone())),
+                Scenery(i) => ItemKind2::Scenery(Box::new(i.clone())),
+                Edible(i) => ItemKind2::Edible(Box::new(i.clone())),
+                Holdable(i) => ItemKind2::Holdable(Box::new(i.clone())),
+                Container => ItemKind2::Container(Box::new(Item::default())),
+            };
+            v.push(i);
         }
         ItemList2 {
             inner: v,
