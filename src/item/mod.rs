@@ -7,11 +7,13 @@ use serde::export::Formatter;
 use serde::{Deserialize, Serialize};
 use std::ops::{Deref, DerefMut};
 use ItemKind::*;
+use std::borrow::Borrow;
 
 pub trait ItemTrait {
     fn name(&self) -> &str;
     fn display(&self) -> &str;
     fn description(&self) -> &str;
+    fn kind(&self) -> ItemKind;
     fn handle(&self) -> &Handle;
 }
 
@@ -22,6 +24,13 @@ pub enum ItemKind {
     Scenery(Item),
     Edible(Item),
     Holdable(Item),
+    Container,
+}
+
+impl Default for ItemKind {
+    fn default() -> Self {
+        Holdable(Item::default())
+    }
 }
 
 #[derive(Debug, Default, Serialize, Deserialize, Clone)]
@@ -33,19 +42,8 @@ pub struct Item {
 }
 
 pub trait Holder {
-    fn items(&self) -> &ItemList;
-    fn items_mut(&mut self) -> &mut ItemList;
-
-    fn remove_item<S>(&mut self, handle: S) -> Option<ItemKind>
-    where
-        S: AsRef<str>,
-    {
-        self.items_mut().get_owned(handle)
-    }
-
-    fn give_item(&mut self, item: ItemKind) {
-        self.items_mut().push(item);
-    }
+    fn items(&self) -> &ItemList2;
+    fn items_mut(&mut self) -> &mut ItemList2;
 
     fn transfer<H, S>(&mut self, mut other: H, handle: S) -> Result<String, String>
     where
@@ -53,26 +51,26 @@ pub trait Holder {
         S: AsRef<str>,
     {
         let handle = handle.as_ref();
-        let item = match self.remove_item(handle) {
+        let item = match self.items_mut().get_owned(handle) {
             Some(i) => i,
             None => return Err(handle.to_owned()),
         };
 
         let name = item.name().to_owned();
-        other.give_item(item);
+        other.items_mut().insert(item);
         Ok(name)
     }
 }
 
 impl<T> Holder for T
 where
-    T: AsRef<ItemList> + AsMut<ItemList>,
+    T: AsRef<ItemList2> + AsMut<ItemList2>,
 {
-    fn items(&self) -> &ItemList {
+    fn items(&self) -> &ItemList2 {
         self.as_ref()
     }
 
-    fn items_mut(&mut self) -> &mut ItemList {
+    fn items_mut(&mut self) -> &mut ItemList2 {
         self.as_mut()
     }
 }
@@ -134,10 +132,6 @@ impl ItemList {
         self.iter().find(|i| i.handle() == handle)
     }
 
-    pub fn get_mut(&mut self, handle: &str) -> Option<&mut ItemKind> {
-        self.iter_mut().find(|i| i.handle() == handle)
-    }
-
     pub fn get_owned<T: AsRef<str>>(&mut self, handle: T) -> Option<ItemKind> {
         let pos = self.iter().position(|i| i.handle() == handle.as_ref())?;
         Some(self.remove(pos))
@@ -145,25 +139,140 @@ impl ItemList {
 }
 
 impl ItemKind {
-    pub fn name(&self) -> &str {
-        &self.safe_unwrap().name
-    }
-
-    pub fn handle(&self) -> &Handle {
-        &self.safe_unwrap().handle
-    }
-
-    pub fn description(&self) -> &str {
-        &self.safe_unwrap().description
-    }
-
-    pub fn display(&self) -> &str {
-        &self.safe_unwrap().display
-    }
-
-    fn safe_unwrap(&self) -> &Item {
+    fn safe_unwrap(&self) -> Option<&Item> {
         match self {
-            Clothing(item) | Weapon(item) | Scenery(item) | Holdable(item) | Edible(item) => &item,
+            Clothing(item) | Weapon(item) | Scenery(item) | Holdable(item) | Edible(item) => Some(&item),
+            Container => None
         }
+    }
+}
+
+impl ItemTrait for ItemKind {
+    fn name(&self) -> &str {
+        self.safe_unwrap().map(|i| i.name.as_str()).unwrap_or_default()
+    }
+
+    fn display(&self) -> &str {
+        &self.safe_unwrap().map(|i| i.display.as_str()).unwrap_or_default()
+    }
+
+    fn description(&self) -> &str {
+        &self.safe_unwrap().map(|i| i.description.as_str()).unwrap_or_default()
+    }
+
+    fn kind(&self) -> ItemKind {
+        self.clone()
+    }
+
+    fn handle(&self) -> &Handle {
+        &self.safe_unwrap().map(|i| i.handle()).as_ref().unwrap()
+    }
+}
+
+pub trait ItemListTrait : ItemTrait {
+    fn get(&self, handle: &str) -> Option<&dyn ItemTrait>;
+    fn get_owned(&mut self, handle: &str) -> Option<Box<ItemTrait>>;
+    fn insert(&mut self, item: Box<dyn ItemTrait>);
+
+    fn transfer(&mut self, other: &mut Self, handle: &str) -> Result<String, String> {
+        let handle = handle.as_ref();
+        let item = match self.get_owned(handle) {
+            Some(i) => i,
+            None => return Err(handle.to_owned()),
+        };
+
+        let name = item.name().to_owned();
+        other.insert(item);
+        Ok(name)
+    }
+}
+
+#[derive(Default)]
+pub struct ItemList2 {
+    inner: Vec<Box<dyn ItemTrait>>,
+    info: ItemKind,
+}
+
+impl Deref for ItemList2 {
+    type Target = Vec<Box<dyn ItemTrait>>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.inner
+    }
+}
+
+impl DerefMut for ItemList2 {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.inner
+    }
+}
+
+impl ItemTrait for ItemList2 {
+    fn name(&self) -> &str {
+        self.info.name()
+    }
+
+    fn display(&self) -> &str {
+        self.info.display()
+    }
+
+    fn description(&self) -> &str {
+        self.info.description()
+    }
+
+    fn kind(&self) -> ItemKind {
+        Container
+    }
+
+    fn handle(&self) -> &Handle {
+        self.info.handle()
+    }
+}
+
+
+impl ItemListTrait for ItemList2 {
+    fn get(&self, handle: &str) -> Option<&dyn ItemTrait> {
+        self.iter().find(|i| i.handle() == handle).map(|i| i.borrow())
+    }
+
+    fn get_owned(&mut self, handle: &str) -> Option<Box<dyn ItemTrait>> {
+        let pos = self.iter().position(|i| i.handle() == handle)?;
+        Some(self.remove(pos))
+    }
+
+    fn insert(&mut self, item: Box<dyn ItemTrait>) {
+        self.inner.push(item);
+    }
+}
+
+impl ItemList2 {
+    pub fn new() -> Self {
+        Self {
+            inner: vec![],
+            info: Default::default(),
+        }
+    }
+}
+
+impl From<ItemList> for ItemList2 {
+    fn from(l: ItemList) -> Self {
+        let mut v: Vec<Box<dyn ItemTrait>> = Vec::new();
+        for i in &*l {
+            v.push(Box::new(i.clone()));
+        }
+        ItemList2 {
+            inner: v,
+            info: Default::default()
+        }
+    }
+}
+
+#[cfg(test)]
+mod item_trait_test {
+   use super::*;
+
+    #[test]
+    fn item_trait_test_1() {
+        let x: Vec<Box<ItemListTrait>> = Vec::new();
     }
 }

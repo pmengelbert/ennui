@@ -2,7 +2,7 @@ use super::Error;
 use crate::game::Game;
 use crate::item::error::Error::{ItemNotFound, TooHeavy};
 use crate::item::ItemKind::Scenery;
-use crate::item::{Holder, ItemKind, ItemTrait};
+use crate::item::{Holder, ItemKind, ItemTrait, ItemListTrait};
 use crate::map::coord::Coord;
 use crate::map::RoomList;
 use crate::player::{PlayerList, Uuid};
@@ -61,7 +61,7 @@ impl Game {
             None => return Err(a(handle)),
         };
 
-        if let Some(Scenery(_)) = room.items().get(handle) {
+        if let Some(Scenery(_)) = room.items().get(handle).map(|i| i.kind()) {
             return Err(Arc::new(TooHeavy(handle.to_owned())));
         }
 
@@ -104,7 +104,8 @@ impl Game {
                 Some(p) => p,
                 None => return Err(a(handle)),
             };
-            match p.remove_item(handle) {
+
+            match p.items_mut().get_owned(handle) {
                 Some(i) => i,
                 None => return Err(a(handle)),
             }
@@ -120,7 +121,7 @@ impl Game {
             }
         };
 
-        other_p.give_item(item);
+        other_p.items_mut().insert(item);
         Ok(item_name)
     }
 
@@ -133,7 +134,7 @@ impl Game {
             }
             .all_items_mut()
         };
-        match items.get(handle) {
+        match items.get(handle).map(|i| i.kind()) {
             Some(ItemKind::Clothing(_)) => (),
             None => return Err(a(handle)),
             _ => return Err(Arc::new(Clothing(handle.to_owned()))),

@@ -7,7 +7,7 @@ use std::io;
 
 use crate::game::MapDir::South;
 use crate::interpreter::Interpreter;
-use crate::item::ItemTrait;
+use crate::item::{ItemTrait, ItemList2, ItemListTrait};
 use crate::map::{coord::Coord, Locate, Room, RoomList, Space};
 use crate::player::{Player, PlayerList, Uuid};
 use crate::text::message::{Audience, Broadcast, Message, Messenger, Msg};

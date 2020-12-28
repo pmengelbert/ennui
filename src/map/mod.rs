@@ -2,7 +2,7 @@ pub mod coord;
 pub mod door;
 
 use crate::game::MapDir;
-use crate::item::{Holder, ItemKind, ItemList};
+use crate::item::{Holder, ItemKind, ItemList, ItemTrait, ItemList2, ItemListTrait};
 use crate::player::{Player, PlayerIdList, PlayerList, Uuid};
 use crate::text::Color::*;
 use crate::text::Wrap;
@@ -205,7 +205,7 @@ pub trait Locate {
 }
 
 #[repr(transparent)]
-#[derive(Debug, Default, Deserialize, Serialize)]
+#[derive(Default, Deserialize, Serialize)]
 pub struct RoomList(HashMap<Coord, Room>);
 impl Deref for RoomList {
     type Target = HashMap<Coord, Room>;
@@ -233,24 +233,25 @@ impl AsMut<RoomList> for RoomList {
     }
 }
 
-#[derive(Debug, Default, Serialize, Deserialize)]
+#[derive(Default, Serialize, Deserialize)]
 pub struct Room {
     name: String,
     loc: Coord,
     description: String,
     players: PlayerIdList,
-    items: ItemList,
+    #[serde(skip_serializing, skip_deserializing)]
+    items: ItemList2,
     doors: HashMap<MapDir, Door>,
 }
 
-impl AsMut<ItemList> for Room {
-    fn as_mut(&mut self) -> &mut ItemList {
+impl AsMut<ItemList2> for Room {
+    fn as_mut(&mut self) -> &mut ItemList2 {
         self.items_mut()
     }
 }
 
-impl AsRef<ItemList> for Room {
-    fn as_ref(&self) -> &ItemList {
+impl AsRef<ItemList2> for Room {
+    fn as_ref(&self) -> &ItemList2 {
         self.items()
     }
 }
@@ -276,7 +277,7 @@ impl Room {
             description,
             loc: loc,
             players: PlayerIdList(HashSet::new()),
-            items: ItemList::new(),
+            items: ItemList2::new(),
             doors: HashMap::new(),
         }
     }
@@ -345,24 +346,16 @@ impl Room {
         self.players.insert(p.uuid())
     }
 
-    pub fn add_item(&mut self, i: ItemKind) {
-        self.items.push(i)
+    pub fn get_item(&self, handle: &str) -> Option<&dyn ItemTrait> {
+        self.items().get(handle)
     }
 
-    pub fn get_item(&self, handle: &str) -> Option<&ItemKind> {
-        self.items.get(handle)
-    }
-
-    pub fn items(&self) -> &ItemList {
+    pub fn items(&self) -> &ItemList2 {
         &self.items
     }
 
-    pub fn items_mut(&mut self) -> &mut ItemList {
+    pub fn items_mut(&mut self) -> &mut ItemList2 {
         &mut self.items
-    }
-
-    pub fn replace_itemlist(&mut self, i: ItemList) {
-        self.items = i;
     }
 }
 
