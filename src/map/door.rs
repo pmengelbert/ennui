@@ -1,4 +1,6 @@
 use crate::game::MapDir;
+use crate::interpreter::CommandKind;
+use crate::item::key::{Key, SkeletonKey};
 use crate::map::coord::Coord;
 use crate::map::door::DoorState::{Locked, Open};
 use crate::map::{Locate, StateResult};
@@ -11,8 +13,6 @@ use std::error::Error;
 use std::fmt::Debug;
 use std::ops::{Deref, DerefMut};
 use std::option::NoneError;
-use crate::interpreter::CommandKind;
-use crate::item::key::{Key, SkeletonKey};
 
 pub trait Keyhole<T, U>: ObstacleState<T>
 where
@@ -25,8 +25,8 @@ where
 }
 
 pub trait Keyhole2<T, U>: ObstacleState<T>
-    where
-        U: Key<Self::Lock>,
+where
+    U: Key<Self::Lock>,
 {
     type Lock;
 
@@ -38,14 +38,14 @@ pub trait Keyhole2<T, U>: ObstacleState<T>
 impl Keyhole2<DoorState, SkeletonKey> for Door {
     type Lock = u64;
 
-    fn unlock2(&mut self, new_state: DoorState, key: Option<SkeletonKey>) -> StateResult<DoorState> {
+    fn unlock2(
+        &mut self,
+        new_state: DoorState,
+        key: Option<SkeletonKey>,
+    ) -> StateResult<DoorState> {
         match (*self.validator()?)(self, new_state, key?) {
-            true => {
-                Ok(())
-            }
-            false => {
-                Err(self.state())
-            }
+            true => Ok(()),
+            false => Err(self.state()),
         }
     }
 
@@ -54,11 +54,9 @@ impl Keyhole2<DoorState, SkeletonKey> for Door {
     }
 
     fn validator(&self) -> Option<Box<dyn Fn(&Self, DoorState, SkeletonKey) -> bool>> {
-        Some(Box::new(
-            |d, state, key| {
-                d.keyhole.map(|n| n == key.key()).unwrap_or(false)
-            }
-        ))
+        Some(Box::new(|d, state, key| {
+            d.keyhole.map(|n| n == key.key()).unwrap_or(false)
+        }))
     }
 }
 
@@ -355,9 +353,7 @@ mod wizard_test {
         let mut w = Wizard {
             password: (CommandKind::Whisper, "until the dawn".to_owned()),
             state: Locked,
-            f: Box::new((|state, key| {
-                key - 1
-            }))
+            f: Box::new((|state, key| key - 1)),
         };
 
         assert_eq!(w.unlock(Open, Some(7)), Err(Locked));
@@ -366,20 +362,21 @@ mod wizard_test {
         let mut w2 = Wizard2 {
             password: (CommandKind::Whisper, "until the dawn".to_owned()),
             state: Locked,
-            f: Box::new((|slf, state, key| {
-                key == slf.password.1
-            }))
+            f: Box::new((|slf, state, key| key == slf.password.1)),
         };
-        assert_eq!(w2.unlock(Closed, Some("until the down".into())), Err(Locked));
+        assert_eq!(
+            w2.unlock(Closed, Some("until the down".into())),
+            Err(Locked)
+        );
         assert_eq!(w2.unlock(Closed, Some("until the dawn".into())), Ok(()));
         assert_eq!(w2.state(), Closed);
 
         let mut w3 = Wizard2 {
             password: (CommandKind::Whisper, "until the dawn".to_owned()),
             state: Locked,
-            f: Box::new((|slf, state, key| {
-                key == slf.password.1 && slf.password.0 == CommandKind::Whisper
-            }))
+            f: Box::new(
+                (|slf, state, key| key == slf.password.1 && slf.password.0 == CommandKind::Whisper),
+            ),
         };
     }
 }

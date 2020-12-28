@@ -1,16 +1,16 @@
-use crate::item::{GenericItemList, ItemList2, ItemTrait, ItemListTrait, Item};
+use crate::item::handle::Handle;
+use crate::item::{GenericItemList, Item, ItemList, ItemListTrait, ItemTrait};
 use crate::map::coord::Coord;
 use crate::text::message::Messenger;
 use crate::Provider;
 use serde::{Deserialize, Serialize};
+use std::borrow::{Borrow, Cow};
 use std::collections::{HashMap, HashSet};
 use std::fmt::{Display, Formatter};
 use std::io::Write;
 use std::net::TcpStream;
 use std::ops::{Deref, DerefMut};
 use uuid::Uuid as CrateUuid;
-use std::borrow::{Cow, Borrow};
-use crate::item::handle::Handle;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub enum MeterKind {
@@ -47,14 +47,14 @@ impl Display for MeterKind {
     }
 }
 
-impl AsRef<ItemList2> for Player {
-    fn as_ref(&self) -> &ItemList2 {
+impl AsRef<ItemList> for Player {
+    fn as_ref(&self) -> &ItemList {
         self.items()
     }
 }
 
-impl AsMut<ItemList2> for Player {
-    fn as_mut(&mut self) -> &mut ItemList2 {
+impl AsMut<ItemList> for Player {
+    fn as_mut(&mut self) -> &mut ItemList {
         self.items_mut()
     }
 }
@@ -139,9 +139,9 @@ pub struct Player {
     description: String,
     loc: Coord,
     #[serde(skip_serializing, skip_deserializing)]
-    items: ItemList2,
+    items: ItemList,
     #[serde(skip_serializing, skip_deserializing)]
-    clothing: ItemList2,
+    clothing: ItemList,
     #[serde(skip_serializing, skip_deserializing)]
     stream: Option<TcpStream>,
     stats: Vec<MeterKind>,
@@ -339,8 +339,8 @@ impl Player {
             description: "".to_owned(),
             name: name.to_owned(),
             loc: Coord(0, 0),
-            items: ItemList2::new(),
-            clothing: ItemList2::new(),
+            items: ItemList::new(),
+            clothing: ItemList::new(),
             stream: None,
             handle: Handle(vec![name.to_owned()]),
             stats,
@@ -413,27 +413,27 @@ impl Player {
         &mut self.loc
     }
 
-    pub fn items(&self) -> &ItemList2 {
+    pub fn items(&self) -> &ItemList {
         &self.items
     }
 
-    pub fn items_mut(&mut self) -> &mut ItemList2 {
+    pub fn items_mut(&mut self) -> &mut ItemList {
         &mut self.items
     }
 
-    pub fn clothing(&self) -> &ItemList2 {
+    pub fn clothing(&self) -> &ItemList {
         &self.clothing
     }
 
-    pub fn clothing_mut(&mut self) -> &mut ItemList2 {
+    pub fn clothing_mut(&mut self) -> &mut ItemList {
         &mut self.clothing
     }
 
-    pub fn all_items(&self) -> (&ItemList2, &ItemList2) {
+    pub fn all_items(&self) -> (&ItemList, &ItemList) {
         (&self.items, &self.clothing)
     }
 
-    pub fn all_items_mut(&mut self) -> (&mut ItemList2, &mut ItemList2) {
+    pub fn all_items_mut(&mut self) -> (&mut ItemList, &mut ItemList) {
         (&mut self.items, &mut self.clothing)
     }
 
@@ -506,7 +506,7 @@ impl ItemTrait for Player {
 }
 
 impl ItemListTrait for Player {
-    type Other = ItemList2;
+    type Kind = ItemList;
 
     fn get(&self, handle: &str) -> Option<&Item> {
         self.items.iter().find(|i| i.handle() == handle)
@@ -519,5 +519,9 @@ impl ItemListTrait for Player {
 
     fn insert(&mut self, item: Item) {
         self.items.push(item);
+    }
+
+    fn list(&self) -> &Self::Kind {
+        &self.items
     }
 }

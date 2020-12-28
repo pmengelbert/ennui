@@ -7,7 +7,7 @@ use std::io;
 
 use crate::game::MapDir::South;
 use crate::interpreter::Interpreter;
-use crate::item::{ItemTrait, ItemList2, ItemListTrait, Item};
+use crate::item::{Item, ItemList, ItemListTrait, ItemTrait};
 use crate::map::{coord::Coord, Locate, Room, RoomList, Space};
 use crate::player::{Player, PlayerList, Uuid};
 use crate::text::message::{Audience, Broadcast, Message, Messenger, Msg};
@@ -15,15 +15,15 @@ use crate::text::Color::*;
 use crate::text::{article, Wrap};
 use crate::WriteResult;
 
+use crate::item::handle::Handle;
+use crate::item::key::SkeletonKey;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 use std::borrow::{BorrowMut, Cow};
 use std::fmt::{Display, Formatter};
 use std::io::Write;
-use std::sync::Arc;
 use std::mem::take;
-use crate::item::key::SkeletonKey;
-use crate::item::handle::Handle;
+use std::sync::Arc;
 
 type Error = Arc<crate::item::error::Error>;
 
@@ -243,7 +243,7 @@ impl Game {
         self.players.get(&u)
     }
 
-    fn describe_item<U>(&self, pid: U, handle: &str) -> Option<&str>
+    fn describe_item<U>(&self, pid: U, handle: &str) -> Option<String>
     where
         U: Uuid,
     {
@@ -253,9 +253,23 @@ impl Game {
         let room = self.rooms.get(loc)?;
 
         Some(if let Some(item) = room.get_item(handle) {
-            &item.description()
+            let mut s = item.description().to_owned();
+            if let Item::Container(lst) = item {
+                s.push_str(&format!("\nthe {} is holding:\n", item.name()));
+                s.push_str(&format!(
+                    "{}",
+                    Green(
+                        lst.list()
+                            .iter()
+                            .map(|i| i.display())
+                            .collect::<Vec<_>>()
+                            .join("\n")
+                    )
+                ));
+            }
+            s
         } else {
-            p.items().get(handle)?.description()
+            p.items().get(handle)?.description().to_owned()
         })
     }
 

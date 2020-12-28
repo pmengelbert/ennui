@@ -1,8 +1,8 @@
-use crate::item::{ItemTrait, BasicItemKind};
 use crate::item::handle::Handle;
+use crate::item::{BasicItemKind, ItemTrait};
 use std::fmt::Debug;
 
-pub trait Key<T> : ItemTrait + Debug {
+pub trait Key<T>: ItemTrait + Debug {
     fn key(&self) -> T;
 }
 

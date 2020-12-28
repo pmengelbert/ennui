@@ -2,7 +2,9 @@ pub mod coord;
 pub mod door;
 
 use crate::game::MapDir;
-use crate::item::{BasicItemKind, GenericItemList, ItemTrait, ItemList2, ItemListTrait, Item, Holder};
+use crate::item::{
+    BasicItemKind, GenericItemList, Holder, Item, ItemList, ItemListTrait, ItemTrait,
+};
 use crate::player::{Player, PlayerIdList, PlayerList, Uuid};
 use crate::text::Color::*;
 use crate::text::Wrap;
@@ -11,14 +13,14 @@ use crate::{PassFail, Provider};
 use std::collections::{HashMap, HashSet};
 use std::ops::{Deref, DerefMut};
 
+use crate::item::handle::Handle;
 use crate::map::coord::Coord;
 use crate::map::door::{Door, DoorState, Obstacle, ObstacleState};
 use serde::{Deserialize, Serialize};
+use std::borrow::{Borrow, Cow};
 use std::mem::take;
-use std::sync::Arc;
-use std::borrow::{Cow, Borrow};
-use crate::item::handle::Handle;
 use std::path::Display;
+use std::sync::Arc;
 
 type StateResult<T> = Result<(), T>;
 
@@ -37,7 +39,6 @@ pub trait Space: Locate + ItemListTrait {
         }
         l
     }
-
 }
 
 impl<T> Provider<RoomList> for T
@@ -225,7 +226,7 @@ pub struct Room {
     description: String,
     players: PlayerIdList,
     #[serde(skip_serializing, skip_deserializing)]
-    items: ItemList2,
+    items: ItemList,
     inner_items: Option<GenericItemList>,
     #[serde(default)]
     doors: HashMap<MapDir, Door>,
@@ -233,14 +234,14 @@ pub struct Room {
     handle: Handle,
 }
 
-impl AsMut<ItemList2> for Room {
-    fn as_mut(&mut self) -> &mut ItemList2 {
+impl AsMut<ItemList> for Room {
+    fn as_mut(&mut self) -> &mut ItemList {
         self.items_mut()
     }
 }
 
-impl AsRef<ItemList2> for Room {
-    fn as_ref(&self) -> &ItemList2 {
+impl AsRef<ItemList> for Room {
+    fn as_ref(&self) -> &ItemList {
         self.items()
     }
 }
@@ -266,7 +267,7 @@ impl Room {
             description,
             loc: loc,
             players: PlayerIdList(HashSet::new()),
-            items: ItemList2::new(),
+            items: ItemList::new(),
             inner_items: None,
             doors: HashMap::new(),
             handle: Handle::default(),
@@ -300,15 +301,11 @@ impl Room {
             _ => format!("\n{}", player_list.join("\n")),
         });
 
-        let items_list = items.iter()
-            .inspect(|i| println!(
-                "name: {}\ndescription: {}\ndisplay: {}\n handle: {:?}",
-                i.name(),
-                i.description(),
-                i.display(),
-                i.handle(),
-            ))
-            .map(|i| i.display().to_owned()).collect::<Vec<String>>();
+        let items_list = items
+            .iter()
+            .map(|i| i.display().to_owned())
+            .collect::<Vec<String>>();
+
         let items_list = Green(match items_list.len() {
             0 => "".to_owned(),
             1 => format!("\n{}", items_list[0]),
@@ -354,11 +351,11 @@ impl Room {
         self.items().get(handle)
     }
 
-    pub fn items(&self) -> &ItemList2 {
+    pub fn items(&self) -> &ItemList {
         &self.items
     }
 
-    pub fn items_mut(&mut self) -> &mut ItemList2 {
+    pub fn items_mut(&mut self) -> &mut ItemList {
         &mut self.items
     }
 }
@@ -403,22 +400,25 @@ mod map_test {
         let mut items = GenericItemList::new();
         items.push(BasicItemKind::Weapon(BasicItem::default()));
         let mut items2 = GenericItemList::new();
-        items2.push(BasicItemKind::Weapon(BasicItem::new("butt", None, Handle(vec!["but".to_owned()]))));
+        items2.push(BasicItemKind::Weapon(BasicItem::new(
+            "butt",
+            None,
+            Handle(vec!["but".to_owned()]),
+        )));
         items.push(BasicItemKind::Container(items2));
         r.inner_items = Some(items);
         std::fs::write("/tmp/sample.yaml", &serde_yaml::to_vec(&r).expect("eerr"));
-
     }
 }
 
 impl Holder for Room {
-    type Kind = ItemList2;
+    type Kind = ItemList;
 
-    fn items(&self) -> &ItemList2 {
+    fn items(&self) -> &ItemList {
         &self.items
     }
 
-    fn items_mut(&mut self) -> &mut ItemList2 {
+    fn items_mut(&mut self) -> &mut ItemList {
         &mut self.items
     }
 }
@@ -442,7 +442,7 @@ impl ItemTrait for Room {
 }
 
 impl ItemListTrait for Room {
-    type Other = ItemList2;
+    type Kind = ItemList;
 
     fn get(&self, handle: &str) -> Option<&Item> {
         self.items.iter().find(|i| i.handle() == handle)
@@ -455,5 +455,9 @@ impl ItemListTrait for Room {
 
     fn insert(&mut self, item: Item) {
         self.items.push(item);
+    }
+
+    fn list(&self) -> &Self::Kind {
+        &self.items
     }
 }
