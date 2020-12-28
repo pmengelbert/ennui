@@ -1,12 +1,12 @@
-use crate::item::{ItemTrait, ItemKind};
+use crate::item::{ItemTrait, BasicItemKind};
 use crate::item::handle::Handle;
-use crate::item::ItemKind::Container;
+use std::fmt::Debug;
 
-pub trait Key<T> : ItemTrait {
+pub trait Key<T> : ItemTrait + Debug {
     fn key(&self) -> T;
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct SkeletonKey {
     pub handle: Handle,
 }
@@ -22,10 +22,6 @@ impl ItemTrait for SkeletonKey {
 
     fn description(&self) -> &str {
         "ok ok ok"
-    }
-
-    fn kind(&self) -> ItemKind {
-        Container
     }
 
     fn handle(&self) -> &Handle {

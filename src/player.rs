@@ -1,4 +1,4 @@
-use crate::item::{ItemList, ItemList2};
+use crate::item::{GenericItemList, ItemList2, ItemTrait, ItemListTrait, Item};
 use crate::map::coord::Coord;
 use crate::text::message::Messenger;
 use crate::Provider;
@@ -9,6 +9,8 @@ use std::io::Write;
 use std::net::TcpStream;
 use std::ops::{Deref, DerefMut};
 use uuid::Uuid as CrateUuid;
+use std::borrow::{Cow, Borrow};
+use crate::item::handle::Handle;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub enum MeterKind {
@@ -130,7 +132,7 @@ impl MeterKind {
     }
 }
 
-#[derive(Default, Serialize, Deserialize)]
+#[derive(Default, Serialize, Deserialize, Debug)]
 pub struct Player {
     uuid: u128,
     name: String,
@@ -143,6 +145,8 @@ pub struct Player {
     #[serde(skip_serializing, skip_deserializing)]
     stream: Option<TcpStream>,
     stats: Vec<MeterKind>,
+    #[serde(skip_serializing, skip_deserializing)]
+    handle: Handle,
 }
 
 impl Write for Player {
@@ -338,6 +342,7 @@ impl Player {
             items: ItemList2::new(),
             clothing: ItemList2::new(),
             stream: None,
+            handle: Handle(vec![name.to_owned()]),
             stats,
         }
     }
@@ -457,5 +462,62 @@ mod player_test {
         assert_eq!(format!("{}", x), "[100 / 100]");
         let y = Hit(x);
         assert_eq!(format!("{}", y), "HIT: [100 / 100]");
+    }
+}
+
+// impl Holder for Player {
+//     type Kind = ItemList2;
+//     fn items(&self) -> &ItemList2 {
+//         &self.items
+//     }
+//
+//     fn items_mut(&mut self) -> &mut ItemList2 {
+//         &mut self.items
+//     }
+// }
+//
+// impl Holder for &mut Player {
+//     type Kind = ItemList2;
+//     fn items(&self) -> &ItemList2 {
+//         &self.items
+//     }
+//
+//     fn items_mut(&mut self) -> &mut ItemList2 {
+//         &mut self.items
+//     }
+// }
+
+impl ItemTrait for Player {
+    fn name(&self) -> &str {
+        &self.name
+    }
+
+    fn display(&self) -> &str {
+        ""
+    }
+
+    fn description(&self) -> &str {
+        &self.description
+    }
+
+    fn handle(&self) -> &Handle {
+        &self.handle
+    }
+}
+
+impl ItemListTrait for Player {
+    type Other = ItemList2;
+
+    fn get(&self, handle: &str) -> Option<&Item> {
+        self.items.iter().find(|i| i.handle() == handle)
+    }
+
+    fn get_owned(&mut self, handle: &str) -> Option<Item> {
+        let pos = self.items.iter().position(|i| i.handle() == handle)?;
+        Some(self.items.remove(pos))
+    }
+
+    fn insert(&mut self, item: Item) {
+        self.items.push(item);
     }
 }

@@ -2,7 +2,7 @@ pub mod coord;
 pub mod door;
 
 use crate::game::MapDir;
-use crate::item::{Holder, ItemKind, ItemList, ItemTrait, ItemList2, ItemListTrait, ItemKind2};
+use crate::item::{BasicItemKind, GenericItemList, ItemTrait, ItemList2, ItemListTrait, Item, Holder};
 use crate::player::{Player, PlayerIdList, PlayerList, Uuid};
 use crate::text::Color::*;
 use crate::text::Wrap;
@@ -16,17 +16,16 @@ use crate::map::door::{Door, DoorState, Obstacle, ObstacleState};
 use serde::{Deserialize, Serialize};
 use std::mem::take;
 use std::sync::Arc;
+use std::borrow::{Cow, Borrow};
+use crate::item::handle::Handle;
+use std::path::Display;
 
 type StateResult<T> = Result<(), T>;
 
-pub trait Space: Locate + Holder {
+pub trait Space: Locate + ItemListTrait {
     fn players(&self) -> &PlayerIdList;
     // fn has_door(&self, MapDir) -> bool;
-
-    fn players_except<T>(&self, u: T) -> Vec<u128>
-    where
-        T: Uuid,
-    {
+    fn players_except(&self, u: u128) -> Vec<u128> {
         let u = u.uuid();
         let mut l = Vec::new();
         for &id in self.players().iter() {
@@ -39,20 +38,6 @@ pub trait Space: Locate + Holder {
         l
     }
 
-    fn player_by_name<T>(&self, players: T, name: &str) -> Option<u128>
-    where
-        T: Provider<PlayerList>,
-    {
-        let players = players.provide();
-        let ids = self.players();
-        players.iter().find_map(|(id, p)| {
-            if p.name() == name && ids.contains(id) {
-                Some(*id)
-            } else {
-                None
-            }
-        })
-    }
 }
 
 impl<T> Provider<RoomList> for T
@@ -205,7 +190,7 @@ pub trait Locate {
 }
 
 #[repr(transparent)]
-#[derive(Default, Deserialize, Serialize)]
+#[derive(Default, Deserialize, Serialize, Debug)]
 pub struct RoomList(HashMap<Coord, Room>);
 impl Deref for RoomList {
     type Target = HashMap<Coord, Room>;
@@ -233,7 +218,7 @@ impl AsMut<RoomList> for RoomList {
     }
 }
 
-#[derive(Default, Serialize, Deserialize)]
+#[derive(Default, Serialize, Deserialize, Debug)]
 pub struct Room {
     name: String,
     loc: Coord,
@@ -241,9 +226,11 @@ pub struct Room {
     players: PlayerIdList,
     #[serde(skip_serializing, skip_deserializing)]
     items: ItemList2,
-    inner_items: Option<ItemList>,
+    inner_items: Option<GenericItemList>,
     #[serde(default)]
     doors: HashMap<MapDir, Door>,
+    #[serde(skip_serializing, skip_deserializing)]
+    handle: Handle,
 }
 
 impl AsMut<ItemList2> for Room {
@@ -282,6 +269,7 @@ impl Room {
             items: ItemList2::new(),
             inner_items: None,
             doors: HashMap::new(),
+            handle: Handle::default(),
         }
     }
 
@@ -312,7 +300,15 @@ impl Room {
             _ => format!("\n{}", player_list.join("\n")),
         });
 
-        let items_list = items.iter().map(|i| i.display()).collect::<Vec<_>>();
+        let items_list = items.iter()
+            .inspect(|i| println!(
+                "name: {}\ndescription: {}\ndisplay: {}\n handle: {:?}",
+                i.name(),
+                i.description(),
+                i.display(),
+                i.handle(),
+            ))
+            .map(|i| i.display().to_owned()).collect::<Vec<String>>();
         let items_list = Green(match items_list.len() {
             0 => "".to_owned(),
             1 => format!("\n{}", items_list[0]),
@@ -354,7 +350,7 @@ impl Room {
         self.players.insert(p.uuid())
     }
 
-    pub fn get_item(&self, handle: &str) -> Option<&ItemKind2> {
+    pub fn get_item(&self, handle: &str) -> Option<&Item> {
         self.items().get(handle)
     }
 
@@ -377,8 +373,8 @@ mod room_test {
 mod map_test {
     use super::*;
     use crate::game::MapDir::South;
-    use crate::item::Item;
-    use crate::item::ItemKind::Clothing;
+    use crate::item::BasicItem;
+    use crate::item::BasicItemKind::Clothing;
 
     #[test]
     fn map_test() {
@@ -402,5 +398,62 @@ mod map_test {
         //     items: Default::default(),
         //     doors,
         // };
+
+        let mut r = Room::default();
+        let mut items = GenericItemList::new();
+        items.push(BasicItemKind::Weapon(BasicItem::default()));
+        let mut items2 = GenericItemList::new();
+        items2.push(BasicItemKind::Weapon(BasicItem::new("butt", None, Handle(vec!["but".to_owned()]))));
+        items.push(BasicItemKind::Container(items2));
+        r.inner_items = Some(items);
+        std::fs::write("/tmp/sample.yaml", &serde_yaml::to_vec(&r).expect("eerr"));
+
+    }
+}
+
+impl Holder for Room {
+    type Kind = ItemList2;
+
+    fn items(&self) -> &ItemList2 {
+        &self.items
+    }
+
+    fn items_mut(&mut self) -> &mut ItemList2 {
+        &mut self.items
+    }
+}
+
+impl ItemTrait for Room {
+    fn name(&self) -> &str {
+        &self.name
+    }
+
+    fn display(&self) -> &str {
+        ""
+    }
+
+    fn description(&self) -> &str {
+        &self.description
+    }
+
+    fn handle(&self) -> &Handle {
+        &self.handle
+    }
+}
+
+impl ItemListTrait for Room {
+    type Other = ItemList2;
+
+    fn get(&self, handle: &str) -> Option<&Item> {
+        self.items.iter().find(|i| i.handle() == handle)
+    }
+
+    fn get_owned(&mut self, handle: &str) -> Option<Item> {
+        let pos = self.items.iter().position(|i| i.handle() == handle)?;
+        Some(self.items.remove(pos))
+    }
+
+    fn insert(&mut self, item: Item) {
+        self.items.push(item);
     }
 }

@@ -9,7 +9,7 @@ default-run = "ennui"
 
 [dependencies]
 uuid = { version = "*", features = ["v4"] }
-serde = { version = "*", features = ["derive"] }
+serde = { version = "1.0", features = ["derive"] }
 serde_yaml = "0.8.14"
 serde_cbor = "0.11.1"
 rand = "0.7.3"

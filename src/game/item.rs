@@ -1,8 +1,8 @@
 use super::Error;
 use crate::game::Game;
 use crate::item::error::Error::{ItemNotFound, TooHeavy};
-use crate::item::ItemKind2::Scenery;
-use crate::item::{Holder, ItemKind, ItemTrait, ItemListTrait, ItemKind2};
+use crate::item::Item::Scenery;
+use crate::item::{BasicItemKind, ItemTrait, ItemListTrait, Item};
 use crate::map::coord::Coord;
 use crate::map::RoomList;
 use crate::player::{PlayerList, Uuid};
@@ -69,7 +69,7 @@ impl Game {
             Some(p) => p,
             None => return Err(a(handle)),
         };
-        room.transfer(player, handle).map_err(|e| a(&e))
+        room.transfer(player, handle.into()).map_err(|e| a(&e))
     }
 
     fn drop(
@@ -135,7 +135,7 @@ impl Game {
             .all_items_mut()
         };
         match items.get(handle) {
-            Some(ItemKind2::Clothing(_)) => (),
+            Some(Item::Clothing(_)) => (),
             None => return Err(a(handle)),
             _ => return Err(Arc::new(Clothing(handle.to_owned()))),
         }

@@ -7,112 +7,108 @@ use serde::export::fmt::Debug;
 use serde::export::Formatter;
 use serde::{Deserialize, Serialize};
 use std::ops::{Deref, DerefMut};
-use ItemKind::*;
-use std::borrow::Borrow;
+use BasicItemKind::*;
+use std::borrow::{Borrow, Cow};
 use crate::item::key::Key;
+use crate::map::Room;
 
-pub trait ItemTrait : Send + Sync {
+pub trait ItemTrait : Send + Sync + Debug {
     fn name(&self) -> &str;
     fn display(&self) -> &str;
     fn description(&self) -> &str;
-    fn kind(&self) -> ItemKind;
     fn handle(&self) -> &Handle;
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub enum ItemKind {
-    Clothing(Item),
-    Weapon(Item),
-    Scenery(Item),
-    Edible(Item),
-    Holdable(Item),
-    Container,
+pub enum BasicItemKind {
+    Clothing(BasicItem),
+    Weapon(BasicItem),
+    Scenery(BasicItem),
+    Edible(BasicItem),
+    Holdable(BasicItem),
+    Container(GenericItemList)
 }
 
-pub enum ItemKind2 {
+#[derive(Debug)]
+pub enum Item {
     Clothing(Box<dyn ItemTrait>),
     Weapon(Box<dyn ItemTrait>),
     Scenery(Box<dyn ItemTrait>),
     Edible(Box<dyn ItemTrait>),
     Holdable(Box<dyn ItemTrait>),
-    Container(Box<dyn ItemTrait>),
+    Container(Box<dyn ItemListTrait<Other = ItemList2>>),
     Key(Box<dyn Key<u64>>)
 }
 
-impl ItemTrait for ItemKind2 {
+impl ItemTrait for Item {
     fn name(&self) -> &str {
-        use ItemKind2::*;
+        use Item::*;
         match self {
             Clothing(i)
             | Weapon(i)
             | Scenery(i)
             | Edible(i)
-            | Holdable(i)
-            | Container(i) => i.name(),
+            | Holdable(i) => i.name(),
+            Container(i) => i.name(),
             Key(i) => i.name(),
         }
     }
 
     fn display(&self) -> &str {
-        use ItemKind2::*;
+        use Item::*;
         match self {
             Clothing(i)
             | Weapon(i)
             | Scenery(i)
             | Edible(i)
-            | Holdable(i)
-            | Container(i) => i.display(),
+            | Holdable(i) => i.display(),
+            Container(i) => i.display(),
             Key(i) => i.display(),
         }
     }
 
     fn description(&self) -> &str {
-        use ItemKind2::*;
+        use Item::*;
         match self {
             Clothing(i)
             | Weapon(i)
             | Scenery(i)
             | Edible(i)
-            | Holdable(i)
-            | Container(i) => i.description(),
+            | Holdable(i) => i.description(),
+            Container(i) => i.description(),
             Key(i) => i.description(),
         }
     }
 
-    fn kind(&self) -> ItemKind {
-        use ItemKind::*;
-        Clothing(Item::default())
-    }
-
     fn handle(&self) -> &Handle {
-        use ItemKind2::*;
+        use Item::*;
         match self {
             Clothing(i)
             | Weapon(i)
             | Scenery(i)
             | Edible(i)
-            | Holdable(i)
-            | Container(i) => i.handle(),
+            | Holdable(i) => i.handle(),
+            Container(i) => i.handle(),
             Key(i) => i.handle(),
         }
     }
 }
 
-impl Default for ItemKind {
+impl Default for BasicItemKind {
     fn default() -> Self {
-        Holdable(Item::default())
+        Holdable(BasicItem::default())
     }
 }
 
 #[derive(Debug, Default, Serialize, Deserialize, Clone)]
-pub struct Item {
+pub struct BasicItem {
     name: String,
     display: String,
     description: String,
     handle: Handle,
 }
 
-impl ItemTrait for Item {
+impl ItemTrait for BasicItem {
     fn name(&self) -> &str {
         &self.name
     }
@@ -125,50 +121,47 @@ impl ItemTrait for Item {
         &self.description
     }
 
-    fn kind(&self) -> ItemKind {
-        Container
-    }
-
     fn handle(&self) -> &Handle {
         &self.handle
     }
 }
 
-pub trait Holder {
-    fn items(&self) -> &ItemList2;
-    fn items_mut(&mut self) -> &mut ItemList2;
+pub trait Holder : ItemTrait {
+    type Kind;
 
-    fn transfer<H, S>(&mut self, mut other: H, handle: S) -> Result<String, String>
-    where
-        H: Holder,
-        S: AsRef<str>,
-    {
-        let handle = handle.as_ref();
-        let item = match self.items_mut().get_owned(handle) {
-            Some(i) => i,
-            None => return Err(handle.to_owned()),
-        };
+    fn items(&self) -> &Self::Kind;
+    fn items_mut(&mut self) -> &mut Self::Kind;
 
-        let name = item.name().to_owned();
-        other.items_mut().insert(item);
-        Ok(name)
-    }
+    // fn transfer(&mut self, other: &mut ItemListTrait<Other = ItemList2>, handle: &str) -> Result<String, String>
+    // where
+    // {
+    //     let handle = handle.as_ref();
+    //     let item = match self.items_mut().get_owned(handle) {
+    //         Some(i) => i,
+    //         None => return Err(handle.to_owned()),
+    //     };
+
+    //     let name = item.name().to_owned();
+    //     other.items_mut().insert(item);
+    //     Ok(name)
+    // }
 }
 
-impl<T> Holder for T
-where
-    T: AsRef<ItemList2> + AsMut<ItemList2>,
-{
-    fn items(&self) -> &ItemList2 {
-        self.as_ref()
-    }
+// impl<T> Holder<ItemList2, Cow<'static, str>> for T
+// where
+//     T: AsRef<ItemList2> + AsMut<ItemList2> + ItemTrait,
+// {
+//     fn items(&self) -> &ItemList2 {
+//         self.as_ref()
+//     }
+//
+//     fn items_mut(&mut self) -> &mut ItemList2 {
+//         self.as_mut()
+//     }
+// }
 
-    fn items_mut(&mut self) -> &mut ItemList2 {
-        self.as_mut()
-    }
-}
 
-impl Item {
+impl BasicItem {
     pub fn new(name: &str, description: Option<&str>, handle: Handle) -> Self {
         let description = description.unwrap_or_default().to_owned();
         let name = name.to_owned();
@@ -187,60 +180,72 @@ impl Item {
     }
 }
 
-#[derive(Debug, Default, Serialize, Deserialize)]
-#[repr(transparent)]
-pub struct ItemList(Vec<ItemKind>);
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+#[serde(default)]
+pub struct GenericItemList{
+    inner: Vec<BasicItemKind>,
+    name: String,
+    display: String,
+    description: String,
+    handle: Handle,
+}
 
-impl Deref for ItemList {
-    type Target = Vec<ItemKind>;
+impl Deref for GenericItemList {
+    type Target = Vec<BasicItemKind>;
 
     fn deref(&self) -> &Self::Target {
-        &self.0
+        &self.inner
     }
 }
 
-impl DerefMut for ItemList {
+impl DerefMut for GenericItemList {
     fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
+        &mut self.inner
     }
 }
 
-impl AsRef<ItemList> for ItemList {
-    fn as_ref(&self) -> &ItemList {
+impl AsRef<GenericItemList> for GenericItemList {
+    fn as_ref(&self) -> &GenericItemList {
         self
     }
 }
 
-impl AsMut<ItemList> for ItemList {
-    fn as_mut(&mut self) -> &mut ItemList {
+impl AsMut<GenericItemList> for GenericItemList {
+    fn as_mut(&mut self) -> &mut GenericItemList {
         self
     }
 }
 
-impl ItemList {
+impl GenericItemList {
     pub fn new() -> Self {
-        ItemList(Vec::new())
+        Self {
+            inner: vec![],
+            name: "".to_string(),
+            display: "".to_string(),
+            description: "".to_string(),
+            handle: Default::default()
+        }
     }
-    pub fn get(&self, handle: &str) -> Option<&ItemKind> {
+    pub fn get(&self, handle: &str) -> Option<&BasicItemKind> {
         self.iter().find(|i| i.handle() == handle)
     }
 
-    pub fn get_owned<T: AsRef<str>>(&mut self, handle: T) -> Option<ItemKind> {
+    pub fn get_owned<T: AsRef<str>>(&mut self, handle: T) -> Option<BasicItemKind> {
         let pos = self.iter().position(|i| i.handle() == handle.as_ref())?;
         Some(self.remove(pos))
     }
 }
 
-impl ItemKind {
-    fn safe_unwrap(&self) -> Option<&Item> {
+impl BasicItemKind {
+    fn safe_unwrap(&self) -> Option<&BasicItem> {
         match self {
             Clothing(item) | Weapon(item) | Scenery(item) | Holdable(item) | Edible(item) => Some(&item),
-            Container => None
+            Container(_) => None,
         }
     }
 }
 
-impl ItemTrait for ItemKind {
+impl ItemTrait for BasicItemKind {
     fn name(&self) -> &str {
         self.safe_unwrap().map(|i| i.name.as_str()).unwrap_or_default()
     }
@@ -253,21 +258,18 @@ impl ItemTrait for ItemKind {
         &self.safe_unwrap().map(|i| i.description.as_str()).unwrap_or_default()
     }
 
-    fn kind(&self) -> ItemKind {
-        self.clone()
-    }
-
     fn handle(&self) -> &Handle {
         &self.safe_unwrap().map(|i| i.handle()).as_ref().unwrap()
     }
 }
 
-pub trait ItemListTrait : ItemTrait {
-    fn get(&self, handle: &str) -> Option<&ItemKind2>;
-    fn get_owned(&mut self, handle: &str) -> Option<ItemKind2>;
-    fn insert(&mut self, item: ItemKind2);
+pub trait ItemListTrait : ItemTrait + Debug {
+    type Other: Debug;
+    fn get(&self, handle: &str) -> Option<&Item>;
+    fn get_owned(&mut self, handle: &str) -> Option<Item>;
+    fn insert(&mut self, item: Item);
 
-    fn transfer(&mut self, other: &mut Self, handle: &str) -> Result<String, String> {
+    fn transfer(&mut self, other: &mut ItemListTrait<Other = ItemList2>, handle: &str) -> Result<String, String> {
         let handle = handle.as_ref();
         let item = match self.get_owned(handle) {
             Some(i) => i,
@@ -280,14 +282,14 @@ pub trait ItemListTrait : ItemTrait {
     }
 }
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct ItemList2 {
-    inner: Vec<ItemKind2>,
-    info: ItemKind,
+    inner: Vec<Item>,
+    info: BasicItemKind,
 }
 
 impl Deref for ItemList2 {
-    type Target = Vec<ItemKind2>;
+    type Target = Vec<Item>;
 
     fn deref(&self) -> &Self::Target {
         &self.inner
@@ -313,10 +315,6 @@ impl ItemTrait for ItemList2 {
         self.info.description()
     }
 
-    fn kind(&self) -> ItemKind {
-        Container
-    }
-
     fn handle(&self) -> &Handle {
         self.info.handle()
     }
@@ -324,16 +322,17 @@ impl ItemTrait for ItemList2 {
 
 
 impl ItemListTrait for ItemList2 {
-    fn get(&self, handle: &str) -> Option<&ItemKind2> {
+    type Other = ItemList2;
+    fn get(&self, handle: &str) -> Option<&Item> {
         self.iter().find(|i| i.handle() == handle).map(|i| i.borrow())
     }
 
-    fn get_owned(&mut self, handle: &str) -> Option<ItemKind2> {
+    fn get_owned(&mut self, handle: &str) -> Option<Item> {
         let pos = self.iter().position(|i| i.handle() == handle)?;
         Some(self.inner.remove(pos))
     }
 
-    fn insert(&mut self, item: ItemKind2) {
+    fn insert(&mut self, item: Item) {
         self.inner.push(item);
     }
 }
@@ -347,25 +346,56 @@ impl ItemList2 {
     }
 }
 
-impl From<ItemList> for ItemList2 {
-    fn from(l: ItemList) -> Self {
-        let mut v: Vec<ItemKind2> = Vec::new();
+impl From<GenericItemList> for ItemList2 {
+    fn from(l: GenericItemList) -> Self {
+        println!("{:?}", l);
+        let mut v: Vec<Item> = Vec::new();
         for i in &*l {
             let i = match i {
-                Clothing(i) => ItemKind2::Clothing(Box::new(i.clone())),
-                Weapon(i) => ItemKind2::Weapon(Box::new(i.clone())),
-                Scenery(i) => ItemKind2::Scenery(Box::new(i.clone())),
-                Edible(i) => ItemKind2::Edible(Box::new(i.clone())),
-                Holdable(i) => ItemKind2::Holdable(Box::new(i.clone())),
-                Container => ItemKind2::Container(Box::new(Item::default())),
+               Clothing(i) => Item::Clothing(Box::new(i.clone())),
+                Weapon(i) => Item::Weapon(Box::new(i.clone())),
+                Scenery(i) => Item::Scenery(Box::new(i.clone())),
+                Edible(i) => Item::Edible(Box::new(i.clone())),
+                Holdable(i) => Item::Holdable(Box::new(i.clone())),
+                Container(listy) => Item::Container(Box::new(conv(listy))),
             };
             v.push(i);
         }
-        ItemList2 {
+        let ret = ItemList2 {
             inner: v,
-            info: Default::default()
-        }
+            info: Clothing(BasicItem {
+                name: l.name.to_owned(),
+                display: l.display.to_owned(),
+                description: l.description.to_owned(),
+                handle: l.handle.to_owned(),
+            })
+        };
+        println!("{:?}", ret);
+        ret
     }
+}
+
+fn conv(list: &GenericItemList) -> ItemList2 {
+    let mut ret = ItemList2::new();
+    for i in &**list {
+        println!("{:?}", i);
+        let i = match i {
+            Clothing(i) => Item::Clothing(Box::new(i.clone())),
+            Weapon(i) => Item::Weapon(Box::new(i.clone())),
+            Scenery(i) => Item::Scenery(Box::new(i.clone())),
+            Edible(i) => Item::Edible(Box::new(i.clone())),
+            Holdable(i) => Item::Holdable(Box::new(i.clone())),
+            Container(listy) => Item::Container(Box::new(conv(listy))),
+        };
+        ret.push(i);
+    }
+    ret.info = Clothing(BasicItem {
+        name: list.name.to_owned(),
+        display: list.display.to_owned(),
+        description: list.description.to_owned(),
+        handle: list.handle.to_owned(),
+    });
+    ret
 }
 
 #[cfg(test)]
@@ -374,6 +404,30 @@ mod item_trait_test {
 
     #[test]
     fn item_trait_test_1() {
-        let x: Vec<Box<ItemListTrait>> = Vec::new();
+        // let x: Vec<Box<ItemListTrait>> = Vec::new();
     }
 }
+
+impl AsRef<ItemList2> for ItemList2 {
+    fn as_ref(&self) -> &ItemList2 {
+        self
+    }
+}
+
+impl AsMut<ItemList2> for ItemList2 {
+    fn as_mut(&mut self) -> &mut ItemList2 {
+        self
+    }
+}
+
+// impl Holder for ItemList2 {
+//     type Kind = Self;
+//
+//     fn items(&self) -> &ItemList2 {
+//         self
+//     }
+//
+//     fn items_mut(&mut self) -> &mut ItemList2 {
+//         &mut self
+//     }
+// }

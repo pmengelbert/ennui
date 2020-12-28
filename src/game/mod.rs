@@ -7,7 +7,7 @@ use std::io;
 
 use crate::game::MapDir::South;
 use crate::interpreter::Interpreter;
-use crate::item::{ItemTrait, ItemList2, ItemListTrait, ItemKind2};
+use crate::item::{ItemTrait, ItemList2, ItemListTrait, Item};
 use crate::map::{coord::Coord, Locate, Room, RoomList, Space};
 use crate::player::{Player, PlayerList, Uuid};
 use crate::text::message::{Audience, Broadcast, Message, Messenger, Msg};
@@ -155,7 +155,7 @@ impl Game {
     pub fn new() -> Self {
         let (players, mut rooms) = (HashMap::new(), RoomList::default());
         let bytes = include_bytes!("../../data/map.cbor");
-        let v: Vec<Room> = serde_cbor::from_slice(bytes).unwrap_or_default();
+        let v: Vec<Room> = serde_cbor::from_slice(bytes).expect("ERROR PARSING JSON");
         let p = Player::new("billy");
 
         let mut count = 0;
@@ -165,7 +165,7 @@ impl Game {
                 let key = SkeletonKey {
                     handle: Handle(vec!["key".into(), "skeleton".into()]),
                 };
-                r.items_mut().insert(ItemKind2::Key(Box::new(key)))
+                r.items_mut().insert(Item::Key(Box::new(key)))
             }
             rooms.insert(r.loc(), r);
             count += 1;
