@@ -11,6 +11,7 @@ use std::error::Error;
 use std::fmt::Debug;
 use std::ops::{Deref, DerefMut};
 use std::option::NoneError;
+use crate::interpreter::CommandKind;
 
 pub trait Keyhole<T, U>: ObstacleState<T>
 where
@@ -237,5 +238,109 @@ mod test_doors {
         h.insert(e.dir, e);
         let x = serde_yaml::to_vec(&h).unwrap();
         std::fs::write("/tmp/doormap.yaml", x);
+    }
+}
+
+struct Wizard {
+    state: DoorState,
+    password: (CommandKind, String),
+    f: Box<Fn(DoorState, u64) -> u64>,
+}
+
+struct Wizard2 {
+    state: DoorState,
+    password: (CommandKind, String),
+    f: Box<Fn(&Self, DoorState, String) -> bool>,
+}
+
+impl Keyhole<DoorState, u64> for Wizard {
+    type Lock = u64;
+
+    fn unlock(&mut self, new_state: DoorState, key: Option<u64>) -> StateResult<DoorState> {
+        if let Some(n) = key {
+            return if (*self.f)(new_state, n) == 1 {
+                self.state = new_state;
+                Ok(())
+            } else {
+                Err(Locked)
+            };
+        }
+
+        Err(self.state())
+    }
+
+    fn is_locked(&self) -> bool {
+        true
+    }
+}
+
+impl ObstacleState<DoorState> for Wizard {
+    fn state(&self) -> DoorState {
+        self.state
+    }
+}
+
+impl ObstacleState<DoorState> for Wizard2 {
+    fn state(&self) -> DoorState {
+        self.state
+    }
+}
+
+impl Keyhole<DoorState, String> for Wizard2 {
+    type Lock = String;
+
+    fn unlock(&mut self, new_state: DoorState, key: Option<String>) -> StateResult<DoorState> {
+        if let Some(key) = key {
+            return if (*self.f)(self, new_state, key) {
+                self.state = new_state;
+                Ok(())
+            } else {
+                Err(self.state())
+            };
+        }
+        Err(self.state())
+    }
+
+    fn is_locked(&self) -> bool {
+        unimplemented!()
+    }
+}
+
+#[cfg(test)]
+mod wizard_test {
+    use super::*;
+    use crate::map::door::DoorState::Closed;
+
+    #[test]
+    fn wizard_test_1() {
+        let mut w = Wizard {
+            password: (CommandKind::Whisper, "until the dawn".to_owned()),
+            state: Locked,
+            f: Box::new((|state, key| {
+                key - 1
+            }))
+        };
+
+        assert_eq!(w.unlock(Open, Some(7)), Err(Locked));
+        assert_eq!(w.unlock(Open, Some(2)), Ok(()));
+        assert_eq!(w.state(), Open);
+        let mut w2 = Wizard2 {
+            password: (CommandKind::Whisper, "until the dawn".to_owned()),
+            state: Locked,
+            f: Box::new((|slf, state, key| {
+                key == slf.password.1
+            }))
+        };
+        assert_eq!(w2.unlock(Closed, Some("until the down".into())), Err(Locked));
+        assert_eq!(w2.unlock(Closed, Some("until the dawn".into())), Ok(()));
+        assert_eq!(w2.state(), Closed);
+
+        let mut w3 = Wizard2 {
+            password: (CommandKind::Whisper, "until the dawn".to_owned()),
+            state: Locked,
+            f: Box::new((|slf, state, key| {
+                key == slf.password.1 && slf.password.0 == CommandKind::Whisper
+            }))
+        };
     }
 }

@@ -20,6 +20,7 @@ pub enum CommandKind {
     Say,
     Eval,
     Inventory,
+    Whisper,
     NotFound,
     Blank,
     Ouch,
