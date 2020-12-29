@@ -234,6 +234,10 @@ pub fn fill_interpreter(i: &mut Interpreter) {
                     Clothing(_) => format!("they must not like the look of it"),
                     TooHeavy(_) => format!("they can't hold that! it's too heavy"),
                     Guarded(s) => format!("I don't think {} can accept that...", s),
+                    FatalError(s) => {
+                        println!("FATAL: {}", s);
+                        format!("something went seriously wrong. please contact the administrator of this MUD")
+                    }
                 },
                 GuardAppeased(s) => s,
             }

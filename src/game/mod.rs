@@ -7,7 +7,7 @@ use std::io;
 
 use crate::game::MapDir::South;
 use crate::interpreter::Interpreter;
-use crate::item::{Describe, Item, ItemListTrait};
+use crate::item::{Describe, Holder, Item, ItemListTrait};
 use crate::map::{coord::Coord, Locate, Room, RoomList, Space};
 use crate::player::{Player, PlayerList, Uuid};
 use crate::text::message::{Audience, Broadcast, Message, Messenger, Msg};
@@ -15,8 +15,6 @@ use crate::text::Color::*;
 use crate::text::{article, Wrap};
 use crate::WriteResult;
 
-use crate::item::handle::Handle;
-use crate::item::key::SkeletonKey;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 use std::borrow::{BorrowMut, Cow};
@@ -156,17 +154,15 @@ impl Game {
         let bytes = include_bytes!("../../data/map.cbor");
         let v: Vec<Room> = serde_cbor::from_slice(bytes).expect("ERROR PARSING JSON");
 
-        let mut count = 0;
         for mut r in v {
             r.init();
             rooms.insert(r.loc(), r);
-            count += 1;
         }
 
         let mut interpreter = Interpreter::new();
         commands::fill_interpreter(&mut interpreter);
 
-        let mut ret = Self {
+        let ret = Self {
             players: PlayerList(players),
             rooms,
             interpreter,

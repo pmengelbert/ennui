@@ -4,8 +4,8 @@ pub mod key;
 
 use crate::game::MapDir;
 use crate::item::handle::Handle;
-use crate::item::key::{Key, KeyItem, KeyType, SkeletonKey};
-use crate::map::door::{Guard, GuardState, Lock, RenaissanceGuard};
+use crate::item::key::{Key, SkeletonKey};
+use crate::map::door::{Guard, GuardState, RenaissanceGuard};
 use serde::export::fmt::Debug;
 use serde::{Deserialize, Serialize};
 use std::borrow::{Borrow, BorrowMut};
@@ -23,19 +23,19 @@ pub trait Describe: Send + Sync + Debug {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum BasicItemKind {
-    Clothing(BasicItem),
-    Weapon(BasicItem),
-    Scenery(BasicItem),
-    Edible(BasicItem),
-    Holdable(BasicItem),
+    Clothing(Description),
+    Weapon(Description),
+    Scenery(Description),
+    Edible(Description),
+    Holdable(Description),
     Guard {
         dir: MapDir,
         state: GuardState,
-        info: BasicItem,
+        info: Description,
         lock: u64,
     },
     Container(GenericItemList),
-    Key(u64, BasicItem),
+    Key(u64, Description),
 }
 
 #[derive(Debug)]
@@ -101,19 +101,19 @@ impl Describe for Item {
 
 impl Default for BasicItemKind {
     fn default() -> Self {
-        Holdable(BasicItem::default())
+        Holdable(Description::default())
     }
 }
 
 #[derive(Debug, Default, Serialize, Deserialize, Clone)]
-pub struct BasicItem {
-    name: String,
-    display: String,
-    description: String,
-    handle: Handle,
+pub struct Description {
+    pub name: String,
+    pub display: String,
+    pub description: String,
+    pub handle: Handle,
 }
 
-impl Describe for BasicItem {
+impl Describe for Description {
     fn name(&self) -> &str {
         &self.name
     }
@@ -142,7 +142,7 @@ pub trait Holder: Describe {
     fn items_mut(&mut self) -> &mut Self::Kind;
 }
 
-impl BasicItem {
+impl Description {
     pub fn new(name: &str, description: Option<&str>, handle: Handle) -> Self {
         let description = description.unwrap_or_default().to_owned();
         let name = name.to_owned();
@@ -218,7 +218,7 @@ impl GenericItemList {
 }
 
 impl BasicItemKind {
-    fn safe_unwrap(&self) -> Option<&BasicItem> {
+    fn safe_unwrap(&self) -> Option<&Description> {
         match self {
             Key(_, item)
             | Clothing(item)
@@ -285,7 +285,9 @@ pub trait ItemListTrait: Describe + Debug {
         };
 
         let name = item.name().to_owned();
-        other.insert(item);
+        if other.insert(item).is_err() {
+            return Err("COULD NOT TRANSFER ITEM".into())
+        };
         Ok(name)
     }
 }
@@ -412,7 +414,7 @@ fn conv(list: &mut GenericItemList) -> ItemList {
         };
         ret.push(i);
     }
-    ret.info = Clothing(BasicItem {
+    ret.info = Clothing(Description {
         name: list.name.to_owned(),
         display: list.display.to_owned(),
         description: list.description.to_owned(),

@@ -1,13 +1,12 @@
 use crate::game::MapDir;
 use crate::item::handle::Handle;
-use crate::item::key::{Key, KeyType};
-use crate::item::{BasicItem, Describe, Item, ItemList, ItemListTrait};
+use crate::item::key::Key;
+use crate::item::{Describe, Description, Item, ItemList, ItemListTrait};
 use crate::map::coord::Coord;
 use crate::map::door::DoorState::{Locked, Open};
-use crate::map::{Locate, StateResult};
+use crate::map::StateResult;
 use serde::export::Formatter;
 use serde::{Deserialize, Serialize};
-use std::borrow::Cow;
 use std::collections::HashMap;
 use std::error::Error;
 use std::fmt::Debug;
@@ -74,7 +73,7 @@ pub struct RenaissanceGuard {
     #[serde(default)]
     state: GuardState,
     pub lock: u64,
-    info: BasicItem,
+    info: Description,
 }
 
 impl Clone for RenaissanceGuard {
@@ -88,8 +87,8 @@ impl Clone for RenaissanceGuard {
     }
 }
 
-impl From<BasicItem> for RenaissanceGuard {
-    fn from(b: BasicItem) -> Self {
+impl From<Description> for RenaissanceGuard {
+    fn from(b: Description) -> Self {
         let mut g = Self::default();
         g.info = b;
         g
@@ -197,7 +196,7 @@ impl ItemListTrait for RenaissanceGuard {
         match &item {
             Item::Key(k) => match self.unlock(GuardState::Open, Some(&**k)) {
                 Ok(()) => Ok(()),
-                Err(state) => Err(item),
+                Err(_) => Err(item),
             },
             _ => Err(item),
         }

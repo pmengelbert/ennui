@@ -1,8 +1,8 @@
 use super::Error;
 use crate::game::Game;
-use crate::item::error::Error::{Guarded, ItemNotFound, PlayerNotFound, TooHeavy};
+use crate::item::error::Error::{Guarded, ItemNotFound, PlayerNotFound, TooHeavy, FatalError};
 use crate::item::Item::Scenery;
-use crate::item::{Describe, Item, ItemListTrait};
+use crate::item::{Describe, Holder, Item, ItemListTrait};
 use crate::map::coord::Coord;
 use crate::map::RoomList;
 use crate::player::{PlayerList, Uuid};
@@ -60,7 +60,7 @@ impl Game {
         let oid = self.id_of(other.unwrap_or_default());
         let other_id = oid.unwrap_or_default();
 
-        if let Err(err) = self.validate_other_player(other, loc, dir) {
+        if let Err(_) = self.validate_other_player(other, loc, dir) {
             return TransferResult::Err(Arc::new(PlayerNotFound(
                 other.unwrap_or_default().to_owned(),
             )));
@@ -127,7 +127,6 @@ impl Game {
         other_name: Option<&str>,
         handle: &str,
     ) -> TransferResult {
-        use crate::item::error::Error::PlayerNotFound;
         use TransferResult::*;
 
         let (uuid, other_id) = ids;
@@ -172,7 +171,9 @@ impl Game {
                                 println!("checkpoint 8");
                                 match players.get_mut(&uuid) {
                                     Some(p) => {
-                                        p.insert(given_back);
+                                        if p.insert(given_back).is_err() {
+                                            return Err(Arc::new(crate::item::error::Error::FatalError("wasn't able to return item to player after failed transfer to guard type.".into()))).into();
+                                        }
                                     }
                                     None => (),
                                 }
@@ -181,7 +182,6 @@ impl Game {
                                 )));
                             }
                         };
-                        println!("checkpoint 9");
                     }
                     _ => {
                         return Err(Arc::new(PlayerNotFound(
@@ -192,7 +192,9 @@ impl Game {
             }
         };
 
-        other_p.items_mut().insert(item);
+        if other_p.items_mut().insert(item).is_err() {
+            return Err(Arc::new(FatalError("COULD NOT TRANSFER ITEM".into())))
+        };
         Ok(item_name)
     }
 
@@ -230,7 +232,6 @@ impl Game {
         loc: &Coord,
         dir: Direction,
     ) -> Result<(), Error> {
-        use crate::item::error::Error::PlayerNotFound;
         use Direction::*;
 
         let oid = self.id_of(other.unwrap_or_default());

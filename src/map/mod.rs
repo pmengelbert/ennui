@@ -381,7 +381,7 @@ mod map_test {
     use super::*;
     use crate::game::MapDir::South;
     use crate::item::BasicItemKind::Clothing;
-    use crate::item::{BasicItem, BasicItemKind};
+    use crate::item::{BasicItemKind, Description};
 
     #[test]
     fn map_test() {
@@ -408,9 +408,9 @@ mod map_test {
 
         let mut r = Room::default();
         let mut items = GenericItemList::new();
-        items.push(BasicItemKind::Weapon(BasicItem::default()));
+        items.push(BasicItemKind::Weapon(Description::default()));
         let mut items2 = GenericItemList::new();
-        items2.push(BasicItemKind::Weapon(BasicItem::new(
+        items2.push(BasicItemKind::Weapon(Description::new(
             "butt",
             None,
             Handle(vec!["but".to_owned()]),

@@ -1,5 +1,5 @@
 use crate::item::handle::Handle;
-use crate::item::{BasicItem, Describe};
+use crate::item::{Describe, Description};
 use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 
@@ -9,7 +9,7 @@ pub trait Key<T>: Describe + Debug {
 
 #[derive(Clone, Debug)]
 pub struct SkeletonKey {
-    info: BasicItem,
+    info: Description,
     key: u64,
 }
 
@@ -41,8 +41,8 @@ impl Describe for SkeletonKey {
     }
 }
 
-impl From<BasicItem> for SkeletonKey {
-    fn from(b: BasicItem) -> Self {
+impl From<Description> for SkeletonKey {
+    fn from(b: Description) -> Self {
         Self { info: b, key: 0 }
     }
 }
@@ -88,9 +88,9 @@ impl Describe for KeyType {
     }
 }
 
-impl From<BasicItem> for KeyType {
-    fn from(i: BasicItem) -> Self {
-        let BasicItem {
+impl From<Description> for KeyType {
+    fn from(i: Description) -> Self {
+        let Description {
             name,
             display,
             description,

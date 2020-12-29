@@ -8,6 +8,7 @@ pub enum Error {
     PlayerNotFound(String),
     Guarded(String),
     TooHeavy(String),
+    FatalError(String),
 }
 
 impl Display for Error {
@@ -23,7 +24,8 @@ impl Error {
         use Error::*;
 
         match self {
-            Guarded(s) | Clothing(s) | ItemNotFound(s) | PlayerNotFound(s) | TooHeavy(s) => s,
+            FatalError(s) | Guarded(s) | Clothing(s) | ItemNotFound(s) | PlayerNotFound(s)
+            | TooHeavy(s) => s,
         }
     }
 }

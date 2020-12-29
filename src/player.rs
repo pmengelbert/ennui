@@ -1,5 +1,5 @@
 use crate::item::handle::Handle;
-use crate::item::{Describe, Item, ItemList, ItemListTrait};
+use crate::item::{Describe, Description, Holder, Item, ItemList, ItemListTrait};
 use crate::map::coord::Coord;
 use crate::text::message::Messenger;
 use crate::Provider;
@@ -32,6 +32,40 @@ where
 
     fn provide_mut(&mut self) -> &mut PlayerList {
         self.as_mut()
+    }
+}
+
+impl Holder for Player {
+    type Kind = ItemList;
+
+    fn items(&self) -> &Self::Kind {
+        &self.items
+    }
+
+    fn items_mut(&mut self) -> &mut Self::Kind {
+        &mut self.items
+    }
+}
+
+impl Describe for Player {
+    fn name(&self) -> &str {
+        &self.info.name()
+    }
+
+    fn display(&self) -> &str {
+        &self.info.display()
+    }
+
+    fn description(&self) -> &str {
+        self.info.description()
+    }
+
+    fn handle(&self) -> &Handle {
+        self.info.handle()
+    }
+
+    fn is_container(&self) -> bool {
+        true
     }
 }
 
@@ -134,8 +168,7 @@ impl MeterKind {
 #[derive(Default, Serialize, Deserialize, Debug)]
 pub struct Player {
     uuid: u128,
-    name: String,
-    description: String,
+    info: Description,
     loc: Coord,
     #[serde(skip_serializing, skip_deserializing)]
     items: ItemList,
@@ -144,8 +177,6 @@ pub struct Player {
     #[serde(skip_serializing, skip_deserializing)]
     stream: Option<TcpStream>,
     stats: Vec<MeterKind>,
-    #[serde(skip_serializing, skip_deserializing)]
-    handle: Handle,
 }
 
 impl Write for Player {
@@ -335,13 +366,16 @@ impl Player {
 
         Self {
             uuid: CrateUuid::new_v4().as_u128(),
-            description: "".to_owned(),
-            name: name.to_owned(),
+            info: Description {
+                description: "".to_owned(),
+                name: name.to_owned(),
+                handle: Handle(vec![name.to_owned()]),
+                display: "".to_owned(),
+            },
             loc: Coord(0, 0),
             items: ItemList::new(),
             clothing: ItemList::new(),
             stream: None,
-            handle: Handle(vec![name.to_owned()]),
             stats,
         }
     }
@@ -363,7 +397,7 @@ impl Player {
         let mut result = 0_usize;
         for (_, p) in &mut **pl {
             let mut ret = b"\n\n".to_vec();
-            ret.extend_from_slice(format!("{} chats '", self.name).as_bytes());
+            ret.extend_from_slice(format!("{} chats '", self.name()).as_bytes());
             ret.extend_from_slice(buf.as_ref());
             ret.extend_from_slice(b"'\n\n > ".as_ref());
             result = p.write(&ret)?;
@@ -392,16 +426,8 @@ impl Player {
             .current()
     }
 
-    pub fn set_description(&mut self, d: &str) {
-        self.description = d.to_owned();
-    }
-
     pub fn uuid(&self) -> u128 {
         self.uuid
-    }
-
-    pub fn name(&self) -> &str {
-        &self.name
     }
 
     pub fn set_loc(&mut self, new_loc: Coord) {
@@ -410,14 +436,6 @@ impl Player {
 
     pub fn loc_mut(&mut self) -> &mut Coord {
         &mut self.loc
-    }
-
-    pub fn items(&self) -> &ItemList {
-        &self.items
-    }
-
-    pub fn items_mut(&mut self) -> &mut ItemList {
-        &mut self.items
     }
 
     pub fn clothing(&self) -> &ItemList {
@@ -434,10 +452,6 @@ impl Player {
 
     pub fn all_items_mut(&mut self) -> (&mut ItemList, &mut ItemList) {
         (&mut self.items, &mut self.clothing)
-    }
-
-    pub fn description(&self) -> &str {
-        &self.description
     }
 
     pub fn stats(&self) -> &[MeterKind] {
@@ -464,50 +478,6 @@ mod player_test {
     }
 }
 
-// impl Holder for Player {
-//     type Kind = ItemList2;
-//     fn items(&self) -> &ItemList2 {
-//         &self.items
-//     }
-//
-//     fn items_mut(&mut self) -> &mut ItemList2 {
-//         &mut self.items
-//     }
-// }
-//
-// impl Holder for &mut Player {
-//     type Kind = ItemList2;
-//     fn items(&self) -> &ItemList2 {
-//         &self.items
-//     }
-//
-//     fn items_mut(&mut self) -> &mut ItemList2 {
-//         &mut self.items
-//     }
-// }
-
-impl Describe for Player {
-    fn name(&self) -> &str {
-        &self.name
-    }
-
-    fn display(&self) -> &str {
-        ""
-    }
-
-    fn description(&self) -> &str {
-        &self.description
-    }
-
-    fn handle(&self) -> &Handle {
-        &self.handle
-    }
-
-    fn is_container(&self) -> bool {
-        false
-    }
-}
-
 impl ItemListTrait for Player {
     type Kind = ItemList;
 
@@ -520,7 +490,7 @@ impl ItemListTrait for Player {
     }
 
     fn get_owned(&mut self, handle: &str) -> Option<Item> {
-        let pos = self.items.iter().position(|i| i.handle() == handle)?;
+        let pos = self.items().iter().position(|i| i.handle() == handle)?;
         Some(self.items.remove(pos))
     }
 
