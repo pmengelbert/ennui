@@ -1,8 +1,8 @@
 use crate::item::handle::Handle;
-use crate::item::{ItemTrait};
+use crate::item::Describe;
 use std::fmt::Debug;
 
-pub trait Key<T>: ItemTrait + Debug {
+pub trait Key<T>: Describe + Debug {
     fn key(&self) -> T;
 }
 
@@ -11,7 +11,7 @@ pub struct SkeletonKey {
     pub handle: Handle,
 }
 
-impl ItemTrait for SkeletonKey {
+impl Describe for SkeletonKey {
     fn name(&self) -> &str {
         "skeleton key"
     }
@@ -40,9 +40,9 @@ impl Key<u64> for SkeletonKey {
 }
 
 #[derive(Debug, Clone)]
-struct Codpiece(Handle);
+pub struct Codpiece(Handle);
 
-impl ItemTrait for Codpiece {
+impl Describe for Codpiece {
     fn name(&self) -> &str {
         "codpiece"
     }
@@ -63,5 +63,11 @@ impl ItemTrait for Codpiece {
 
     fn is_container(&self) -> bool {
         false
+    }
+}
+
+impl Key<u64> for Codpiece {
+    fn key(&self) -> u64 {
+        8
     }
 }

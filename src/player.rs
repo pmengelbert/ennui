@@ -1,5 +1,5 @@
 use crate::item::handle::Handle;
-use crate::item::{Item, ItemList, ItemListTrait, ItemTrait};
+use crate::item::{Describe, Item, ItemList, ItemListTrait};
 use crate::map::coord::Coord;
 use crate::text::message::Messenger;
 use crate::Provider;
@@ -486,7 +486,7 @@ mod player_test {
 //     }
 // }
 
-impl ItemTrait for Player {
+impl Describe for Player {
     fn name(&self) -> &str {
         &self.name
     }

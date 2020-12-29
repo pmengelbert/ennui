@@ -4,13 +4,14 @@ pub mod key;
 
 use crate::item::handle::Handle;
 use crate::item::key::Key;
+use crate::map::door::{Lock, Guard, RenaissanceGuard};
 use serde::export::fmt::Debug;
 use serde::{Deserialize, Serialize};
 use std::borrow::{Borrow, BorrowMut};
 use std::ops::{Deref, DerefMut};
 use BasicItemKind::*;
 
-pub trait ItemTrait: Send + Sync + Debug {
+pub trait Describe: Send + Sync + Debug {
     fn name(&self) -> &str;
     fn display(&self) -> &str;
     fn description(&self) -> &str;
@@ -25,27 +26,30 @@ pub enum BasicItemKind {
     Scenery(BasicItem),
     Edible(BasicItem),
     Holdable(BasicItem),
+    Guard(Box<RenaissanceGuard>),
     Container(GenericItemList),
 }
 
 #[derive(Debug)]
 pub enum Item {
-    Clothing(Box<dyn ItemTrait>),
-    Weapon(Box<dyn ItemTrait>),
-    Scenery(Box<dyn ItemTrait>),
-    Edible(Box<dyn ItemTrait>),
-    Holdable(Box<dyn ItemTrait>),
+    Clothing(Box<dyn Describe>),
+    Weapon(Box<dyn Describe>),
+    Scenery(Box<dyn Describe>),
+    Edible(Box<dyn Describe>),
+    Holdable(Box<dyn Describe>),
     Container(Box<dyn ItemListTrait<Kind = ItemList>>),
+    Guard(Box<dyn Guard<Lock = u64>>),
     Key(Box<dyn Key<u64>>),
 }
 
-impl ItemTrait for Item {
+impl Describe for Item {
     fn name(&self) -> &str {
         use Item::*;
         match self {
             Clothing(i) | Weapon(i) | Scenery(i) | Edible(i) | Holdable(i) => i.name(),
             Container(i) => i.name(),
             Key(i) => i.name(),
+            Guard(i) => i.name(),
         }
     }
 
@@ -55,6 +59,7 @@ impl ItemTrait for Item {
             Clothing(i) | Weapon(i) | Scenery(i) | Edible(i) | Holdable(i) => i.display(),
             Container(i) => i.display(),
             Key(i) => i.display(),
+            Guard(i) => i.display(),
         }
     }
 
@@ -64,6 +69,7 @@ impl ItemTrait for Item {
             Clothing(i) | Weapon(i) | Scenery(i) | Edible(i) | Holdable(i) => i.description(),
             Container(i) => i.description(),
             Key(i) => i.description(),
+            Guard(i) => i.description(),
         }
     }
 
@@ -73,6 +79,7 @@ impl ItemTrait for Item {
             Clothing(i) | Weapon(i) | Scenery(i) | Edible(i) | Holdable(i) => i.handle(),
             Container(i) => i.handle(),
             Key(i) => i.handle(),
+            Guard(i) => i.handle(),
         }
     }
 
@@ -98,7 +105,7 @@ pub struct BasicItem {
     handle: Handle,
 }
 
-impl ItemTrait for BasicItem {
+impl Describe for BasicItem {
     fn name(&self) -> &str {
         &self.name
     }
@@ -120,7 +127,7 @@ impl ItemTrait for BasicItem {
     }
 }
 
-pub trait Holder: ItemTrait {
+pub trait Holder: Describe {
     type Kind;
 
     fn items(&self) -> &Self::Kind;
@@ -213,7 +220,7 @@ impl BasicItemKind {
     }
 }
 
-impl ItemTrait for BasicItemKind {
+impl Describe for BasicItemKind {
     fn name(&self) -> &str {
         self.safe_unwrap()
             .map(|i| i.name.as_str())
@@ -246,7 +253,7 @@ impl ItemTrait for BasicItemKind {
     }
 }
 
-pub trait ItemListTrait: ItemTrait + Debug {
+pub trait ItemListTrait: Describe + Debug {
     type Kind: Debug;
     fn get(&self, handle: &str) -> Option<&Item>;
     fn get_mut(&mut self, handle: &str) -> Option<&mut Item>;
@@ -271,7 +278,7 @@ pub trait ItemListTrait: ItemTrait + Debug {
     }
 }
 
-#[derive(Default, Debug)]
+#[derive(Default, Debug, Clone)]
 pub struct ItemList {
     inner: Vec<Item>,
     info: BasicItemKind,
@@ -291,7 +298,7 @@ impl DerefMut for ItemList {
     }
 }
 
-impl ItemTrait for ItemList {
+impl Describe for ItemList {
     fn name(&self) -> &str {
         self.info.name()
     }

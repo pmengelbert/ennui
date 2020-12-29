@@ -2,7 +2,7 @@ pub mod coord;
 pub mod door;
 
 use crate::game::MapDir;
-use crate::item::{GenericItemList, Holder, Item, ItemList, ItemListTrait, ItemTrait};
+use crate::item::{Describe, GenericItemList, Holder, Item, ItemList, ItemListTrait};
 use crate::player::{Player, PlayerIdList, PlayerList, Uuid};
 use crate::text::Color::*;
 use crate::Provider;
@@ -420,7 +420,7 @@ impl Holder for Room {
     }
 }
 
-impl ItemTrait for Room {
+impl Describe for Room {
     fn name(&self) -> &str {
         &self.name
     }

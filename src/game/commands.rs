@@ -70,7 +70,9 @@ pub fn fill_interpreter(i: &mut Interpreter) {
                                         ));
                                         format!("you take the {}", handle)
                                     }
-                                    Err(_) => format!("you somehow failed at the simplest of tasks"),
+                                    Err(_) => {
+                                        format!("you somehow failed at the simplest of tasks")
+                                    }
                                 },
                                 None => format!(
                                     "you don't see {} in the {}",

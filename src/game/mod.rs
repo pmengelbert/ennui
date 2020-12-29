@@ -7,7 +7,7 @@ use std::io;
 
 use crate::game::MapDir::South;
 use crate::interpreter::Interpreter;
-use crate::item::{Item, ItemListTrait, ItemTrait};
+use crate::item::{Describe, Item, ItemListTrait};
 use crate::map::{coord::Coord, Locate, Room, RoomList, Space};
 use crate::player::{Player, PlayerList, Uuid};
 use crate::text::message::{Audience, Broadcast, Message, Messenger, Msg};
@@ -297,7 +297,8 @@ impl Game {
                         "a door blocks your way. it's sealed with a mysterious force".into()
                     }
                     PermaLocked => {
-                        "a door blocks your way. it's not going to budge, and there's no keyhole".into()
+                        "a door blocks your way. it's not going to budge, and there's no keyhole"
+                            .into()
                     }
                 }
             }
