@@ -2,8 +2,7 @@ use super::item::Direction;
 
 use super::*;
 use crate::item::error::Error::*;
-use crate::map::door::DoorState::Open;
-use crate::map::door::{DoorState, Keyhole, Keyhole2, Keyhole3, ObstacleState};
+use crate::map::door::{DoorState, Lock, ObstacleState};
 use crate::text::message::{Audience, Msg};
 
 pub fn fill_interpreter(i: &mut Interpreter) {
@@ -61,7 +60,7 @@ pub fn fill_interpreter(i: &mut Interpreter) {
                     Some(c) => {
                         if let Item::Container(cont) = c {
                             match cont.get(object) {
-                                Some(item) => match cont.transfer(player, object) {
+                                Some(_) => match cont.transfer(player, object) {
                                     Ok(handle) => {
                                         other_msg = Some(format!(
                                             "{} takes {} from {}",
@@ -71,7 +70,7 @@ pub fn fill_interpreter(i: &mut Interpreter) {
                                         ));
                                         format!("you take the {}", handle)
                                     }
-                                    Err(err) => format!("ERRRRRROR"),
+                                    Err(_) => format!("you somehow failed at the simplest of tasks"),
                                 },
                                 None => format!(
                                     "you don't see {} in the {}",
@@ -302,8 +301,8 @@ pub fn fill_interpreter(i: &mut Interpreter) {
                     format!("which door do you want to open?")
                 } else {
                     let (_, door) = room.doors().iter_mut().next()?;
-                    match door.unlock3(Open, std::option::Option::None) {
-                        Ok((_)) => {
+                    match door.unlock(Open, std::option::Option::None) {
+                        Ok(_) => {
                             println!("doorstate: {}", door.state());
                             other_msg = Some(format!("{} opens a door", name));
                             format!("the door swings open")
@@ -358,7 +357,7 @@ pub fn fill_interpreter(i: &mut Interpreter) {
 
                                 for item in player.items_mut().iter_mut() {
                                     if let Item::Key(k) = item {
-                                        match door.unlock3(DoorState::Closed, Some(&**k)) {
+                                        match door.unlock(DoorState::Closed, Some(&**k)) {
                                             Ok(()) => {
                                                 println!("door state: {}", door.state());
                                                 other_msg =
@@ -366,7 +365,7 @@ pub fn fill_interpreter(i: &mut Interpreter) {
                                                 res = Some(());
                                                 break;
                                             }
-                                            Err(err) => continue,
+                                            Err(_) => continue,
                                         }
                                     }
                                 }
@@ -386,7 +385,7 @@ pub fn fill_interpreter(i: &mut Interpreter) {
                                     },
                                 }
                             }
-                            // handle other unlockable items (such as chests) here
+                            // TODO: handle other unlockable items (such as chests) here
                             _ => format!("I'm not sure that you can even unlock that"),
                         }
                     }
@@ -395,6 +394,7 @@ pub fn fill_interpreter(i: &mut Interpreter) {
             }
             _ => format!("that's pretty much gobbledygook to me"),
         };
+
         let aud = Audience(u, loc.player_ids(&g.rooms)?);
         let msg = Msg {
             s: self_msg,

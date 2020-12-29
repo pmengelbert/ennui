@@ -2,25 +2,18 @@ pub mod coord;
 pub mod door;
 
 use crate::game::MapDir;
-use crate::item::{
-    BasicItemKind, GenericItemList, Holder, Item, ItemList, ItemListTrait, ItemTrait,
-};
+use crate::item::{GenericItemList, Holder, Item, ItemList, ItemListTrait, ItemTrait};
 use crate::player::{Player, PlayerIdList, PlayerList, Uuid};
 use crate::text::Color::*;
-use crate::text::Wrap;
-use crate::{PassFail, Provider};
+use crate::Provider;
 
 use std::collections::{HashMap, HashSet};
 use std::ops::{Deref, DerefMut};
 
 use crate::item::handle::Handle;
 use crate::map::coord::Coord;
-use crate::map::door::{Door, DoorList, DoorState, Obstacle, ObstacleState};
+use crate::map::door::{DoorList, DoorState, ObstacleState};
 use serde::{Deserialize, Serialize};
-use std::borrow::{Borrow, Cow};
-use std::mem::take;
-use std::path::Display;
-use std::sync::Arc;
 
 type StateResult<T> = Result<(), T>;
 
@@ -279,7 +272,7 @@ impl Room {
     }
 
     pub fn init(&mut self) {
-        let mut inner = self.inner_items.take().unwrap_or_default();
+        let inner = self.inner_items.take().unwrap_or_default();
         self.items = inner.into();
     }
 

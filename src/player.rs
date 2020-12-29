@@ -1,10 +1,9 @@
 use crate::item::handle::Handle;
-use crate::item::{GenericItemList, Item, ItemList, ItemListTrait, ItemTrait};
+use crate::item::{Item, ItemList, ItemListTrait, ItemTrait};
 use crate::map::coord::Coord;
 use crate::text::message::Messenger;
 use crate::Provider;
 use serde::{Deserialize, Serialize};
-use std::borrow::{Borrow, Cow};
 use std::collections::{HashMap, HashSet};
 use std::fmt::{Display, Formatter};
 use std::io::Write;

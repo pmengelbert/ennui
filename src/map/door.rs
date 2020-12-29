@@ -1,51 +1,27 @@
 use crate::game::MapDir;
-use crate::interpreter::CommandKind;
-use crate::item::key::{Key, SkeletonKey};
+use crate::item::key::Key;
 use crate::map::coord::Coord;
 use crate::map::door::DoorState::{Locked, Open};
 use crate::map::{Locate, StateResult};
-use crate::player::Uuid;
 use serde::export::Formatter;
 use serde::{Deserialize, Serialize};
-use std::borrow::Cow;
 use std::collections::HashMap;
 use std::error::Error;
 use std::fmt::Debug;
 use std::ops::{Deref, DerefMut};
 use std::option::NoneError;
 
-pub trait Keyhole<T, U>: ObstacleState<T>
-where
-    U: PartialEq<Self::Lock>,
-{
-    type Lock: PartialEq<U>;
+pub trait Lock<T>: ObstacleState<T> {
+    type Lock;
 
-    fn unlock(&mut self, new_state: T, key: Option<U>) -> StateResult<T>;
+    fn unlock(&mut self, new_state: T, key: Option<&dyn Key<Self::Lock>>) -> StateResult<T>;
     fn is_locked(&self) -> bool;
 }
 
-pub trait Keyhole2<T, U>: ObstacleState<T>
-where
-    U: Key<Self::Lock>,
-{
-    type Lock;
-
-    fn unlock2(&mut self, new_state: T, key: Option<U>) -> StateResult<T>;
-    fn is_locked2(&self) -> bool;
-    fn validator(&self) -> Option<Box<dyn Fn(&Self, T, U) -> bool>>;
-}
-
-pub trait Keyhole3<T>: ObstacleState<T> {
-    type Lock;
-
-    fn unlock3(&mut self, new_state: T, key: Option<&dyn Key<Self::Lock>>) -> StateResult<T>;
-    fn is_locked2(&self) -> bool;
-}
-
-impl Keyhole3<DoorState> for Door {
+impl Lock<DoorState> for Door {
     type Lock = u64;
 
-    fn unlock3(
+    fn unlock(
         &mut self,
         new_state: DoorState,
         key: Option<&dyn Key<Self::Lock>>,
@@ -76,36 +52,11 @@ impl Keyhole3<DoorState> for Door {
         }
     }
 
-    fn is_locked2(&self) -> bool {
+    fn is_locked(&self) -> bool {
         match self.state() {
             DoorState::Open | DoorState::Closed => false,
             _ => true,
         }
-    }
-}
-
-impl Keyhole2<DoorState, SkeletonKey> for Door {
-    type Lock = u64;
-
-    fn unlock2(
-        &mut self,
-        new_state: DoorState,
-        key: Option<SkeletonKey>,
-    ) -> StateResult<DoorState> {
-        match (*self.validator()?)(self, new_state, key?) {
-            true => Ok(()),
-            false => Err(self.state()),
-        }
-    }
-
-    fn is_locked2(&self) -> bool {
-        unimplemented!()
-    }
-
-    fn validator(&self) -> Option<Box<dyn Fn(&Self, DoorState, SkeletonKey) -> bool>> {
-        Some(Box::new(|d, state, key| {
-            d.keyhole.map(|n| n == key.key()).unwrap_or(false)
-        }))
     }
 }
 
@@ -130,22 +81,6 @@ pub trait Obstacle<T, U>: ObstacleState<U> {
         }
     }
 }
-
-// impl<T, U> Obstacle<T, DoorState> for Door<U>
-// where
-//     U: PartialEq<T> + Clone + Debug,
-//     T: PartialEq<U>,
-// {
-//     type Other = U;
-//
-//     fn dir(&self) -> MapDir {
-//         self.dir
-//     }
-//
-//     fn alt_dest(&self) -> Option<Coord> {
-//         self.alt_dest
-//     }
-// }
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub enum DoorState {
@@ -199,35 +134,6 @@ impl ObstacleState<DoorState> for Door {
     }
 }
 
-impl Keyhole<DoorState, u64> for Door {
-    type Lock = u64;
-
-    fn unlock(&mut self, new_state: DoorState, key: Option<u64>) -> StateResult<DoorState> {
-        if self.state == new_state {
-            return Err(self.state);
-        }
-
-        match (self.keyhole.clone(), key) {
-            (Some(h), Some(k)) if h == k => {
-                self.state = new_state;
-                Ok(())
-            }
-            (None, _) => {
-                self.state = new_state;
-                Ok(())
-            }
-            _ => Err(Locked),
-        }
-    }
-
-    fn is_locked(&self) -> bool {
-        match self.state {
-            Open => false,
-            _ => true,
-        }
-    }
-}
-
 #[repr(transparent)]
 #[derive(Debug, Default, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub struct DoorList(pub HashMap<MapDir, Door>);
@@ -256,32 +162,6 @@ mod test_doors {
     use crate::player::Player;
     use std::collections::HashMap;
 
-    // #[test]
-    // fn test_door_api_1() {
-    //     let room = Room {
-    //         name: "".to_string(),
-    //         loc: Default::default(),
-    //         description: "".to_string(),
-    //         players: Default::default(),
-    //         items: Default::default(),
-    //         doors: HashMap::new(),
-    //     };
-    //     todo!()
-    // }
-
-    // #[test]
-    // fn test_door_api_2() {
-    //     let mut g = Game::new();
-    //     let p = Player::new("billy").uuid();
-
-    //     let res = Coord(0, 0).move_player(g, p, West);
-    //     let res2 = Coord(0, 0).move_player(g, p, South);
-    //     todo!()
-    //     assert_eq!(res, Err(Closed("closed".into())));
-    //     assert_eq!(res, Err(Locked("locked".into())));
-
-    // }
-
     #[test]
     fn test_door_api_3() {
         let mut d: Door = Door {
@@ -292,16 +172,16 @@ mod test_doors {
         };
 
         let n: u64 = 8;
-        let res = d.unlock(DoorState::Open, Some(n));
+        let res = d.unlockTODO(DoorState::Open, Some(n));
         assert_eq!(res, Ok(()));
         assert_eq!(d.state(), DoorState::Open);
-        let res = d.unlock(Locked, Some(72));
+        let res = d.unlockTODO(Locked, Some(72));
         assert_eq!(res, Err(Locked));
         assert_eq!(d.state(), DoorState::Open);
-        let res = d.unlock(Locked, None);
+        let res = d.unlockTODO(Locked, None);
         assert_eq!(res, Err(Locked));
         assert_eq!(d.state(), DoorState::Open);
-        let res = d.unlock(Open, None);
+        let res = d.unlockTODO(Open, None);
         assert_eq!(res, Err(Open));
     }
 
@@ -327,75 +207,76 @@ mod test_doors {
     }
 }
 
-struct Wizard {
-    state: DoorState,
-    password: (CommandKind, String),
-    f: Box<Fn(DoorState, u64) -> u64>,
-}
-
-struct Wizard2 {
-    state: DoorState,
-    password: (CommandKind, String),
-    f: Box<Fn(&Self, DoorState, String) -> bool>,
-}
-
-impl Keyhole<DoorState, u64> for Wizard {
-    type Lock = u64;
-
-    fn unlock(&mut self, new_state: DoorState, key: Option<u64>) -> StateResult<DoorState> {
-        if let Some(n) = key {
-            return if (*self.f)(new_state, n) == 1 {
-                self.state = new_state;
-                Ok(())
-            } else {
-                Err(Locked)
-            };
-        }
-
-        Err(self.state())
-    }
-
-    fn is_locked(&self) -> bool {
-        true
-    }
-}
-
-impl ObstacleState<DoorState> for Wizard {
-    fn state(&self) -> DoorState {
-        self.state
-    }
-}
-
-impl ObstacleState<DoorState> for Wizard2 {
-    fn state(&self) -> DoorState {
-        self.state
-    }
-}
-
-impl Keyhole<DoorState, String> for Wizard2 {
-    type Lock = String;
-
-    fn unlock(&mut self, new_state: DoorState, key: Option<String>) -> StateResult<DoorState> {
-        if let Some(key) = key {
-            return if (*self.f)(self, new_state, key) {
-                self.state = new_state;
-                Ok(())
-            } else {
-                Err(self.state())
-            };
-        }
-        Err(self.state())
-    }
-
-    fn is_locked(&self) -> bool {
-        unimplemented!()
-    }
-}
 
 #[cfg(test)]
 mod wizard_test {
     use super::*;
     use crate::map::door::DoorState::Closed;
+
+    struct Wizard {
+        state: DoorState,
+        password: (CommandKind, String),
+        f: Box<Fn(DoorState, u64) -> u64>,
+    }
+
+    struct Wizard2 {
+        state: DoorState,
+        password: (CommandKind, String),
+        f: Box<Fn(&Self, DoorState, String) -> bool>,
+    }
+
+    impl Keyhole<DoorState, u64> for Wizard {
+        type Lock = u64;
+
+        fn unlockTODO(&mut self, new_state: DoorState, key: Option<u64>) -> StateResult<DoorState> {
+            if let Some(n) = key {
+                return if (*self.f)(new_state, n) == 1 {
+                    self.state = new_state;
+                    Ok(())
+                } else {
+                    Err(Locked)
+                };
+            }
+
+            Err(self.state())
+        }
+
+        fn is_locked(&self) -> bool {
+            true
+        }
+    }
+
+    impl ObstacleState<DoorState> for Wizard {
+        fn state(&self) -> DoorState {
+            self.state
+        }
+    }
+
+    impl ObstacleState<DoorState> for Wizard2 {
+        fn state(&self) -> DoorState {
+            self.state
+        }
+    }
+
+    impl Keyhole<DoorState, String> for Wizard2 {
+        type Lock = String;
+
+        fn unlockTODO(&mut self, new_state: DoorState, key: Option<String>) -> StateResult<DoorState> {
+            if let Some(key) = key {
+                return if (*self.f)(self, new_state, key) {
+                    self.state = new_state;
+                    Ok(())
+                } else {
+                    Err(self.state())
+                };
+            }
+            Err(self.state())
+        }
+
+        fn is_locked(&self) -> bool {
+            unimplemented!()
+        }
+    }
 
     #[test]
     fn wizard_test_1() {
@@ -405,8 +286,8 @@ mod wizard_test {
             f: Box::new((|state, key| key - 1)),
         };
 
-        assert_eq!(w.unlock(Open, Some(7)), Err(Locked));
-        assert_eq!(w.unlock(Open, Some(2)), Ok(()));
+        assert_eq!(w.unlockTODO(Open, Some(7)), Err(Locked));
+        assert_eq!(w.unlockTODO(Open, Some(2)), Ok(()));
         assert_eq!(w.state(), Open);
         let mut w2 = Wizard2 {
             password: (CommandKind::Whisper, "until the dawn".to_owned()),
@@ -414,10 +295,10 @@ mod wizard_test {
             f: Box::new((|slf, state, key| key == slf.password.1)),
         };
         assert_eq!(
-            w2.unlock(Closed, Some("until the down".into())),
+            w2.unlockTODO(Closed, Some("until the down".into())),
             Err(Locked)
         );
-        assert_eq!(w2.unlock(Closed, Some("until the dawn".into())), Ok(()));
+        assert_eq!(w2.unlockTODO(Closed, Some("until the dawn".into())), Ok(()));
         assert_eq!(w2.state(), Closed);
 
         let mut w3 = Wizard2 {

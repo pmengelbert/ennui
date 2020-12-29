@@ -2,7 +2,7 @@ use super::Error;
 use crate::game::Game;
 use crate::item::error::Error::{ItemNotFound, TooHeavy};
 use crate::item::Item::Scenery;
-use crate::item::{BasicItemKind, Item, ItemListTrait, ItemTrait};
+use crate::item::{Item, ItemListTrait, ItemTrait};
 use crate::map::coord::Coord;
 use crate::map::RoomList;
 use crate::player::{PlayerList, Uuid};

@@ -1,5 +1,5 @@
 use crate::item::handle::Handle;
-use crate::item::{BasicItemKind, ItemTrait};
+use crate::item::{ItemTrait};
 use std::fmt::Debug;
 
 pub trait Key<T>: ItemTrait + Debug {

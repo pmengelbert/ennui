@@ -4,11 +4,9 @@ pub mod key;
 
 use crate::item::handle::Handle;
 use crate::item::key::Key;
-use crate::map::Room;
 use serde::export::fmt::Debug;
-use serde::export::Formatter;
 use serde::{Deserialize, Serialize};
-use std::borrow::{Borrow, BorrowMut, Cow};
+use std::borrow::{Borrow, BorrowMut};
 use std::ops::{Deref, DerefMut};
 use BasicItemKind::*;
 
@@ -258,7 +256,7 @@ pub trait ItemListTrait: ItemTrait + Debug {
 
     fn transfer(
         &mut self,
-        other: &mut ItemListTrait<Kind = ItemList>,
+        other: &mut dyn ItemListTrait<Kind = ItemList>,
         handle: &str,
     ) -> Result<String, String> {
         let handle = handle.as_ref();

@@ -7,7 +7,7 @@ use std::io;
 
 use crate::game::MapDir::South;
 use crate::interpreter::Interpreter;
-use crate::item::{Item, ItemList, ItemListTrait, ItemTrait};
+use crate::item::{Item, ItemListTrait, ItemTrait};
 use crate::map::{coord::Coord, Locate, Room, RoomList, Space};
 use crate::player::{Player, PlayerList, Uuid};
 use crate::text::message::{Audience, Broadcast, Message, Messenger, Msg};
@@ -17,13 +17,11 @@ use crate::WriteResult;
 
 use crate::item::handle::Handle;
 use crate::item::key::SkeletonKey;
-use crate::item::BasicItemKind::Container;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 use std::borrow::{BorrowMut, Cow};
 use std::fmt::{Display, Formatter};
 use std::io::Write;
-use std::mem::take;
 use std::sync::Arc;
 
 type Error = Arc<crate::item::error::Error>;
@@ -290,20 +288,18 @@ impl Game {
             }
             Err(s) => {
                 use crate::map::door::DoorState::*;
-                let err_msg = match s {
-                    None => "alas! you cannot go that way...",
-                    Closed => "a door blocks your way",
-                    Locked => "a door blocks your way",
-                    Open => "it's already open",
+                match s {
+                    None => "alas! you cannot go that way...".into(),
+                    Closed => "a door blocks your way".into(),
+                    Locked => "a door blocks your way".into(),
+                    Open => "it's already open".into(),
                     MagicallySealed => {
-                        "a door blocks your way. it's sealed with a mysterious force"
+                        "a door blocks your way. it's sealed with a mysterious force".into()
                     }
                     PermaLocked => {
-                        "a door blocks your way. it's not going to budge, and there's no keyhole"
+                        "a door blocks your way. it's not going to budge, and there's no keyhole".into()
                     }
-                };
-                self.send(u, err_msg);
-                return Some("".into());
+                }
             }
         };
 
@@ -311,9 +307,12 @@ impl Game {
         let aud = Audience(u, &others);
         let msg = Msg {
             s: msg,
-            o: other_msg,
+            o: other_msg.clone(),
         };
         self.send(aud, msg);
+        if other_msg.is_none() {
+            return Some("".into());
+        }
 
         let next_room_aud = {
             let next_room = self.rooms.get(&loc.add(dir)?)?;

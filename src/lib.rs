@@ -8,7 +8,6 @@ macro_rules! arc_mutex(
     };
 );
 
-type PassFail = Result<(), std::option::NoneError>;
 type WriteResult = std::io::Result<usize>;
 
 pub mod game;
