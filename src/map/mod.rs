@@ -12,7 +12,7 @@ use std::ops::{Deref, DerefMut};
 
 use crate::item::handle::Handle;
 use crate::map::coord::Coord;
-use crate::map::door::{DoorList, DoorState, ObstacleState};
+use crate::map::door::{DoorList, DoorState, GuardState, ObstacleState};
 use serde::{Deserialize, Serialize};
 
 type StateResult<T> = Result<(), T>;
@@ -151,8 +151,21 @@ pub trait Locate {
                         DoorState::None | DoorState::Open => (),
                         s => return Err(s),
                     }
+                } else {
+                    let items = src_room.items();
+                    if let Some((d, g)) = items.iter().find_map(|i| {
+                        if let Item::Guard(d, g) = i {
+                            Some((d, g))
+                        } else {
+                            None
+                        }
+                    }) {
+                        if d == &dir && g.state() == GuardState::Closed {
+                            return Err(DoorState::Guarded(g.name().to_owned()));
+                        }
+                    };
+                    src_room.players_mut().remove(&u);
                 }
-                src_room.players_mut().remove(&u);
             }
             rooms.get_mut(&next_coord?)?.players_mut().insert(u);
         }
@@ -367,8 +380,8 @@ mod room_test {
 mod map_test {
     use super::*;
     use crate::game::MapDir::South;
-    use crate::item::BasicItem;
     use crate::item::BasicItemKind::Clothing;
+    use crate::item::{BasicItem, BasicItemKind};
 
     #[test]
     fn map_test() {
@@ -458,8 +471,9 @@ impl ItemListTrait for Room {
         Some(self.items.remove(pos))
     }
 
-    fn insert(&mut self, item: Item) {
+    fn insert(&mut self, item: Item) -> Result<(), ()> {
         self.items.push(item);
+        Ok(())
     }
 
     fn list(&self) -> &Self::Kind {

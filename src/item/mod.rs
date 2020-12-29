@@ -2,12 +2,14 @@ pub mod error;
 pub mod handle;
 pub mod key;
 
+use crate::game::MapDir;
 use crate::item::handle::Handle;
-use crate::item::key::Key;
-use crate::map::door::{Lock, Guard, RenaissanceGuard};
+use crate::item::key::{Key, KeyType};
+use crate::map::door::{Guard, Lock, RenaissanceGuard};
 use serde::export::fmt::Debug;
 use serde::{Deserialize, Serialize};
 use std::borrow::{Borrow, BorrowMut};
+use std::mem::take;
 use std::ops::{Deref, DerefMut};
 use BasicItemKind::*;
 
@@ -26,8 +28,9 @@ pub enum BasicItemKind {
     Scenery(BasicItem),
     Edible(BasicItem),
     Holdable(BasicItem),
-    Guard(Box<RenaissanceGuard>),
+    Guard(MapDir, Box<RenaissanceGuard>),
     Container(GenericItemList),
+    Key(BasicItem),
 }
 
 #[derive(Debug)]
@@ -38,7 +41,7 @@ pub enum Item {
     Edible(Box<dyn Describe>),
     Holdable(Box<dyn Describe>),
     Container(Box<dyn ItemListTrait<Kind = ItemList>>),
-    Guard(Box<dyn Guard<Lock = u64>>),
+    Guard(MapDir, Box<dyn Guard<Lock = u64, Kind = ItemList>>),
     Key(Box<dyn Key<u64>>),
 }
 
@@ -49,7 +52,7 @@ impl Describe for Item {
             Clothing(i) | Weapon(i) | Scenery(i) | Edible(i) | Holdable(i) => i.name(),
             Container(i) => i.name(),
             Key(i) => i.name(),
-            Guard(i) => i.name(),
+            Guard(_, i) => i.name(),
         }
     }
 
@@ -59,7 +62,7 @@ impl Describe for Item {
             Clothing(i) | Weapon(i) | Scenery(i) | Edible(i) | Holdable(i) => i.display(),
             Container(i) => i.display(),
             Key(i) => i.display(),
-            Guard(i) => i.display(),
+            Guard(_, i) => i.display(),
         }
     }
 
@@ -69,7 +72,7 @@ impl Describe for Item {
             Clothing(i) | Weapon(i) | Scenery(i) | Edible(i) | Holdable(i) => i.description(),
             Container(i) => i.description(),
             Key(i) => i.description(),
-            Guard(i) => i.description(),
+            Guard(_, i) => i.description(),
         }
     }
 
@@ -79,7 +82,7 @@ impl Describe for Item {
             Clothing(i) | Weapon(i) | Scenery(i) | Edible(i) | Holdable(i) => i.handle(),
             Container(i) => i.handle(),
             Key(i) => i.handle(),
-            Guard(i) => i.handle(),
+            Guard(_, i) => i.handle(),
         }
     }
 
@@ -212,10 +215,10 @@ impl GenericItemList {
 impl BasicItemKind {
     fn safe_unwrap(&self) -> Option<&BasicItem> {
         match self {
-            Clothing(item) | Weapon(item) | Scenery(item) | Holdable(item) | Edible(item) => {
-                Some(&item)
-            }
+            Key(item) | Clothing(item) | Weapon(item) | Scenery(item) | Holdable(item)
+            | Edible(item) => Some(&item),
             Container(_) => None,
+            Guard(_, _) => None,
         }
     }
 }
@@ -258,7 +261,7 @@ pub trait ItemListTrait: Describe + Debug {
     fn get(&self, handle: &str) -> Option<&Item>;
     fn get_mut(&mut self, handle: &str) -> Option<&mut Item>;
     fn get_owned(&mut self, handle: &str) -> Option<Item>;
-    fn insert(&mut self, item: Item);
+    fn insert(&mut self, item: Item) -> Result<(), ()>;
     fn list(&self) -> &Self::Kind;
 
     fn transfer(
@@ -278,7 +281,7 @@ pub trait ItemListTrait: Describe + Debug {
     }
 }
 
-#[derive(Default, Debug, Clone)]
+#[derive(Default, Debug)]
 pub struct ItemList {
     inner: Vec<Item>,
     info: BasicItemKind,
@@ -339,8 +342,9 @@ impl ItemListTrait for ItemList {
         Some(self.inner.remove(pos))
     }
 
-    fn insert(&mut self, item: Item) {
+    fn insert(&mut self, item: Item) -> Result<(), ()> {
         self.inner.push(item);
+        Ok(())
     }
 
     fn list(&self) -> &Self::Kind {
@@ -367,10 +371,10 @@ impl ItemList {
 }
 
 impl From<GenericItemList> for ItemList {
-    fn from(l: GenericItemList) -> Self {
+    fn from(mut l: GenericItemList) -> Self {
         println!("{:?}", l);
         let mut v: Vec<Item> = Vec::new();
-        for i in &*l {
+        for i in &mut *l {
             let i = match i {
                 Clothing(i) => Item::Clothing(Box::new(i.clone())),
                 Weapon(i) => Item::Weapon(Box::new(i.clone())),
@@ -378,6 +382,15 @@ impl From<GenericItemList> for ItemList {
                 Edible(i) => Item::Edible(Box::new(i.clone())),
                 Holdable(i) => Item::Holdable(Box::new(i.clone())),
                 Container(listy) => Item::Container(Box::new(conv(listy))),
+                Guard(d, guard) => {
+                    let g = take(guard.as_mut());
+                    Item::Guard(*d, Box::new(g))
+                }
+                Key(item) => {
+                    let i = take(item);
+                    let k: KeyType = i.into();
+                    Item::Key(Box::new(k))
+                }
             };
             v.push(i);
         }
@@ -395,9 +408,9 @@ impl From<GenericItemList> for ItemList {
     }
 }
 
-fn conv(list: &GenericItemList) -> ItemList {
+fn conv(list: &mut GenericItemList) -> ItemList {
     let mut ret = ItemList::new();
-    for i in &**list {
+    for i in &mut **list {
         println!("{:?}", i);
         let i = match i {
             Clothing(i) => Item::Clothing(Box::new(i.clone())),
@@ -405,7 +418,16 @@ fn conv(list: &GenericItemList) -> ItemList {
             Scenery(i) => Item::Scenery(Box::new(i.clone())),
             Edible(i) => Item::Edible(Box::new(i.clone())),
             Holdable(i) => Item::Holdable(Box::new(i.clone())),
-            Container(listy) => Item::Container(Box::new(conv(listy))),
+            Container(ref mut listy) => Item::Container(Box::new(conv(listy))),
+            Guard(d, guard) => {
+                let g = take(guard.as_mut());
+                Item::Guard(*d, Box::new(g))
+            }
+            Key(item) => {
+                let i = take(item);
+                let k: KeyType = i.into();
+                Item::Key(Box::new(k))
+            }
         };
         ret.push(i);
     }

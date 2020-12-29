@@ -165,7 +165,7 @@ impl Game {
                     handle: Handle(vec!["key".into(), "skeleton".into()]),
                 };
                 if let Some(Item::Container(cont)) = r.get_mut("corpse") {
-                    cont.insert(Item::Key(Box::new(key)))
+                    cont.insert(Item::Key(Box::new(key)));
                 }
             }
             rooms.insert(r.loc(), r);
@@ -299,6 +299,9 @@ impl Game {
                     PermaLocked => {
                         "a door blocks your way. it's not going to budge, and there's no keyhole"
                             .into()
+                    }
+                    Guarded(s) => {
+                        format!("{} blocks your way. they look pretty scary", article(&s)).into()
                     }
                 }
             }

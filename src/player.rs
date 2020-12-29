@@ -524,8 +524,9 @@ impl ItemListTrait for Player {
         Some(self.items.remove(pos))
     }
 
-    fn insert(&mut self, item: Item) {
+    fn insert(&mut self, item: Item) -> Result<(), ()> {
         self.items.push(item);
+        Ok(())
     }
 
     fn list(&self) -> &Self::Kind {

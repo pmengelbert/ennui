@@ -1,5 +1,6 @@
 use crate::item::handle::Handle;
-use crate::item::Describe;
+use crate::item::{BasicItem, Describe};
+use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 
 pub trait Key<T>: Describe + Debug {
@@ -39,34 +40,84 @@ impl Key<u64> for SkeletonKey {
     }
 }
 
-#[derive(Debug, Clone)]
-pub struct Codpiece(Handle);
+pub trait KeyItem: Key<u64> {}
 
-impl Describe for Codpiece {
+#[derive(Debug, Clone, Serialize, Deserialize)]
+// pub struct Codpiece(Handle);
+pub struct KeyType {
+    name: String,
+    display: String,
+    description: String,
+    handle: Handle,
+}
+
+impl KeyItem for KeyType {}
+
+impl Describe for KeyType {
     fn name(&self) -> &str {
-        "codpiece"
+        &self.name
     }
 
     fn display(&self) -> &str {
-        "A tattered old codpiece is here, mocking you."
+        &self.display
     }
 
     fn description(&self) -> &str {
-        "It's very ornate, but it's still very much a codpiece. You see no need for it, and yet \
-        you simply can't resist the urge to put it on. You can't rationalize its power over you, and you \
-        hang your head, ashamed."
+        &self.description
     }
 
     fn handle(&self) -> &Handle {
-        &self.0
+        &self.handle
     }
 
     fn is_container(&self) -> bool {
-        false
+        true
     }
 }
 
-impl Key<u64> for Codpiece {
+impl From<BasicItem> for KeyType {
+    fn from(i: BasicItem) -> Self {
+        let BasicItem {
+            name,
+            display,
+            description,
+            handle,
+        } = i;
+
+        Self {
+            name,
+            display,
+            description,
+            handle,
+        }
+    }
+}
+
+// impl Describe for Codpiece {
+//     fn name(&self) -> &str {
+//         "codpiece"
+//     }
+//
+//     fn display(&self) -> &str {
+//         "A tattered old codpiece is here, mocking you."
+//     }
+//
+//     fn description(&self) -> &str {
+//         "It's very ornate, but it's still very much a codpiece. You see no need for it, and yet \
+//         you simply can't resist the urge to put it on. You can't rationalize its power over you, and you \
+//         hang your head, ashamed."
+//     }
+//
+//     fn handle(&self) -> &Handle {
+//         &self.0
+//     }
+//
+//     fn is_container(&self) -> bool {
+//         false
+//     }
+// }
+
+impl Key<u64> for KeyType {
     fn key(&self) -> u64 {
         8
     }

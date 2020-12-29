@@ -1,5 +1,6 @@
 use super::item::Direction;
 
+use super::item::TransferResult::*;
 use super::*;
 use crate::item::error::Error::*;
 use crate::map::door::{DoorState, Lock, ObstacleState};
@@ -46,6 +47,7 @@ pub fn fill_interpreter(i: &mut Interpreter) {
                         TooHeavy(s) => format!("you can't pick up {}. It's too heavy", article(&s)),
                         _ => format!("you don't see {} here", article(&handle)),
                     },
+                    _ => todo!(),
                 }
             }
             2 => {
@@ -59,6 +61,7 @@ pub fn fill_interpreter(i: &mut Interpreter) {
                 match room.get_mut(container) {
                     Some(c) => {
                         if let Item::Container(cont) = c {
+                            use std::result::Result::*;
                             match cont.get(object) {
                                 Some(_) => match cont.transfer(player, object) {
                                     Ok(handle) => {
@@ -122,6 +125,7 @@ pub fn fill_interpreter(i: &mut Interpreter) {
                         Clothing(s) => format!("you can't wear {}!", article(s)),
                         s => format!("you're not holding {}", article(s.safe_unwrap())),
                     },
+                    _ => todo!(),
                 }
             }
             _ => "be more specific. or less specific.".to_owned(),
@@ -154,6 +158,7 @@ pub fn fill_interpreter(i: &mut Interpreter) {
                 Err(err) => match err {
                     _ => format!("you're not wearing {}", article(&handle)),
                 },
+                _ => todo!(),
             }
         } else {
             "be more specific. or less specific.".to_owned()
@@ -184,6 +189,7 @@ pub fn fill_interpreter(i: &mut Interpreter) {
                     format!("you drop the {}", handle)
                 }
                 Err(_) => format!("you don't see {} here", article(handle)),
+                _ => todo!(),
             }
         } else {
             "be more specific. or less specific.".to_owned()
@@ -227,7 +233,9 @@ pub fn fill_interpreter(i: &mut Interpreter) {
                     }
                     Clothing(_) => format!("they must not like the look of it"),
                     TooHeavy(_) => format!("they can't hold that! it's too heavy"),
+                    Guarded(s) => format!("I don't think {} can accept that...", s),
                 },
+                GuardAppeased(s) => s,
             }
         } else {
             "E - NUN - CI - ATE".to_owned()
@@ -303,6 +311,7 @@ pub fn fill_interpreter(i: &mut Interpreter) {
                     format!("which door do you want to open?")
                 } else {
                     let (_, door) = room.doors().iter_mut().next()?;
+                    use std::result::Result::*;
                     match door.unlock(Open, std::option::Option::None) {
                         Ok(_) => {
                             println!("doorstate: {}", door.state());
@@ -359,6 +368,7 @@ pub fn fill_interpreter(i: &mut Interpreter) {
 
                                 for item in player.items_mut().iter_mut() {
                                     if let Item::Key(k) = item {
+                                        use std::result::Result::*;
                                         match door.unlock(DoorState::Closed, Some(&**k)) {
                                             Ok(()) => {
                                                 println!("door state: {}", door.state());

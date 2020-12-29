@@ -1,12 +1,13 @@
 use crate::game::MapDir;
 use crate::item::handle::Handle;
-use crate::item::key::{Codpiece, Key};
+use crate::item::key::{Key, KeyType};
 use crate::item::{Describe, Item, ItemList, ItemListTrait};
 use crate::map::coord::Coord;
 use crate::map::door::DoorState::{Locked, Open};
 use crate::map::{Locate, StateResult};
 use serde::export::Formatter;
 use serde::{Deserialize, Serialize};
+use std::borrow::Cow;
 use std::collections::HashMap;
 use std::error::Error;
 use std::fmt::Debug;
@@ -29,10 +30,10 @@ impl Lock<DoorState> for Door {
         key: Option<&dyn Key<Self::Lock>>,
     ) -> StateResult<DoorState> {
         if self.state == new_state {
-            return Err(self.state);
+            return Err(self.state.clone());
         }
 
-        match (new_state, self.state()) {
+        match (new_state.clone(), self.state()) {
             (Open, DoorState::Closed) => {
                 self.state = new_state;
                 return Ok(());
@@ -66,13 +67,24 @@ pub trait ObstacleState<T> {
     fn state(&self) -> T;
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Default)]
 pub struct RenaissanceGuard {
     handle: Handle,
     #[serde(skip_serializing, skip_deserializing)]
     items: ItemList,
     state: GuardState,
     lock: u64,
+}
+
+impl Clone for RenaissanceGuard {
+    fn clone(&self) -> Self {
+        Self {
+            handle: self.handle.clone(),
+            items: ItemList::new(),
+            state: self.state,
+            lock: self.lock,
+        }
+    }
 }
 
 impl Describe for RenaissanceGuard {
@@ -113,6 +125,12 @@ pub enum GuardState {
     Closed,
 }
 
+impl Default for GuardState {
+    fn default() -> Self {
+        GuardState::Closed
+    }
+}
+
 impl ObstacleState<GuardState> for RenaissanceGuard {
     fn state(&self) -> GuardState {
         self.state
@@ -130,7 +148,8 @@ impl Lock<GuardState> for RenaissanceGuard {
         if let GuardState::Open = new_state {
             match key {
                 Some(k) if k.key() == self.lock => {
-                    self.state == new_state;
+                    self.state = new_state;
+                    println!("guard state: {:?}", self.state());
                     Ok(())
                 }
                 _ => Err(self.state()),
@@ -145,7 +164,7 @@ impl Lock<GuardState> for RenaissanceGuard {
     }
 }
 
-pub trait Guard: Lock<GuardState> + ItemListTrait<Kind = ItemList> { }
+pub trait Guard: Lock<GuardState> + ItemListTrait<Kind = ItemList> {}
 
 impl ItemListTrait for RenaissanceGuard {
     type Kind = ItemList;
@@ -162,13 +181,13 @@ impl ItemListTrait for RenaissanceGuard {
         self.items.get_owned(handle)
     }
 
-    fn insert(&mut self, item: Item) {
+    fn insert(&mut self, item: Item) -> Result<(), ()> {
         match item {
             Item::Key(k) => match self.unlock(GuardState::Open, Some(&*k)) {
-                Ok(()) => (),
-                Err(state) => (),
+                Ok(()) => Ok(()),
+                Err(state) => Err(()),
             },
-            _ => (),
+            _ => Err(()),
         }
     }
 
@@ -177,15 +196,16 @@ impl ItemListTrait for RenaissanceGuard {
     }
 }
 
-impl Guard for RenaissanceGuard { }
+impl Guard for RenaissanceGuard {}
 
-#[derive(Debug, Copy, Clone, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub enum DoorState {
     Open,
     Closed,
     Locked,
     MagicallySealed,
     PermaLocked,
+    Guarded(String),
     None,
 }
 
@@ -197,7 +217,7 @@ impl From<std::option::NoneError> for DoorState {
 
 impl ObstacleState<DoorState> for DoorState {
     fn state(&self) -> DoorState {
-        *self
+        self.clone()
     }
 }
 

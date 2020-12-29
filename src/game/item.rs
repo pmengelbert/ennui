@@ -1,20 +1,45 @@
 use super::Error;
 use crate::game::Game;
-use crate::item::error::Error::{ItemNotFound, TooHeavy};
+use crate::item::error::Error::{Guarded, ItemNotFound, PlayerNotFound, TooHeavy};
 use crate::item::Item::Scenery;
 use crate::item::{Describe, Item, ItemListTrait};
 use crate::map::coord::Coord;
 use crate::map::RoomList;
 use crate::player::{PlayerList, Uuid};
+use crate::text::article;
+use std::option::NoneError;
 use std::sync::Arc;
 
-#[derive(Clone)]
+#[derive(Clone, Copy)]
 pub enum Direction {
     Take,
     Give,
     Drop,
     Wear,
     Remove,
+}
+
+pub enum TransferResult {
+    GuardAppeased(String),
+    Ok(String),
+    Err(Error),
+}
+
+impl From<Result<String, Error>> for TransferResult {
+    fn from(t: Result<String, Error>) -> Self {
+        match t {
+            Ok(s) => TransferResult::Ok(s),
+            Err(s) => TransferResult::Err(s),
+        }
+    }
+}
+
+impl From<NoneError> for TransferResult {
+    fn from(_: NoneError) -> Self {
+        TransferResult::Err(Arc::new(crate::item::error::Error::ItemNotFound(
+            "WHAT. ARE. YOU. TALKING. ABOUT.".to_string(),
+        )))
+    }
 }
 
 impl Game {
@@ -24,7 +49,7 @@ impl Game {
         other: Option<&str>,
         dir: Direction,
         handle: &str,
-    ) -> Result<String, Error>
+    ) -> TransferResult
     where
         T: Uuid,
     {
@@ -35,17 +60,21 @@ impl Game {
         let oid = self.id_of(other.unwrap_or_default());
         let other_id = oid.unwrap_or_default();
 
-        self.validate_other_player(other, loc, dir.clone())?;
+        if let Err(err) = self.validate_other_player(other, loc, dir) {
+            return TransferResult::Err(Arc::new(PlayerNotFound(
+                other.unwrap_or_default().to_owned(),
+            )));
+        };
 
         let rooms = &mut self.rooms;
         let players = &mut self.players;
 
         match dir {
-            Take => Self::take(rooms, players, uuid, loc, handle),
-            Drop => Self::drop(rooms, players, uuid, loc, handle),
-            Give => Self::give(players, (uuid, other_id), other, handle),
-            Wear => Self::wear(players, uuid, handle),
-            Remove => Self::remove(players, uuid, handle),
+            Take => Self::take(rooms, players, uuid, loc, handle).into(),
+            Drop => Self::drop(rooms, players, uuid, loc, handle).into(),
+            Give => Self::give(players, rooms, loc, (uuid, other_id), other, handle),
+            Wear => Self::wear(players, uuid, handle).into(),
+            Remove => Self::remove(players, uuid, handle).into(),
         }
     }
 
@@ -92,11 +121,14 @@ impl Game {
 
     fn give(
         players: &mut PlayerList,
+        rooms: &mut RoomList,
+        loc: &Coord,
         ids: (u128, u128),
         other_name: Option<&str>,
         handle: &str,
-    ) -> Result<String, Error> {
+    ) -> TransferResult {
         use crate::item::error::Error::PlayerNotFound;
+        use TransferResult::*;
 
         let (uuid, other_id) = ids;
         let item = {
@@ -115,9 +147,40 @@ impl Game {
         let other_p = match players.get_mut(&other_id) {
             Some(p) => p,
             None => {
-                return Err(Arc::new(PlayerNotFound(
-                    other_name.unwrap_or_default().to_owned(),
-                )))
+                let room = match rooms.get_mut(&loc) {
+                    Some(r) => r,
+                    None => {
+                        return Err(Arc::new(PlayerNotFound(
+                            other_name.unwrap_or_default().to_owned(),
+                        )));
+                    }
+                };
+                println!("checkpoint 5");
+                match room.get_mut(other_name.unwrap_or_default()) {
+                    Some(Item::Guard(_, guard)) => {
+                        println!("checkpoint 6");
+                        use std::result::Result::*;
+                        match guard.insert(item) {
+                            Ok(()) => {
+                                return GuardAppeased(format!(
+                                "you see {} relax a little bit. maybe now they'll let you through",
+                                article(guard.name())
+                            ))
+                            }
+                            Err(_) => {
+                                return TransferResult::Err(Arc::new(Guarded(
+                                    guard.name().to_owned(),
+                                )))
+                            }
+                        };
+                        println!("checkpoint 7");
+                    }
+                    _ => {
+                        return Err(Arc::new(PlayerNotFound(
+                            other_name.unwrap_or_default().to_owned(),
+                        )));
+                    }
+                }
             }
         };
 
@@ -165,21 +228,43 @@ impl Game {
         let oid = self.id_of(other.unwrap_or_default());
         let other_id = oid.unwrap_or_default();
 
-        if let Give = dir.clone() {
+        let rooms = &self.rooms;
+
+        if let Give = dir {
+            println!("checkpoint 1");
             match (other, oid) {
                 (Some(_), None) => {
+                    println!("checkpoint 2");
+                    match rooms.get(loc) {
+                        Some(room) => {
+                            println!("checkpoint 3");
+                            match room.get(other.unwrap_or_default()) {
+                                Some(_) => {
+                                    println!("checkpoint 4");
+                                    return Ok(());
+                                }
+                                None => (),
+                            }
+                        }
+                        None => (),
+                    }
                     return Err(Arc::new(PlayerNotFound(
                         other.unwrap_or_default().to_owned(),
-                    )))
+                    )));
                 }
                 _ => (),
             }
 
             match self.loc_of(other_id) {
                 Some(other_loc) if &other_loc != loc => {
+                    println!("made it!");
                     return Err(Arc::new(PlayerNotFound(
                         other.unwrap_or_default().to_owned(),
-                    )))
+                    )));
+                }
+                None => {
+                    println!("made it!");
+                    return Ok(());
                 }
                 _ => (),
             }
