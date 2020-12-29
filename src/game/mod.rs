@@ -155,7 +155,6 @@ impl Game {
         let (players, mut rooms) = (HashMap::new(), RoomList::default());
         let bytes = include_bytes!("../../data/map.cbor");
         let v: Vec<Room> = serde_cbor::from_slice(bytes).expect("ERROR PARSING JSON");
-        let p = Player::new("billy");
 
         let mut count = 0;
         for mut r in v {
@@ -181,7 +180,6 @@ impl Game {
             interpreter,
         };
 
-        ret.add_player(p);
         ret
     }
 

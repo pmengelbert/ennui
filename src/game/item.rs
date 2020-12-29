@@ -162,18 +162,20 @@ impl Game {
                         use std::result::Result::*;
                         match guard.insert(item) {
                             Ok(()) => {
+                                println!("checkpoint 7");
                                 return GuardAppeased(format!(
                                 "you see {} relax a little bit. maybe now they'll let you through",
                                 article(guard.name())
-                            ))
+                            ));
                             }
                             Err(_) => {
+                                println!("checkpoint 8");
                                 return TransferResult::Err(Arc::new(Guarded(
                                     guard.name().to_owned(),
-                                )))
+                                )));
                             }
                         };
-                        println!("checkpoint 7");
+                        println!("checkpoint 9");
                     }
                     _ => {
                         return Err(Arc::new(PlayerNotFound(

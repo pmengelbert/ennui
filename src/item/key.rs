@@ -49,6 +49,7 @@ pub struct KeyType {
     display: String,
     description: String,
     handle: Handle,
+    pub key: u64,
 }
 
 impl KeyItem for KeyType {}
@@ -89,6 +90,7 @@ impl From<BasicItem> for KeyType {
             display,
             description,
             handle,
+            key: 0,
         }
     }
 }
@@ -119,6 +121,6 @@ impl From<BasicItem> for KeyType {
 
 impl Key<u64> for KeyType {
     fn key(&self) -> u64 {
-        8
+        self.key
     }
 }

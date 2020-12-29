@@ -4,8 +4,8 @@ pub mod key;
 
 use crate::game::MapDir;
 use crate::item::handle::Handle;
-use crate::item::key::{Key, KeyType};
-use crate::map::door::{Guard, Lock, RenaissanceGuard};
+use crate::item::key::{Key, KeyItem, KeyType};
+use crate::map::door::{Guard, GuardState, Lock, RenaissanceGuard};
 use serde::export::fmt::Debug;
 use serde::{Deserialize, Serialize};
 use std::borrow::{Borrow, BorrowMut};
@@ -28,9 +28,14 @@ pub enum BasicItemKind {
     Scenery(BasicItem),
     Edible(BasicItem),
     Holdable(BasicItem),
-    Guard(MapDir, Box<RenaissanceGuard>),
+    Guard {
+        dir: MapDir,
+        state: GuardState,
+        info: BasicItem,
+        lock: u64,
+    },
     Container(GenericItemList),
-    Key(BasicItem),
+    Key(u64, BasicItem),
 }
 
 #[derive(Debug)]
@@ -215,10 +220,14 @@ impl GenericItemList {
 impl BasicItemKind {
     fn safe_unwrap(&self) -> Option<&BasicItem> {
         match self {
-            Key(item) | Clothing(item) | Weapon(item) | Scenery(item) | Holdable(item)
+            Key(_, item)
+            | Clothing(item)
+            | Weapon(item)
+            | Scenery(item)
+            | Holdable(item)
             | Edible(item) => Some(&item),
             Container(_) => None,
-            Guard(_, _) => None,
+            BasicItemKind::Guard { .. } => None,
         }
     }
 }
@@ -376,19 +385,21 @@ impl From<GenericItemList> for ItemList {
         let mut v: Vec<Item> = Vec::new();
         for i in &mut *l {
             let i = match i {
-                Clothing(i) => Item::Clothing(Box::new(i.clone())),
-                Weapon(i) => Item::Weapon(Box::new(i.clone())),
-                Scenery(i) => Item::Scenery(Box::new(i.clone())),
-                Edible(i) => Item::Edible(Box::new(i.clone())),
-                Holdable(i) => Item::Holdable(Box::new(i.clone())),
-                Container(listy) => Item::Container(Box::new(conv(listy))),
-                Guard(d, guard) => {
-                    let g = take(guard.as_mut());
-                    Item::Guard(*d, Box::new(g))
+                Clothing(i) | Weapon(i) | Scenery(i) | Edible(i) | Holdable(i) => {
+                    Item::Clothing(Box::new(i.clone()))
                 }
-                Key(item) => {
+                Container(listy) => Item::Container(Box::new(conv(listy))),
+                BasicItemKind::Guard {
+                    dir, info, lock, ..
+                } => {
+                    let mut g: RenaissanceGuard = take(info).into();
+                    g.lock = *lock;
+                    Item::Guard(*dir, Box::new(g))
+                }
+                Key(n, item) => {
                     let i = take(item);
-                    let k: KeyType = i.into();
+                    let mut k: KeyType = i.into();
+                    k.key = *n;
                     Item::Key(Box::new(k))
                 }
             };
@@ -413,19 +424,18 @@ fn conv(list: &mut GenericItemList) -> ItemList {
     for i in &mut **list {
         println!("{:?}", i);
         let i = match i {
-            Clothing(i) => Item::Clothing(Box::new(i.clone())),
-            Weapon(i) => Item::Weapon(Box::new(i.clone())),
-            Scenery(i) => Item::Scenery(Box::new(i.clone())),
-            Edible(i) => Item::Edible(Box::new(i.clone())),
-            Holdable(i) => Item::Holdable(Box::new(i.clone())),
-            Container(ref mut listy) => Item::Container(Box::new(conv(listy))),
-            Guard(d, guard) => {
-                let g = take(guard.as_mut());
-                Item::Guard(*d, Box::new(g))
+            Clothing(i) | Weapon(i) | Scenery(i) | Edible(i) | Holdable(i) => {
+                Item::Clothing(Box::new(i.clone()))
             }
-            Key(item) => {
+            Container(ref mut listy) => Item::Container(Box::new(conv(listy))),
+            BasicItemKind::Guard { dir, info, .. } => {
+                let g: RenaissanceGuard = take(info).into();
+                Item::Guard(*dir, Box::new(g))
+            }
+            Key(n, item) => {
                 let i = take(item);
-                let k: KeyType = i.into();
+                let mut k: KeyType = i.into();
+                k.key = *n;
                 Item::Key(Box::new(k))
             }
         };

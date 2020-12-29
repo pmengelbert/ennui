@@ -1,7 +1,7 @@
 use crate::game::MapDir;
 use crate::item::handle::Handle;
 use crate::item::key::{Key, KeyType};
-use crate::item::{Describe, Item, ItemList, ItemListTrait};
+use crate::item::{BasicItem, Describe, Item, ItemList, ItemListTrait};
 use crate::map::coord::Coord;
 use crate::map::door::DoorState::{Locked, Open};
 use crate::map::{Locate, StateResult};
@@ -69,17 +69,18 @@ pub trait ObstacleState<T> {
 
 #[derive(Debug, Serialize, Deserialize, Default)]
 pub struct RenaissanceGuard {
-    handle: Handle,
     #[serde(skip_serializing, skip_deserializing)]
     items: ItemList,
+    #[serde(default)]
     state: GuardState,
-    lock: u64,
+    pub lock: u64,
+    info: BasicItem,
 }
 
 impl Clone for RenaissanceGuard {
     fn clone(&self) -> Self {
         Self {
-            handle: self.handle.clone(),
+            info: self.info.clone(),
             items: ItemList::new(),
             state: self.state,
             lock: self.lock,
@@ -87,22 +88,27 @@ impl Clone for RenaissanceGuard {
     }
 }
 
+impl From<BasicItem> for RenaissanceGuard {
+    fn from(b: BasicItem) -> Self {
+        let mut g = Self::default();
+        g.info = b;
+        g
+    }
+}
+
 impl Describe for RenaissanceGuard {
     fn name(&self) -> &str {
-        "Renaissance guard"
+        &self.info.name()
     }
 
     fn display(&self) -> &str {
-        "A man in a floppy hat is here, shooting the breeze."
+        &self.info.display()
     }
 
     fn description(&self) -> &str {
         match self.state() {
             GuardState::Closed => {
-                "The man seems to have a certain poise. He looks as though he's escaped from a Renaissance \
-                faire. Your illusions of his poise vanish rapidly as he begins screaming, \"MY GENITALS ARE COLD, \
-                YOU OUTRAGEOUS SCOUNDREL!! BRING ME SOMETHING FOR TO COVER MY GENITALS!\". You start to back away \
-                but then, why not help the guy? Maybe he'll help you back."
+                &self.info.description()
             }
             GuardState::Open => {
                 "He seems happy as a clam, and tells you over and over how grateful he is to have warm genitals."
@@ -111,7 +117,7 @@ impl Describe for RenaissanceGuard {
     }
 
     fn handle(&self) -> &Handle {
-        &self.handle
+        &self.info.handle()
     }
 
     fn is_container(&self) -> bool {
