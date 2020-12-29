@@ -9,24 +9,31 @@ pub trait Key<T>: Describe + Debug {
 
 #[derive(Clone, Debug)]
 pub struct SkeletonKey {
-    pub handle: Handle,
+    info: BasicItem,
+    key: u64,
+}
+
+impl SkeletonKey {
+    pub fn set_key(&mut self, key: u64) {
+        self.key = key
+    }
 }
 
 impl Describe for SkeletonKey {
     fn name(&self) -> &str {
-        "skeleton key"
+        &self.info.name
     }
 
     fn display(&self) -> &str {
-        "a rusted skeleton key"
+        &self.info.display
     }
 
     fn description(&self) -> &str {
-        "ok ok ok"
+        &self.info.description
     }
 
     fn handle(&self) -> &Handle {
-        &self.handle
+        &self.info.handle
     }
 
     fn is_container(&self) -> bool {
@@ -34,16 +41,21 @@ impl Describe for SkeletonKey {
     }
 }
 
+impl From<BasicItem> for SkeletonKey {
+    fn from(b: BasicItem) -> Self {
+        Self { info: b, key: 0 }
+    }
+}
+
 impl Key<u64> for SkeletonKey {
     fn key(&self) -> u64 {
-        1
+        self.key
     }
 }
 
 pub trait KeyItem: Key<u64> {}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-// pub struct Codpiece(Handle);
 pub struct KeyType {
     name: String,
     display: String,

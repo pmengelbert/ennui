@@ -152,11 +152,17 @@ impl Lock<GuardState> for RenaissanceGuard {
         key: Option<&dyn Key<Self::Lock>>,
     ) -> StateResult<GuardState> {
         if let GuardState::Open = new_state {
+            println!("checkpoint unlock");
             match key {
                 Some(k) if k.key() == self.lock => {
+                    println!("key: {}, lock: {}", k.key(), self.lock);
                     self.state = new_state;
                     println!("guard state: {:?}", self.state());
                     Ok(())
+                }
+                Some(k) => {
+                    println!("key: {}, lock: {}", k.key(), self.lock);
+                    Err(self.state())
                 }
                 _ => Err(self.state()),
             }
@@ -187,13 +193,13 @@ impl ItemListTrait for RenaissanceGuard {
         self.items.get_owned(handle)
     }
 
-    fn insert(&mut self, item: Item) -> Result<(), ()> {
-        match item {
-            Item::Key(k) => match self.unlock(GuardState::Open, Some(&*k)) {
+    fn insert(&mut self, item: Item) -> Result<(), Item> {
+        match &item {
+            Item::Key(k) => match self.unlock(GuardState::Open, Some(&**k)) {
                 Ok(()) => Ok(()),
-                Err(state) => Err(()),
+                Err(state) => Err(item),
             },
-            _ => Err(()),
+            _ => Err(item),
         }
     }
 

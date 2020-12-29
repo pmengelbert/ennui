@@ -168,8 +168,14 @@ impl Game {
                                 article(guard.name())
                             ));
                             }
-                            Err(_) => {
+                            Err(given_back) => {
                                 println!("checkpoint 8");
+                                match players.get_mut(&uuid) {
+                                    Some(p) => {
+                                        p.insert(given_back);
+                                    }
+                                    None => (),
+                                }
                                 return TransferResult::Err(Arc::new(Guarded(
                                     guard.name().to_owned(),
                                 )));

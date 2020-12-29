@@ -159,14 +159,6 @@ impl Game {
         let mut count = 0;
         for mut r in v {
             r.init();
-            if count == 0 {
-                let key = SkeletonKey {
-                    handle: Handle(vec!["key".into(), "skeleton".into()]),
-                };
-                if let Some(Item::Container(cont)) = r.get_mut("corpse") {
-                    cont.insert(Item::Key(Box::new(key)));
-                }
-            }
             rooms.insert(r.loc(), r);
             count += 1;
         }
@@ -260,7 +252,7 @@ impl Game {
                     Green(
                         lst.list()
                             .iter()
-                            .map(|i| i.display())
+                            .map(|i| article(i.name()))
                             .collect::<Vec<_>>()
                             .join("\n")
                     )

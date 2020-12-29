@@ -4,7 +4,7 @@ pub mod key;
 
 use crate::game::MapDir;
 use crate::item::handle::Handle;
-use crate::item::key::{Key, KeyItem, KeyType};
+use crate::item::key::{Key, KeyItem, KeyType, SkeletonKey};
 use crate::map::door::{Guard, GuardState, Lock, RenaissanceGuard};
 use serde::export::fmt::Debug;
 use serde::{Deserialize, Serialize};
@@ -270,7 +270,7 @@ pub trait ItemListTrait: Describe + Debug {
     fn get(&self, handle: &str) -> Option<&Item>;
     fn get_mut(&mut self, handle: &str) -> Option<&mut Item>;
     fn get_owned(&mut self, handle: &str) -> Option<Item>;
-    fn insert(&mut self, item: Item) -> Result<(), ()>;
+    fn insert(&mut self, item: Item) -> Result<(), Item>;
     fn list(&self) -> &Self::Kind;
 
     fn transfer(
@@ -351,7 +351,7 @@ impl ItemListTrait for ItemList {
         Some(self.inner.remove(pos))
     }
 
-    fn insert(&mut self, item: Item) -> Result<(), ()> {
+    fn insert(&mut self, item: Item) -> Result<(), Item> {
         self.inner.push(item);
         Ok(())
     }
@@ -381,41 +381,7 @@ impl ItemList {
 
 impl From<GenericItemList> for ItemList {
     fn from(mut l: GenericItemList) -> Self {
-        println!("{:?}", l);
-        let mut v: Vec<Item> = Vec::new();
-        for i in &mut *l {
-            let i = match i {
-                Clothing(i) | Weapon(i) | Scenery(i) | Edible(i) | Holdable(i) => {
-                    Item::Clothing(Box::new(i.clone()))
-                }
-                Container(listy) => Item::Container(Box::new(conv(listy))),
-                BasicItemKind::Guard {
-                    dir, info, lock, ..
-                } => {
-                    let mut g: RenaissanceGuard = take(info).into();
-                    g.lock = *lock;
-                    Item::Guard(*dir, Box::new(g))
-                }
-                Key(n, item) => {
-                    let i = take(item);
-                    let mut k: KeyType = i.into();
-                    k.key = *n;
-                    Item::Key(Box::new(k))
-                }
-            };
-            v.push(i);
-        }
-        let ret = ItemList {
-            inner: v,
-            info: Clothing(BasicItem {
-                name: l.name.to_owned(),
-                display: l.display.to_owned(),
-                description: l.description.to_owned(),
-                handle: l.handle.to_owned(),
-            }),
-        };
-        println!("{:?}", ret);
-        ret
+        conv(&mut l)
     }
 }
 
@@ -424,18 +390,23 @@ fn conv(list: &mut GenericItemList) -> ItemList {
     for i in &mut **list {
         println!("{:?}", i);
         let i = match i {
-            Clothing(i) | Weapon(i) | Scenery(i) | Edible(i) | Holdable(i) => {
-                Item::Clothing(Box::new(i.clone()))
-            }
+            Clothing(i) => Item::Clothing(Box::new(i.clone())),
+            Weapon(i) => Item::Weapon(Box::new(i.clone())),
+            Scenery(i) => Item::Scenery(Box::new(i.clone())),
+            Edible(i) => Item::Edible(Box::new(i.clone())),
+            Holdable(i) => Item::Holdable(Box::new(i.clone())),
             Container(ref mut listy) => Item::Container(Box::new(conv(listy))),
-            BasicItemKind::Guard { dir, info, .. } => {
-                let g: RenaissanceGuard = take(info).into();
+            BasicItemKind::Guard {
+                dir, info, lock, ..
+            } => {
+                let mut g: RenaissanceGuard = take(info).into();
+                g.lock = *lock;
                 Item::Guard(*dir, Box::new(g))
             }
             Key(n, item) => {
                 let i = take(item);
-                let mut k: KeyType = i.into();
-                k.key = *n;
+                let mut k: SkeletonKey = i.into();
+                k.set_key(*n);
                 Item::Key(Box::new(k))
             }
         };
