@@ -15,7 +15,7 @@ use std::ops::{Deref, DerefMut};
 
 use crate::item::handle::Handle;
 use crate::map::coord::Coord;
-use crate::map::door::{Door, DoorState, Obstacle, ObstacleState, DoorList};
+use crate::map::door::{Door, DoorList, DoorState, Obstacle, ObstacleState};
 use serde::{Deserialize, Serialize};
 use std::borrow::{Borrow, Cow};
 use std::mem::take;
@@ -39,7 +39,6 @@ pub trait Space: Locate + ItemListTrait {
         }
         l
     }
-
 }
 
 impl<T> Provider<RoomList> for T

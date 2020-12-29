@@ -17,6 +17,7 @@ use crate::WriteResult;
 
 use crate::item::handle::Handle;
 use crate::item::key::SkeletonKey;
+use crate::item::BasicItemKind::Container;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 use std::borrow::{BorrowMut, Cow};
@@ -24,7 +25,6 @@ use std::fmt::{Display, Formatter};
 use std::io::Write;
 use std::mem::take;
 use std::sync::Arc;
-use crate::item::BasicItemKind::Container;
 
 type Error = Arc<crate::item::error::Error>;
 

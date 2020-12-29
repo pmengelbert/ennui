@@ -2,9 +2,9 @@ use super::item::Direction;
 
 use super::*;
 use crate::item::error::Error::*;
-use crate::text::message::{Audience, Msg};
-use crate::map::door::{Keyhole, DoorState};
 use crate::map::door::DoorState::Open;
+use crate::map::door::{DoorState, Keyhole, Keyhole2, Keyhole3, ObstacleState};
+use crate::text::message::{Audience, Msg};
 
 pub fn fill_interpreter(i: &mut Interpreter) {
     i.insert("look", |g, u, args| {
@@ -287,7 +287,6 @@ pub fn fill_interpreter(i: &mut Interpreter) {
         Some("".into())
     });
 
-
     i.insert("open", |g, u, a| {
         use crate::map::door::DoorState::*;
         let loc = g.loc_of(u)?;
@@ -303,23 +302,24 @@ pub fn fill_interpreter(i: &mut Interpreter) {
                     format!("which door do you want to open?")
                 } else {
                     let (_, door) = room.doors().iter_mut().next()?;
-                    match door.unlock(Open, std::option::Option::None) {
+                    match door.unlock3(Open, std::option::Option::None) {
                         Ok((_)) => {
+                            println!("doorstate: {}", door.state());
                             other_msg = Some(format!("{} opens a door", name));
                             format!("the door swings open")
-                        },
+                        }
                         Err(err) => match err {
                             Locked => format!("that door is locked"),
                             Open => format!("it's already open"),
                             MagicallySealed => format!("it's sealed by some unfamiliar magic"),
                             PermaLocked => format!("it ain't gonna budge"),
                             _ => format!("wtf"),
-                        }
+                        },
                     }
                 }
             }
-            2 => format!(""),
-            _ => format!("I'm not sure what you're getting at")
+            2 => todo!(),
+            _ => format!("I'm not sure what you're getting at"),
         };
 
         let aud = Audience(u, loc.player_ids(&g.rooms)?);
@@ -327,6 +327,80 @@ pub fn fill_interpreter(i: &mut Interpreter) {
             s: self_msg,
             o: other_msg,
         };
+        g.send(aud, msg);
+
+        Some("".into())
+    });
+
+    i.insert("unlock", |g, u, a| {
+        let loc = g.loc_of(u)?;
+        let name = g.name_of(u)?;
+
+        let mut other_msg = None;
+        let self_msg = match a.len() {
+            0 => format!("ok, what do you want to unlock?"),
+            1 => {
+                let handle = a[0];
+                let rooms = &mut g.rooms;
+                let players = &mut g.players;
+
+                let room = rooms.get_mut(&loc)?; // TODO: fix early exit
+                let player = players.get_mut(&u)?;
+
+                let num_doors = room.doors().len();
+                match num_doors {
+                    0 => format!("there's nothing to unlock here"),
+                    1 => {
+                        match handle.to_lowercase().as_str() {
+                            "door" => {
+                                let (_, door) = room.doors().iter_mut().next()?;
+                                let mut res = None;
+
+                                for item in player.items_mut().iter_mut() {
+                                    if let Item::Key(k) = item {
+                                        match door.unlock3(DoorState::Closed, Some(&**k)) {
+                                            Ok(()) => {
+                                                println!("door state: {}", door.state());
+                                                other_msg =
+                                                    Some(format!("{} unlocks a door", name));
+                                                res = Some(());
+                                                break;
+                                            }
+                                            Err(err) => continue,
+                                        }
+                                    }
+                                }
+                                match res {
+                                    Some(()) => format!("*click*"),
+                                    None => match door.state() {
+                                        DoorState::Locked => {
+                                            format!("you don't have the proper key")
+                                        }
+                                        DoorState::Closed => format!("you've already unlocked it"),
+                                        DoorState::Open => format!("it's already open"),
+                                        DoorState::MagicallySealed => {
+                                            format!("it's sealed by some unfamiliar magic")
+                                        }
+                                        DoorState::PermaLocked => format!("it ain't gonna budge"),
+                                        _ => format!("wtf"),
+                                    },
+                                }
+                            }
+                            // handle other unlockable items (such as chests) here
+                            _ => format!("I'm not sure that you can even unlock that"),
+                        }
+                    }
+                    _ => format!("that's all greek to me"),
+                }
+            }
+            _ => format!("that's pretty much gobbledygook to me"),
+        };
+        let aud = Audience(u, loc.player_ids(&g.rooms)?);
+        let msg = Msg {
+            s: self_msg,
+            o: other_msg,
+        };
+
         g.send(aud, msg);
 
         Some("".into())

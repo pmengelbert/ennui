@@ -35,6 +35,55 @@ where
     fn validator(&self) -> Option<Box<dyn Fn(&Self, T, U) -> bool>>;
 }
 
+pub trait Keyhole3<T>: ObstacleState<T> {
+    type Lock;
+
+    fn unlock3(&mut self, new_state: T, key: Option<&dyn Key<Self::Lock>>) -> StateResult<T>;
+    fn is_locked2(&self) -> bool;
+}
+
+impl Keyhole3<DoorState> for Door {
+    type Lock = u64;
+
+    fn unlock3(
+        &mut self,
+        new_state: DoorState,
+        key: Option<&dyn Key<Self::Lock>>,
+    ) -> StateResult<DoorState> {
+        if self.state == new_state {
+            return Err(self.state);
+        }
+
+        match (new_state, self.state()) {
+            (Open, DoorState::Closed) => {
+                self.state = new_state;
+                return Ok(());
+            }
+            (DoorState::Closed, Open) => return Err(self.state()),
+            _ => (),
+        }
+
+        match (self.keyhole, key) {
+            (Some(h), Some(k)) if h == k.key() => {
+                self.state = new_state;
+                Ok(())
+            }
+            (None, _) => {
+                self.state = new_state;
+                Ok(())
+            }
+            _ => Err(Locked),
+        }
+    }
+
+    fn is_locked2(&self) -> bool {
+        match self.state() {
+            DoorState::Open | DoorState::Closed => false,
+            _ => true,
+        }
+    }
+}
+
 impl Keyhole2<DoorState, SkeletonKey> for Door {
     type Lock = u64;
 
