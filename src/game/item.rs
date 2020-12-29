@@ -2,7 +2,7 @@ use super::Error;
 use crate::game::Game;
 use crate::item::error::Error::{Guarded, ItemNotFound, PlayerNotFound, TooHeavy, FatalError};
 use crate::item::Item::Scenery;
-use crate::item::{Describe, Holder, Item, ItemListTrait};
+use crate::item::{Describe, Holder, Item, ItemListTrait, Attribute, Quality};
 use crate::map::coord::Coord;
 use crate::map::RoomList;
 use crate::player::{PlayerList, Uuid};
@@ -208,7 +208,7 @@ impl Game {
             .all_items_mut()
         };
         match items.get(handle) {
-            Some(Item::Clothing(_)) => (),
+            Some(i) if i.is_a(Quality::Clothing) => (),
             None => return Err(a(handle)),
             _ => return Err(Arc::new(Clothing(handle.to_owned()))),
         }

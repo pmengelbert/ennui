@@ -1,5 +1,5 @@
 use crate::item::handle::Handle;
-use crate::item::{Describe, Description, Holder, Item, ItemList, ItemListTrait};
+use crate::item::{Describe, Description, Holder, Item, ItemList, ItemListTrait, Attribute, Quality};
 use crate::map::coord::Coord;
 use crate::text::message::Messenger;
 use crate::Provider;
@@ -63,9 +63,11 @@ impl Describe for Player {
     fn handle(&self) -> &Handle {
         self.info.handle()
     }
+}
 
-    fn is_container(&self) -> bool {
-        true
+impl Attribute<Quality> for Player {
+    fn attr(&self) -> &[Quality] {
+        &self.info.attributes
     }
 }
 
@@ -371,6 +373,7 @@ impl Player {
                 name: name.to_owned(),
                 handle: Handle(vec![name.to_owned()]),
                 display: "".to_owned(),
+                attributes: vec![],
             },
             loc: Coord(0, 0),
             items: ItemList::new(),

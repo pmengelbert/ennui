@@ -1,7 +1,7 @@
 use crate::game::MapDir;
 use crate::item::handle::Handle;
 use crate::item::key::Key;
-use crate::item::{Describe, Description, Item, ItemList, ItemListTrait};
+use crate::item::{Describe, Description, Item, ItemList, ItemListTrait, Attribute, Quality};
 use crate::map::coord::Coord;
 use crate::map::door::DoorState::{Locked, Open};
 use crate::map::StateResult;
@@ -73,7 +73,7 @@ pub struct RenaissanceGuard {
     #[serde(default)]
     state: GuardState,
     pub lock: u64,
-    info: Description,
+    pub info: Description,
 }
 
 impl Clone for RenaissanceGuard {
@@ -118,9 +118,11 @@ impl Describe for RenaissanceGuard {
     fn handle(&self) -> &Handle {
         &self.info.handle()
     }
+}
 
-    fn is_container(&self) -> bool {
-        true
+impl Attribute<Quality> for RenaissanceGuard {
+    fn attr(&self) -> &[Quality] {
+        &self.info.attributes
     }
 }
 

@@ -2,7 +2,7 @@ pub mod coord;
 pub mod door;
 
 use crate::game::MapDir;
-use crate::item::{Describe, GenericItemList, Holder, Item, ItemList, ItemListTrait};
+use crate::item::{Describe, GenericItemList, Holder, Item, ItemList, ItemListTrait, Attribute, Quality, Description};
 use crate::player::{Player, PlayerIdList, PlayerList, Uuid};
 use crate::text::Color::*;
 use crate::Provider;
@@ -227,17 +227,14 @@ impl AsMut<RoomList> for RoomList {
 
 #[derive(Default, Serialize, Deserialize, Debug)]
 pub struct Room {
-    name: String,
+    info: Description,
     loc: Coord,
-    description: String,
     players: PlayerIdList,
     #[serde(skip_serializing, skip_deserializing)]
     items: ItemList,
     inner_items: Option<GenericItemList>,
     #[serde(default)]
     doors: DoorList,
-    #[serde(skip_serializing, skip_deserializing)]
-    handle: Handle,
 }
 
 impl AsMut<ItemList> for Room {
@@ -273,14 +270,18 @@ impl Room {
         let name = name.to_owned();
         let description = description.unwrap_or("").to_owned();
         Self {
-            name,
-            description,
+            info: Description {
+                name: name.clone(),
+                description,
+                handle: Handle(vec![name.clone()]),
+                display: "".to_owned(),
+                attributes: vec![]
+            },
             loc: loc,
             players: PlayerIdList(HashSet::new()),
             items: ItemList::new(),
             inner_items: None,
             doors: DoorList(HashMap::new()),
-            handle: Handle::default(),
         }
     }
 
@@ -291,8 +292,11 @@ impl Room {
 
     pub fn display(&self, p: u128, global_players: &PlayerList, rooms: &RoomList) -> String {
         let Room {
-            name,
-            description,
+            info: Description {
+                name,
+                description,
+                ..
+            },
             players,
             items,
             ..
@@ -435,23 +439,25 @@ impl Holder for Room {
 
 impl Describe for Room {
     fn name(&self) -> &str {
-        &self.name
+        &self.info.name()
     }
 
     fn display(&self) -> &str {
-        ""
+        &self.info.display()
     }
 
     fn description(&self) -> &str {
-        &self.description
+        &self.info.description()
     }
 
     fn handle(&self) -> &Handle {
-        &self.handle
+        &self.info.handle()
     }
+}
 
-    fn is_container(&self) -> bool {
-        false
+impl Attribute<Quality> for Room {
+    fn attr(&self) -> &[Quality] {
+        &self.info.attributes
     }
 }
 

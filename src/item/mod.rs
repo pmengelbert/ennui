@@ -4,7 +4,7 @@ pub mod key;
 
 use crate::game::MapDir;
 use crate::item::handle::Handle;
-use crate::item::key::{Key, SkeletonKey};
+use crate::item::key::{Key, KeyType};
 use crate::map::door::{Guard, GuardState, RenaissanceGuard};
 use serde::export::fmt::Debug;
 use serde::{Deserialize, Serialize};
@@ -13,12 +13,11 @@ use std::mem::take;
 use std::ops::{Deref, DerefMut};
 use BasicItemKind::*;
 
-pub trait Describe: Send + Sync + Debug {
+pub trait Describe: Send + Sync + Debug + Attribute<Quality> {
     fn name(&self) -> &str;
     fn display(&self) -> &str;
     fn description(&self) -> &str;
     fn handle(&self) -> &Handle;
-    fn is_container(&self) -> bool;
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -48,6 +47,25 @@ pub enum Item {
     Container(Box<dyn ItemListTrait<Kind = ItemList>>),
     Guard(MapDir, Box<dyn Guard<Lock = u64, Kind = ItemList>>),
     Key(Box<dyn Key<u64>>),
+}
+
+#[derive(Copy, Debug, Eq, PartialEq, Clone, Deserialize, Serialize)]
+pub enum Quality {
+    Clothing,
+    Weapon,
+    Scenery,
+    Edible,
+    Holdable,
+    Container,
+    Guard,
+    Key,
+}
+
+pub trait Attribute<T: Copy + Eq> {
+    fn attr(&self) -> &[T];
+    fn is_a(&self, a: T) -> bool {
+        self.attr().contains(&a)
+    }
 }
 
 impl Describe for Item {
@@ -90,11 +108,16 @@ impl Describe for Item {
             Guard(_, i) => i.handle(),
         }
     }
+}
 
-    fn is_container(&self) -> bool {
+impl Attribute<Quality> for Item {
+    fn attr(&self) -> &[Quality] {
+        use Item::*;
         match self {
-            Item::Container(_) => true,
-            _ => false,
+            Clothing(i) | Weapon(i) | Scenery(i) | Edible(i) | Holdable(i) => i.attr(),
+            Container(i) => i.attr(),
+            Key(i) => i.attr(),
+            Guard(_, i) => i.attr(),
         }
     }
 }
@@ -111,6 +134,8 @@ pub struct Description {
     pub display: String,
     pub description: String,
     pub handle: Handle,
+    #[serde(default)]
+    pub attributes: Vec<Quality>,
 }
 
 impl Describe for Description {
@@ -129,9 +154,11 @@ impl Describe for Description {
     fn handle(&self) -> &Handle {
         &self.handle
     }
+}
 
-    fn is_container(&self) -> bool {
-        false
+impl Attribute<Quality> for Description {
+    fn attr(&self) -> &[Quality] {
+        &self.attributes
     }
 }
 
@@ -147,12 +174,14 @@ impl Description {
         let description = description.unwrap_or_default().to_owned();
         let name = name.to_owned();
         let display = String::new();
+        let attributes = Vec::new();
 
         Self {
             name,
             description,
             handle,
             display,
+            attributes,
         }
     }
 
@@ -165,10 +194,14 @@ impl Description {
 #[serde(default)]
 pub struct GenericItemList {
     inner: Vec<BasicItemKind>,
-    name: String,
-    display: String,
-    description: String,
-    handle: Handle,
+    info: Description,
+    attributes: Vec<Quality>,
+}
+
+impl Attribute<Quality> for GenericItemList {
+    fn attr(&self) -> &[Quality] {
+        &self.info.attributes
+    }
 }
 
 impl Deref for GenericItemList {
@@ -197,14 +230,36 @@ impl AsMut<GenericItemList> for GenericItemList {
     }
 }
 
+impl Describe for GenericItemList {
+    fn name(&self) -> &str {
+        &self.info.name()
+    }
+
+    fn display(&self) -> &str {
+        &self.info.display()
+    }
+
+    fn description(&self) -> &str {
+        &self.info.description()
+    }
+
+    fn handle(&self) -> &Handle {
+        &self.info.handle()
+    }
+}
+
 impl GenericItemList {
     pub fn new() -> Self {
         Self {
             inner: vec![],
-            name: "".to_string(),
-            display: "".to_string(),
-            description: "".to_string(),
-            handle: Default::default(),
+            info: Description {
+                name: "".to_string(),
+                display: "".to_string(),
+                description: "".to_string(),
+                handle: Default::default(),
+                attributes: vec![Quality::Container],
+            },
+            attributes: Vec::new(),
         }
     }
     pub fn get(&self, handle: &str) -> Option<&BasicItemKind> {
@@ -218,50 +273,46 @@ impl GenericItemList {
 }
 
 impl BasicItemKind {
-    fn safe_unwrap(&self) -> Option<&Description> {
+    fn safe_unwrap(&self) -> &Description {
         match self {
             Key(_, item)
             | Clothing(item)
             | Weapon(item)
             | Scenery(item)
             | Holdable(item)
-            | Edible(item) => Some(&item),
-            Container(_) => None,
-            BasicItemKind::Guard { .. } => None,
+            | Edible(item) => &item,
+            Container(i) => &i.info,
+            BasicItemKind::Guard { info, .. } => &info,
         }
     }
 }
 
 impl Describe for BasicItemKind {
     fn name(&self) -> &str {
-        self.safe_unwrap()
-            .map(|i| i.name.as_str())
-            .unwrap_or_default()
+        &self.safe_unwrap()
+            .name()
     }
 
     fn display(&self) -> &str {
         &self
             .safe_unwrap()
-            .map(|i| i.display.as_str())
-            .unwrap_or_default()
+            .display()
     }
 
     fn description(&self) -> &str {
         &self
             .safe_unwrap()
-            .map(|i| i.description.as_str())
-            .unwrap_or_default()
+            .description()
     }
 
     fn handle(&self) -> &Handle {
-        &self.safe_unwrap().map(|i| i.handle()).as_ref().unwrap()
+        &self.safe_unwrap().handle()
     }
+}
 
-    fn is_container(&self) -> bool {
-        match self {
-            Container(_) => true,
-            _ => false,
-        }
+impl Attribute<Quality> for BasicItemKind {
+    fn attr(&self) -> &[Quality] {
+        self.safe_unwrap().attr()
     }
 }
 
@@ -329,8 +380,11 @@ impl Describe for ItemList {
         self.info.handle()
     }
 
-    fn is_container(&self) -> bool {
-        true
+}
+
+impl Attribute<Quality> for ItemList {
+    fn attr(&self) -> &[Quality] {
+        self.info.attr()
     }
 }
 
@@ -387,39 +441,42 @@ impl From<GenericItemList> for ItemList {
     }
 }
 
+fn conv_desc(d: &mut Description, q: Quality) -> Box<dyn Describe> {
+    let mut new = d.clone();
+    new.attributes.push(q);
+    Box::new(new)
+}
+
 fn conv(list: &mut GenericItemList) -> ItemList {
     let mut ret = ItemList::new();
     for i in &mut **list {
         println!("{:?}", i);
         let i = match i {
-            Clothing(i) => Item::Clothing(Box::new(i.clone())),
-            Weapon(i) => Item::Weapon(Box::new(i.clone())),
-            Scenery(i) => Item::Scenery(Box::new(i.clone())),
-            Edible(i) => Item::Edible(Box::new(i.clone())),
-            Holdable(i) => Item::Holdable(Box::new(i.clone())),
+            Clothing(i) => Item::Clothing(conv_desc(i, Quality::Clothing)),
+            Weapon(i) => Item::Weapon(conv_desc(i, Quality::Weapon)),
+            Scenery(i) => Item::Scenery(conv_desc(i, Quality::Scenery)),
+            Edible(i) => Item::Edible(conv_desc(i, Quality::Edible)),
+            Holdable(i) => Item::Holdable(conv_desc(i, Quality::Holdable)),
             Container(ref mut listy) => Item::Container(Box::new(conv(listy))),
             BasicItemKind::Guard {
                 dir, info, lock, ..
             } => {
                 let mut g: RenaissanceGuard = take(info).into();
                 g.lock = *lock;
+                g.info.attributes.push(Quality::Container);
                 Item::Guard(*dir, Box::new(g))
             }
             Key(n, item) => {
                 let i = take(item);
-                let mut k: SkeletonKey = i.into();
+                let mut k: KeyType = i.into();
                 k.set_key(*n);
+                k.add_quality(Quality::Key);
                 Item::Key(Box::new(k))
             }
         };
         ret.push(i);
     }
-    ret.info = Clothing(Description {
-        name: list.name.to_owned(),
-        display: list.display.to_owned(),
-        description: list.description.to_owned(),
-        handle: list.handle.to_owned(),
-    });
+    ret.info = Clothing(list.info.clone());
     ret
 }
 
