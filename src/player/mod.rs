@@ -8,7 +8,7 @@ use list::{PlayerIdList, PlayerList};
 use meter::MeterKind;
 
 use crate::item::{
-    Attribute, Describe, Description, Holder, Item, ItemList, ItemListTrait, Quality,
+    Attribute, Describe, Description, Item, Quality,
 };
 use crate::item::handle::Handle;
 use crate::map::coord::Coord;

@@ -10,7 +10,8 @@ use rand::Rng;
 
 use crate::game::util::{load_rooms};
 use crate::interpreter::{Interpreter};
-use crate::item::{Describe, Holder, Item, ItemListTrait};
+use crate::item::{Describe, Item};
+use crate::item::list::{ItemListTrait};
 use crate::map::direction::MapDir;
 use crate::map::door::{DoorState, GuardState, ObstacleState};
 use crate::map::{coord::Coord, Locate, Room, RoomList, RoomListTrait, Space};
@@ -19,6 +20,7 @@ use crate::player::{Player, Uuid};
 use crate::text::message::{Audience, Broadcast, Msg};
 use crate::text::Color::*;
 use crate::text::{article};
+use crate::item::list::Holder;
 
 
 mod broadcast;

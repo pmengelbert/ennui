@@ -6,14 +6,13 @@ use serde::{Deserialize, Serialize};
 use direction::MapDir;
 
 use crate::item::handle::Handle;
-use crate::item::{
-    Attribute, Describe, Description, Holder, Item, ItemList, ItemListTrait, Quality, YamlItemList,
-};
+use crate::item::{Attribute, Describe, Description, Item, Quality, YamlItemList};
 use crate::map::coord::Coord;
 use crate::map::door::{DoorList};
 use crate::player::list::{PlayerIdList, PlayerList};
 use crate::player::{Uuid};
 use crate::text::Color::*;
+use crate::item::list::{ItemListTrait, ItemList, Holder};
 
 pub mod coord;
 pub mod direction;
@@ -347,7 +346,7 @@ mod map_test {
         )));
         items.push(YamlItem::Container(items2));
         r.inner_items = Some(items);
-        std::fs::write("/tmp/sample.yaml", &serde_yaml::to_vec(&r).expect("eerr"));
+        std::fs::write("/tmp/sample.yaml", &serde_yaml::to_vec(&r).expect("err"));
     }
 }
 
