@@ -1,11 +1,11 @@
 use crate::item::handle::Handle;
-use crate::item::YamlItem::{Clothing, Weapon, Scenery, Edible, Holdable, Container, Key};
-use crate::map::door::RenaissanceGuard;
 use crate::item::key::KeyType;
-use std::ops::{Deref, DerefMut};
+use crate::item::YamlItem::{Clothing, Container, Edible, Holdable, Key, Scenery, Weapon};
+use crate::item::{Attribute, Describe, Description, Item, Quality, YamlItem, YamlItemList};
+use crate::map::door::RenaissanceGuard;
 use std::fmt::Debug;
-use crate::item::{Describe, Item, YamlItem, Attribute, Quality, YamlItemList, Description};
 use std::mem::take;
+use std::ops::{Deref, DerefMut};
 
 pub trait Holder: Describe {
     type Kind;
@@ -88,13 +88,11 @@ impl Attribute<Quality> for ItemList {
 impl ItemListTrait for ItemList {
     type Kind = ItemList;
     fn get(&self, handle: &str) -> Option<&Item> {
-        self.iter()
-            .find(|i| i.handle() == handle)
+        self.iter().find(|i| i.handle() == handle)
     }
 
     fn get_mut(&mut self, handle: &str) -> Option<&mut Item> {
-        self.iter_mut()
-            .find(|i| i.handle() == handle)
+        self.iter_mut().find(|i| i.handle() == handle)
     }
 
     fn get_owned(&mut self, handle: &str) -> Option<Item> {

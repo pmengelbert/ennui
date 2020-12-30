@@ -1,17 +1,15 @@
-use std::borrow::{Borrow, BorrowMut};
-use std::mem::take;
 use std::ops::{Deref, DerefMut};
 
-use serde::{Deserialize, Serialize};
 use serde::export::fmt::Debug;
+use serde::{Deserialize, Serialize};
 
 use YamlItem::*;
 
 use crate::item::handle::Handle;
-use crate::item::key::{Key, KeyType};
+use crate::item::key::Key;
+use crate::item::list::{ItemList, ItemListTrait};
 use crate::map::direction::MapDir;
-use crate::map::door::{Guard, GuardState, RenaissanceGuard};
-use crate::item::list::{ItemListTrait, ItemList};
+use crate::map::door::{Guard, GuardState};
 
 pub mod error;
 pub mod handle;
@@ -324,7 +322,6 @@ impl Attribute<Quality> for YamlItem {
 
 #[cfg(test)]
 mod item_trait_test {
-    
 
     #[test]
     fn item_trait_test_1() {

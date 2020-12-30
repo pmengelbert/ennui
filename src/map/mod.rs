@@ -6,13 +6,13 @@ use serde::{Deserialize, Serialize};
 use direction::MapDir;
 
 use crate::item::handle::Handle;
+use crate::item::list::{Holder, ItemList, ItemListTrait};
 use crate::item::{Attribute, Describe, Description, Item, Quality, YamlItemList};
 use crate::map::coord::Coord;
-use crate::map::door::{DoorList};
+use crate::map::door::DoorList;
 use crate::player::list::{PlayerIdList, PlayerList};
-use crate::player::{Uuid};
+use crate::player::Uuid;
 use crate::text::Color::*;
-use crate::item::list::{ItemListTrait, ItemList, Holder};
 
 pub mod coord;
 pub mod direction;
@@ -303,17 +303,12 @@ impl Room {
 }
 
 #[cfg(test)]
-mod room_test {
-    
-
-    
-}
+mod room_test {}
 
 #[cfg(test)]
 mod map_test {
-    
+
     use crate::item::{Description, YamlItem};
-    
 
     use super::*;
 
@@ -324,17 +319,6 @@ mod map_test {
 
     #[test]
     fn write_sample_yaml() {
-        // let mut doors = HashMap::new();
-        // doors.insert(South, Door {});
-        // let r = Room {
-        //     name: "".to_string(),
-        //     loc: Default::default(),
-        //     description: "".to_string(),
-        //     players: Default::default(),
-        //     items: Default::default(),
-        //     doors,
-        // };
-
         let mut r = Room::default();
         let mut items = YamlItemList::new();
         items.push(YamlItem::Weapon(Description::default()));

@@ -3,7 +3,6 @@ mod player_test {
     use crate::player::meter::Meter;
     use crate::player::meter::MeterKind::*;
 
-    use super::*;
     use crate::player::{Player, Uuid};
 
     #[test]
@@ -19,4 +18,3 @@ mod player_test {
         assert_eq!(format!("{}", y), "HIT: [100 / 100]");
     }
 }
-

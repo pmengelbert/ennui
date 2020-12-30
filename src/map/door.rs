@@ -1,5 +1,6 @@
 use crate::item::handle::Handle;
 use crate::item::key::Key;
+use crate::item::list::{ItemList, ItemListTrait};
 use crate::item::{Attribute, Describe, Description, Item, Quality};
 use crate::map::coord::Coord;
 use crate::map::direction::MapDir;
@@ -12,7 +13,6 @@ use std::error::Error;
 use std::fmt::Debug;
 use std::ops::{Deref, DerefMut};
 use std::option::NoneError;
-use crate::item::list::{ItemList, ItemListTrait};
 
 pub trait Lock<T>: ObstacleState<T> {
     type Lock;

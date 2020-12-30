@@ -1,27 +1,26 @@
-use std::borrow::{Cow};
+use std::borrow::Cow;
 use std::collections::HashMap;
 use std::error::Error as StdError;
 use std::io;
 use std::io::Write;
 
-use std::sync::{Arc};
+use std::sync::Arc;
 
 use rand::Rng;
 
-use crate::game::util::{load_rooms};
-use crate::interpreter::{Interpreter};
+use crate::game::util::load_rooms;
+use crate::interpreter::Interpreter;
+use crate::item::list::Holder;
+use crate::item::list::ItemListTrait;
 use crate::item::{Describe, Item};
-use crate::item::list::{ItemListTrait};
 use crate::map::direction::MapDir;
 use crate::map::door::{DoorState, GuardState, ObstacleState};
 use crate::map::{coord::Coord, Locate, Room, RoomList, RoomListTrait, Space};
 use crate::player::list::PlayerList;
 use crate::player::{Player, Uuid};
+use crate::text::article;
 use crate::text::message::{Audience, Broadcast, Msg};
 use crate::text::Color::*;
-use crate::text::{article};
-use crate::item::list::Holder;
-
 
 mod broadcast;
 mod commands;

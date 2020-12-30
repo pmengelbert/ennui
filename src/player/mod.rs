@@ -4,16 +4,13 @@ use std::net::TcpStream;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid as CrateUuid;
 
-use list::{PlayerIdList, PlayerList};
 use meter::MeterKind;
 
-use crate::item::{
-    Attribute, Describe, Description, Item, Quality,
-};
 use crate::item::handle::Handle;
+use crate::item::list::{Holder, ItemList, ItemListTrait};
+use crate::item::{Attribute, Describe, Description, Item, Quality};
 use crate::map::coord::Coord;
 use crate::map::Locate;
-use crate::item::list::{ItemList, ItemListTrait, Holder};
 
 pub mod list;
 mod meter;
@@ -212,6 +209,4 @@ impl Player {
     fn assign_stream(&mut self, stream: TcpStream) {
         self.stream = Some(stream);
     }
-
 }
-

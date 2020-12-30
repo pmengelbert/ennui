@@ -12,7 +12,7 @@ use crate::player::Uuid;
 use crate::text::article;
 
 use super::Error;
-use crate::item::list::{ItemListTrait, Holder};
+use crate::item::list::{Holder, ItemListTrait};
 
 #[derive(Clone, Copy)]
 pub enum Direction {
