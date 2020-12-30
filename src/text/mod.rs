@@ -5,11 +5,17 @@ use std::fmt::{Debug, Display, Formatter};
 #[derive(Debug)]
 pub enum Color {
     Red(String),
+    #[allow(dead_code)]
     Green(String),
+    #[allow(dead_code)]
     Yellow(String),
+    #[allow(dead_code)]
     Blue(String),
+    #[allow(dead_code)]
     Magenta(String),
+    #[allow(dead_code)]
     Cyan(String),
+    #[allow(dead_code)]
     White(String),
 }
 

@@ -6,7 +6,7 @@ use crate::item::error::Error::{FatalError, Guarded, ItemNotFound, PlayerNotFoun
 use crate::item::Item::Scenery;
 use crate::item::{Attribute, Describe, Item, Quality};
 use crate::map::coord::Coord;
-use crate::map::RoomList;
+use crate::map::list::RoomList;
 use crate::player::list::PlayerList;
 use crate::player::Uuid;
 use crate::text::article;

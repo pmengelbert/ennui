@@ -4,6 +4,14 @@ use std::ops::Deref;
 use crate::game::Game;
 use std::sync::{Arc, Mutex};
 
+type CommandFunction = Arc<Mutex<dyn FnMut(&mut Game, u128, &[&str]) -> Option<String>>>;
+pub struct CommandFunc(CommandFunction);
+
+#[derive(Default)]
+pub struct Interpreter {
+    commands: Arc<Mutex<HashMap<CommandKind, CommandFunc>>>,
+}
+
 #[derive(Eq, PartialEq, Debug, Hash)]
 pub enum CommandKind {
     North,
@@ -20,17 +28,18 @@ pub enum CommandKind {
     Say,
     Eval,
     Inventory,
-    Whisper,
     NotFound,
-    Blank,
     Ouch,
     Open,
     Unlock,
     Quit,
+    // not yet implemented
+    #[allow(dead_code)]
+    Whisper,
+    #[allow(dead_code)]
+    Blank,
 }
 
-type CommandFunction = Arc<Mutex<dyn FnMut(&mut Game, u128, &[&str]) -> Option<String>>>;
-pub struct CommandFunc(CommandFunction);
 impl Deref for CommandFunc {
     type Target = CommandFunction;
 
@@ -45,11 +54,6 @@ impl Default for CommandFunc {
     fn default() -> Self {
         b(|_, _, _| Some("".into()))
     }
-}
-
-#[derive(Default)]
-pub struct Interpreter {
-    commands: Arc<Mutex<HashMap<CommandKind, CommandFunc>>>,
 }
 
 impl Interpreter {

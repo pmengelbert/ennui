@@ -1,5 +1,4 @@
 use std::collections::{HashMap, HashSet};
-use std::ops::{Deref, DerefMut};
 
 use serde::{Deserialize, Serialize};
 
@@ -17,8 +16,21 @@ use crate::text::Color::*;
 pub mod coord;
 pub mod direction;
 pub mod door;
+pub mod list;
 
 type StateResult<T> = Result<(), T>;
+
+#[derive(Default, Serialize, Deserialize, Debug)]
+pub struct Room {
+    info: Description,
+    loc: Coord,
+    players: PlayerIdList,
+    #[serde(skip_serializing, skip_deserializing)]
+    items: ItemList,
+    inner_items: Option<YamlItemList>,
+    #[serde(default)]
+    doors: DoorList,
+}
 
 pub trait Space: Locate + ItemListTrait {
     fn players(&self) -> &PlayerIdList;
@@ -34,6 +46,68 @@ pub trait Space: Locate + ItemListTrait {
             l.push(id);
         }
         l
+    }
+}
+
+impl Holder for Room {
+    type Kind = ItemList;
+
+    fn items(&self) -> &ItemList {
+        &self.items
+    }
+
+    fn items_mut(&mut self) -> &mut ItemList {
+        &mut self.items
+    }
+}
+
+impl Describe for Room {
+    fn name(&self) -> &str {
+        &self.info.name()
+    }
+
+    fn display(&self) -> &str {
+        &self.info.display()
+    }
+
+    fn description(&self) -> &str {
+        &self.info.description()
+    }
+
+    fn handle(&self) -> &Handle {
+        &self.info.handle()
+    }
+}
+
+impl Attribute<Quality> for Room {
+    fn attr(&self) -> &[Quality] {
+        &self.info.attributes
+    }
+}
+
+impl ItemListTrait for Room {
+    type Kind = ItemList;
+
+    fn get(&self, handle: &str) -> Option<&Item> {
+        self.items.iter().find(|i| i.handle() == handle)
+    }
+
+    fn get_mut(&mut self, handle: &str) -> Option<&mut Item> {
+        self.items.iter_mut().find(|i| i.handle() == handle)
+    }
+
+    fn get_owned(&mut self, handle: &str) -> Option<Item> {
+        let pos = self.items.iter().position(|i| i.handle() == handle)?;
+        Some(self.items.remove(pos))
+    }
+
+    fn insert(&mut self, item: Item) -> Result<(), Item> {
+        self.items.push(item);
+        Ok(())
+    }
+
+    fn list(&self) -> &Self::Kind {
+        &self.items
     }
 }
 
@@ -65,104 +139,8 @@ impl Uuid for Room {
     }
 }
 
-impl Uuid for &Room {
-    fn uuid(&self) -> u128 {
-        0
-    }
-
-    fn others(&self) -> Option<Vec<u128>> {
-        let mut v = vec![];
-        for id in self.players.iter() {
-            if *id == self.uuid() {
-                continue;
-            }
-            v.push(*id)
-        }
-
-        if v.is_empty() {
-            None
-        } else {
-            Some(v)
-        }
-    }
-}
-
-impl Uuid for RoomList {
-    fn uuid(&self) -> u128 {
-        0
-    }
-}
-
-pub trait RoomListTrait {
-    fn player_ids(&self, loc: Coord) -> PlayerIdList;
-    fn exits(&self, loc: Coord) -> Vec<MapDir>;
-}
-
-impl RoomListTrait for RoomList {
-    fn player_ids(&self, loc: Coord) -> PlayerIdList {
-        match self.get(&loc) {
-            Some(r) => r.players.clone(),
-            None => PlayerIdList::default(),
-        }
-    }
-
-    fn exits(&self, loc: Coord) -> Vec<MapDir> {
-        MapDir::all()
-            .iter()
-            .filter_map(|d| {
-                if self.contains_key(&loc.add(*d)?) {
-                    Some(*d)
-                } else {
-                    None
-                }
-            })
-            .collect()
-    }
-}
-
 pub trait Locate {
     fn loc(&self) -> Coord;
-}
-
-#[repr(transparent)]
-#[derive(Default, Deserialize, Serialize, Debug)]
-pub struct RoomList(HashMap<Coord, Room>);
-impl Deref for RoomList {
-    type Target = HashMap<Coord, Room>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl DerefMut for RoomList {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
-    }
-}
-
-impl AsRef<RoomList> for RoomList {
-    fn as_ref(&self) -> &RoomList {
-        self
-    }
-}
-
-impl AsMut<RoomList> for RoomList {
-    fn as_mut(&mut self) -> &mut RoomList {
-        self
-    }
-}
-
-#[derive(Default, Serialize, Deserialize, Debug)]
-pub struct Room {
-    info: Description,
-    loc: Coord,
-    players: PlayerIdList,
-    #[serde(skip_serializing, skip_deserializing)]
-    items: ItemList,
-    inner_items: Option<YamlItemList>,
-    #[serde(default)]
-    doors: DoorList,
 }
 
 impl AsMut<ItemList> for Room {
@@ -282,116 +260,7 @@ impl Room {
         &mut self.players
     }
 
-    pub fn add_player<P>(&mut self, p: &P) -> bool
-    where
-        P: Uuid,
-    {
+    pub fn add_player<P: Uuid>(&mut self, p: &P) -> bool {
         self.players.insert(p.uuid())
-    }
-
-    pub fn get_item(&self, handle: &str) -> Option<&Item> {
-        self.items().get(handle)
-    }
-
-    pub fn items(&self) -> &ItemList {
-        &self.items
-    }
-
-    pub fn items_mut(&mut self) -> &mut ItemList {
-        &mut self.items
-    }
-}
-
-#[cfg(test)]
-mod room_test {}
-
-#[cfg(test)]
-mod map_test {
-
-    use crate::item::{Description, YamlItem};
-
-    use super::*;
-
-    #[test]
-    fn map_test() {
-        assert_eq!(Coord(0, 0).north(), Coord(0, 1));
-    }
-
-    #[test]
-    fn write_sample_yaml() {
-        let mut r = Room::default();
-        let mut items = YamlItemList::new();
-        items.push(YamlItem::Weapon(Description::default()));
-        let mut items2 = YamlItemList::new();
-        items2.push(YamlItem::Weapon(Description::new(
-            "butt",
-            None,
-            Handle(vec!["but".to_owned()]),
-        )));
-        items.push(YamlItem::Container(items2));
-        r.inner_items = Some(items);
-        std::fs::write("/tmp/sample.yaml", &serde_yaml::to_vec(&r).expect("err"));
-    }
-}
-
-impl Holder for Room {
-    type Kind = ItemList;
-
-    fn items(&self) -> &ItemList {
-        &self.items
-    }
-
-    fn items_mut(&mut self) -> &mut ItemList {
-        &mut self.items
-    }
-}
-
-impl Describe for Room {
-    fn name(&self) -> &str {
-        &self.info.name()
-    }
-
-    fn display(&self) -> &str {
-        &self.info.display()
-    }
-
-    fn description(&self) -> &str {
-        &self.info.description()
-    }
-
-    fn handle(&self) -> &Handle {
-        &self.info.handle()
-    }
-}
-
-impl Attribute<Quality> for Room {
-    fn attr(&self) -> &[Quality] {
-        &self.info.attributes
-    }
-}
-
-impl ItemListTrait for Room {
-    type Kind = ItemList;
-
-    fn get(&self, handle: &str) -> Option<&Item> {
-        self.items.iter().find(|i| i.handle() == handle)
-    }
-
-    fn get_mut(&mut self, handle: &str) -> Option<&mut Item> {
-        self.items.iter_mut().find(|i| i.handle() == handle)
-    }
-
-    fn get_owned(&mut self, handle: &str) -> Option<Item> {
-        let pos = self.items.iter().position(|i| i.handle() == handle)?;
-        Some(self.items.remove(pos))
-    }
-
-    fn insert(&mut self, item: Item) -> Result<(), Item> {
-        self.items.push(item);
-        Ok(())
-    }
-
-    fn list(&self) -> &Self::Kind {
-        &self.items
     }
 }

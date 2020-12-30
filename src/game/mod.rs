@@ -3,7 +3,6 @@ use std::collections::HashMap;
 use std::error::Error as StdError;
 use std::io;
 use std::io::Write;
-
 use std::sync::Arc;
 
 use rand::Rng;
@@ -15,7 +14,8 @@ use crate::item::list::ItemListTrait;
 use crate::item::{Describe, Item};
 use crate::map::direction::MapDir;
 use crate::map::door::{DoorState, GuardState, ObstacleState};
-use crate::map::{coord::Coord, Locate, Room, RoomList, RoomListTrait, Space};
+use crate::map::list::{RoomList, RoomListTrait};
+use crate::map::{coord::Coord, Locate, Room, Space};
 use crate::player::list::PlayerList;
 use crate::player::{Player, Uuid};
 use crate::text::article;
@@ -107,7 +107,7 @@ impl Game {
         let loc = &p.loc();
         let room = self.rooms.get(loc)?;
 
-        Some(if let Some(item) = room.get_item(handle) {
+        Some(if let Some(item) = room.get(handle) {
             let mut s = item.description().to_owned();
             if let Item::Container(lst) = item {
                 s.push_str(&format!("\nthe {} is holding:\n", item.name()));
