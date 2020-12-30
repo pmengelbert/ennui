@@ -4,7 +4,7 @@ use std::sync::{Arc, Mutex};
 use std::thread::spawn;
 
 use ennui::game::{Game, GameResult};
-use ennui::player::Player;
+use ennui::player::{Player, Uuid};
 
 macro_rules! arc_mutex(
     ($wrapped:expr) => {

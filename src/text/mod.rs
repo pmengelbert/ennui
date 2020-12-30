@@ -93,7 +93,7 @@ const WHITE: &'static str = "[37m";
 #[cfg(test)]
 mod text_test {
     use super::Wrap;
-    use super::*;
+    
     const DESC: &'static str = "You are at the Temple Yard of Dragonia. Beautiful marble stairs lead \
     up to the Temple of Dragonia. You feel small as you stare up the huge pillars making the entrance \
     to the temple. This place serves as a sanctuary where the  people of the city can come and seek \

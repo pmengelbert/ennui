@@ -1,5 +1,5 @@
 use ennui::game::{Game, GameResult};
-use ennui::player::Player;
+use ennui::player::{Player, Uuid};
 use std::io::{Write};
 
 fn main() -> GameResult<()> {

@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::ops::Deref;
 
-use crate::game::{Game, GameResult};
+use crate::game::{Game};
 use std::sync::{Arc, Mutex};
 
 #[derive(Eq, PartialEq, Debug, Hash)]

@@ -1,25 +1,25 @@
-use std::borrow::{BorrowMut, Cow};
+use std::borrow::{Cow};
 use std::collections::HashMap;
 use std::error::Error as StdError;
 use std::io;
 use std::io::Write;
-use std::option::NoneError;
-use std::sync::{Arc, MutexGuard};
+
+use std::sync::{Arc};
 
 use rand::Rng;
 
-use crate::game::util::{load_rooms, to_buf};
-use crate::interpreter::{CommandFunc, CommandKind, Interpreter};
+use crate::game::util::{load_rooms};
+use crate::interpreter::{Interpreter};
 use crate::item::{Describe, Holder, Item, ItemListTrait};
 use crate::map::direction::MapDir;
 use crate::map::door::{DoorState, GuardState, ObstacleState};
 use crate::map::{coord::Coord, Locate, Room, RoomList, RoomListTrait, Space};
 use crate::player::list::PlayerList;
 use crate::player::{Player, Uuid};
-use crate::text::message::{Audience, Broadcast, Message, Messenger, Msg};
+use crate::text::message::{Audience, Broadcast, Msg};
 use crate::text::Color::*;
-use crate::text::{article, Wrap};
-use crate::WriteResult;
+use crate::text::{article};
+
 
 mod broadcast;
 mod commands;
@@ -210,7 +210,7 @@ impl Game {
         Some("".into())
     }
 
-    fn describe_player<T>(&self, loc: Coord, pid: T, other: &str) -> Option<String>
+    fn describe_player<T>(&self, loc: Coord, _pid: T, other: &str) -> Option<String>
     where
         T: Uuid,
     {
@@ -290,7 +290,7 @@ impl Game {
         }
 
         rooms.get_mut(&next_coord?)?.players_mut().insert(u);
-        let mut players = &mut self.players;
+        let players = &mut self.players;
         players.get_mut(&u)?.set_loc(next_coord?);
 
         Ok(())

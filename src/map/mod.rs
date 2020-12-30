@@ -10,9 +10,9 @@ use crate::item::{
     Attribute, Describe, Description, Holder, Item, ItemList, ItemListTrait, Quality, YamlItemList,
 };
 use crate::map::coord::Coord;
-use crate::map::door::{DoorList, DoorState, GuardState, ObstacleState};
+use crate::map::door::{DoorList};
 use crate::player::list::{PlayerIdList, PlayerList};
-use crate::player::{Player, Uuid};
+use crate::player::{Uuid};
 use crate::text::Color::*;
 
 pub mod coord;
@@ -35,6 +35,12 @@ pub trait Space: Locate + ItemListTrait {
             l.push(id);
         }
         l
+    }
+}
+
+impl Locate for Room {
+    fn loc(&self) -> Coord {
+        self.loc
     }
 }
 
@@ -299,27 +305,22 @@ impl Room {
 
 #[cfg(test)]
 mod room_test {
-    use crate::player::Player;
+    
 
-    use super::*;
+    
 }
 
 #[cfg(test)]
 mod map_test {
-    use crate::item::YamlItem::Clothing;
+    
     use crate::item::{Description, YamlItem};
-    use crate::map::direction::MapDir::South;
+    
 
     use super::*;
 
     #[test]
     fn map_test() {
         assert_eq!(Coord(0, 0).north(), Coord(0, 1));
-    }
-
-    #[test]
-    fn locate() {
-        assert_eq!(Coord(0, 0).loc(), Coord(0, 0));
     }
 
     #[test]

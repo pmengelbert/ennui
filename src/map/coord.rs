@@ -9,15 +9,6 @@ impl Uuid for Coord {
     }
 }
 
-impl<T> Locate for T
-where
-    T: AsRef<Coord>,
-{
-    fn loc(&self) -> Coord {
-        *self.as_ref()
-    }
-}
-
 #[derive(Eq, PartialEq, Debug, Deserialize, Serialize, Hash, Default, Clone, Copy)]
 pub struct Coord(pub i64, pub i64);
 impl AsRef<Coord> for Coord {

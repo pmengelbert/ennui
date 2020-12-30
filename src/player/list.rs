@@ -1,6 +1,7 @@
-use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::ops::{Deref, DerefMut};
+
+use serde::{Deserialize, Serialize};
 
 use crate::item::Describe;
 use crate::player::{Player, Uuid};
@@ -104,6 +105,36 @@ impl PlayerList {
 }
 
 impl Uuid for PlayerList {
+    fn uuid(&self) -> u128 {
+        0
+    }
+
+    fn others(&self) -> Option<Vec<u128>> {
+        let v: Vec<_> = self.keys().cloned().collect();
+        if v.is_empty() {
+            None
+        } else {
+            Some(v)
+        }
+    }
+}
+
+impl Uuid for &PlayerIdList {
+    fn uuid(&self) -> u128 {
+        0
+    }
+
+    fn others(&self) -> Option<Vec<u128>> {
+        let v: Vec<u128> = self.iter().cloned().collect();
+        if v.is_empty() {
+            None
+        } else {
+            Some(v)
+        }
+    }
+}
+
+impl Uuid for &PlayerList {
     fn uuid(&self) -> u128 {
         0
     }

@@ -250,7 +250,6 @@ impl Error for DoorState {}
 
 #[derive(Eq, PartialEq, Serialize, Deserialize, Default, Debug, Clone)]
 pub struct Door {
-    // name
     dir: MapDir,
     state: DoorState,
     alt_dest: Option<Coord>,
