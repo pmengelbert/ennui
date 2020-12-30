@@ -55,3 +55,16 @@ pub fn to_buf<T: AsRef<str>>(msg: T) -> Vec<u8> {
     b.extend_from_slice(b"\n\n > ".as_ref());
     b
 }
+
+pub fn load_rooms(rooms: &mut RoomList) -> GameResult<()> {
+    let bytes = include_bytes!("../../data/map.cbor");
+    let v: Vec<Room> = serde_cbor::from_slice(bytes)?;
+
+    for mut r in v {
+        r.init();
+        rooms.insert(r.loc(), r);
+    }
+    Ok(())
+}
+
+

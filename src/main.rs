@@ -1,9 +1,9 @@
-use ennui::game::Game;
+use ennui::game::{Game, GameResult};
 use ennui::player::Player;
 use std::io::{Result, Write};
 
-fn main() -> Result<()> {
-    let mut g = Game::new();
+fn main() -> GameResult<()> {
+    let mut g = Game::new()?;
     let p = Player::new("peter");
 
     let uuid = p.uuid();

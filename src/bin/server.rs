@@ -3,7 +3,7 @@ use std::net::TcpListener;
 use std::sync::{Arc, Mutex};
 use std::thread::spawn;
 
-use ennui::game::Game;
+use ennui::game::{Game, GameResult};
 use ennui::player::Player;
 
 macro_rules! arc_mutex(
@@ -27,10 +27,10 @@ where
     }
 }
 
-fn main() -> std::io::Result<()> {
+fn main() -> GameResult<()> {
     let listener = TcpListener::bind("0.0.0.0:8089")?;
 
-    let g = Game::new();
+    let g = Game::new()?;
     let shared_game = arc_mutex!(g);
     let mut join_handles = vec![];
 

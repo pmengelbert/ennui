@@ -1,11 +1,11 @@
 use std::borrow::{BorrowMut, Cow};
 use std::io::Write;
-use std::sync::Arc;
+use std::sync::{Arc, MutexGuard};
 
 use rand::Rng;
 
-use crate::game::util::to_buf;
-use crate::interpreter::Interpreter;
+use crate::game::util::{to_buf, load_rooms};
+use crate::interpreter::{Interpreter, CommandKind, CommandFunc};
 use crate::item::{Describe, Holder, Item, ItemListTrait};
 use crate::map::direction::MapDir;
 use crate::map::{coord::Coord, Locate, RoomList, Space, Room};
@@ -15,7 +15,9 @@ use crate::text::Color::*;
 use crate::text::{article, Wrap};
 use crate::WriteResult;
 use std::collections::HashMap;
+use std::error::Error as StdError;
 use std::io;
+use std::option::NoneError;
 
 mod commands;
 mod item;
@@ -23,6 +25,7 @@ mod util;
 mod broadcast;
 
 type Error = Arc<crate::item::error::Error>;
+pub type GameResult<T> = Result<T, Box<dyn StdError>>;
 
 pub struct Game {
     players: PlayerList,
@@ -30,39 +33,24 @@ pub struct Game {
     interpreter: Interpreter,
 }
 
-fn load_rooms(filename: &str, rooms: &mut RoomList) {
-    let bytes = include_bytes!("../../data/map.cbor");
-    let v: Vec<Room> = serde_cbor::from_slice(bytes).expect("ERROR PARSING JSON");
-
-    for mut r in v {
-        r.init();
-        rooms.insert(r.loc(), r);
-    }
-}
-
 impl Game {
-    pub fn new() -> Self {
+    pub fn new() -> GameResult<Self> {
         let (players, mut rooms) = (HashMap::new(), RoomList::default());
 
-        load_rooms("../../data/map.cbor", &mut rooms);
+        load_rooms(&mut rooms)?;
 
         let mut interpreter = Interpreter::new();
         commands::fill_interpreter(&mut interpreter);
 
-        let ret = Self {
+        Ok(Self {
             players: PlayerList(players),
             rooms,
             interpreter,
-        };
-
-        ret
+        })
     }
 
     pub fn interpret(&mut self, p: u128, s: &str) -> Option<String> {
-        let mut words = s.split_whitespace();
-        let cmd_str = words.next().unwrap_or_default();
-        let args: Vec<&str> = words.collect();
-        let cmd = Interpreter::resolve_str(cmd_str);
+        let (cmd, args) = Interpreter::process_string_command(s);
 
         let commands = self.interpreter.commands();
         let mut other_commands = commands.lock().ok()?;

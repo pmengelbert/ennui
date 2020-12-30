@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::ops::Deref;
 
-use crate::game::Game;
+use crate::game::{Game, GameResult};
 use std::sync::{Arc, Mutex};
 
 #[derive(Eq, PartialEq, Debug, Hash)]
@@ -104,6 +104,14 @@ impl Interpreter {
 
     pub fn commands(&mut self) -> Arc<Mutex<HashMap<CommandKind, CommandFunc>>> {
         self.commands.clone()
+    }
+
+    pub fn process_string_command(s: &str) -> (CommandKind, Vec<&str>) {
+        let mut words = s.split_whitespace();
+        let cmd_str = words.next().unwrap_or_default();
+        let args: Vec<&str> = words.collect();
+        let cmd = Interpreter::resolve_str(cmd_str);
+        (cmd, args)
     }
 }
 
