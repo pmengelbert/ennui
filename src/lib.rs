@@ -16,8 +16,3 @@ mod item;
 pub mod map;
 pub mod player;
 mod text;
-
-pub trait Provider<T> {
-    fn provide(&self) -> &T;
-    fn provide_mut(&mut self) -> &mut T;
-}

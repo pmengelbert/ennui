@@ -1,6 +1,6 @@
 use ennui::game::{Game, GameResult};
 use ennui::player::Player;
-use std::io::{Result, Write};
+use std::io::{Write};
 
 fn main() -> GameResult<()> {
     let mut g = Game::new()?;

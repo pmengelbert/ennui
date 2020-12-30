@@ -1,41 +1,24 @@
+use std::collections::{HashMap, HashSet};
+use std::fmt::{Display, Formatter};
+use std::io::Write;
+use std::net::TcpStream;
+use std::ops::{Deref, DerefMut};
+
+use serde::{Deserialize, Serialize};
+use uuid::Uuid as CrateUuid;
+
+use list::{PlayerIdList, PlayerList};
+use meter::MeterKind;
+
 use crate::item::handle::Handle;
 use crate::item::{
     Attribute, Describe, Description, Holder, Item, ItemList, ItemListTrait, Quality,
 };
 use crate::map::coord::Coord;
 use crate::text::message::Messenger;
-use crate::Provider;
-use serde::{Deserialize, Serialize};
-use std::collections::{HashMap, HashSet};
-use std::fmt::{Display, Formatter};
-use std::io::Write;
-use std::net::TcpStream;
-use std::ops::{Deref, DerefMut};
-use uuid::Uuid as CrateUuid;
 
-#[derive(Debug, Serialize, Deserialize)]
-pub enum MeterKind {
-    Hit(Meter),
-    Mana(Meter),
-    Movement(Meter),
-    Strength(Meter),
-    Dexterity(Meter),
-    Weight(Meter),
-    Height(Meter),
-}
-
-impl<T> Provider<PlayerList> for T
-where
-    T: AsRef<PlayerList> + AsMut<PlayerList>,
-{
-    fn provide(&self) -> &PlayerList {
-        self.as_ref()
-    }
-
-    fn provide_mut(&mut self) -> &mut PlayerList {
-        self.as_mut()
-    }
-}
+pub mod list;
+mod meter;
 
 impl Holder for Player {
     type Kind = ItemList;
@@ -73,17 +56,6 @@ impl Attribute<Quality> for Player {
     }
 }
 
-impl Display for MeterKind {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{}: {}",
-            self.string().to_uppercase(),
-            self.safe_unwrap()
-        )
-    }
-}
-
 impl AsRef<ItemList> for Player {
     fn as_ref(&self) -> &ItemList {
         self.items()
@@ -99,73 +71,6 @@ impl AsMut<ItemList> for Player {
 impl AsRef<Coord> for Player {
     fn as_ref(&self) -> &Coord {
         &self.loc
-    }
-}
-
-#[derive(Debug, Default, Serialize, Deserialize)]
-pub struct Meter(pub i64, pub i64);
-
-impl Display for Meter {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "[{} / {}]", self.0, self.1)
-    }
-}
-
-impl Meter {
-    pub fn current(&self) -> i64 {
-        self.0
-    }
-
-    pub fn max(&self) -> i64 {
-        self.1
-    }
-
-    pub fn set(&mut self, val: i64) {
-        self.0 = val;
-    }
-}
-
-impl MeterKind {
-    pub fn current(&self) -> i64 {
-        self.safe_unwrap().0
-    }
-
-    pub fn max(&self) -> i64 {
-        self.safe_unwrap().1
-    }
-
-    pub fn set(&mut self, val: i64) {
-        *self.safe_unwrap_mut().0 = val
-    }
-
-    fn safe_unwrap(&self) -> &Meter {
-        use MeterKind::*;
-        match self {
-            Hit(m) | Mana(m) | Movement(m) | Strength(m) | Dexterity(m) | Weight(m) | Height(m) => {
-                m
-            }
-        }
-    }
-
-    fn string(&self) -> &'static str {
-        match self {
-            MeterKind::Hit(_) => "hit",
-            MeterKind::Mana(_) => "mana",
-            MeterKind::Movement(_) => "movement",
-            MeterKind::Strength(_) => "strength",
-            MeterKind::Dexterity(_) => "dexterity",
-            MeterKind::Weight(_) => "weight",
-            MeterKind::Height(_) => "height",
-        }
-    }
-
-    fn safe_unwrap_mut(&mut self) -> (&mut i64, &mut i64) {
-        use MeterKind::*;
-        match self {
-            Hit(m) | Mana(m) | Movement(m) | Strength(m) | Dexterity(m) | Weight(m) | Height(m) => {
-                (&mut m.0, &mut m.1)
-            }
-        }
     }
 }
 
@@ -199,23 +104,6 @@ impl Write for Player {
     }
 }
 
-#[repr(transparent)]
-#[derive(Debug, Default, Deserialize, Serialize, Clone)]
-pub struct PlayerIdList(pub HashSet<u128>);
-impl Deref for PlayerIdList {
-    type Target = HashSet<u128>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl DerefMut for PlayerIdList {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
-    }
-}
-
 impl Uuid for &PlayerIdList {
     fn uuid(&self) -> u128 {
         0
@@ -228,55 +116,6 @@ impl Uuid for &PlayerIdList {
         } else {
             Some(v)
         }
-    }
-}
-
-impl Uuid for PlayerIdList {
-    fn uuid(&self) -> u128 {
-        0
-    }
-
-    fn others(&self) -> Option<Vec<u128>> {
-        let v: Vec<u128> = self.iter().cloned().collect();
-        if v.is_empty() {
-            None
-        } else {
-            Some(v)
-        }
-    }
-}
-
-impl Messenger for PlayerIdList {
-    fn id(&self) -> Option<u128> {
-        None
-    }
-
-    fn others(&self) -> Option<Vec<u128>> {
-        Some(self.iter().cloned().collect())
-    }
-}
-
-impl PlayerIdList {
-    pub fn get_player_by_name<'a>(&self, pl: &'a PlayerList, name: &str) -> Option<&'a Player> {
-        let u = self.id_of_name(pl, name)?;
-        pl.get(&u)
-    }
-
-    pub fn get_player_mut_by_name<'a>(
-        &self,
-        pl: &'a mut PlayerList,
-        name: &str,
-    ) -> Option<&'a mut Player> {
-        let u = self.id_of_name(pl, name)?;
-        pl.get_mut(&u)
-    }
-
-    fn id_of_name(&self, g: &PlayerList, name: &str) -> Option<u128> {
-        Some(
-            *self
-                .iter()
-                .find(|p| g.get(p).unwrap_or(&Player::new("")).name() == name)?,
-        )
     }
 }
 
@@ -305,46 +144,7 @@ impl Uuid for &Player {
     }
 }
 
-#[derive(Default)]
-#[repr(transparent)]
-pub struct PlayerList(pub HashMap<u128, Player>);
-
-impl Deref for PlayerList {
-    type Target = HashMap<u128, Player>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl DerefMut for PlayerList {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
-    }
-}
-
-impl PlayerList {
-    pub fn new() -> Self {
-        PlayerList(HashMap::new())
-    }
-}
-
 impl Uuid for &PlayerList {
-    fn uuid(&self) -> u128 {
-        0
-    }
-
-    fn others(&self) -> Option<Vec<u128>> {
-        let v: Vec<_> = self.keys().cloned().collect();
-        if v.is_empty() {
-            None
-        } else {
-            Some(v)
-        }
-    }
-}
-
-impl Uuid for PlayerList {
     fn uuid(&self) -> u128 {
         0
     }
@@ -361,7 +161,8 @@ impl Uuid for PlayerList {
 
 impl Player {
     pub fn new(name: &str) -> Self {
-        use MeterKind::*;
+        use meter::Meter;
+        use meter::MeterKind::*;
         let stats = vec![
             Hit(Meter(100, 100)),
             Movement(Meter(100, 100)),
@@ -412,7 +213,7 @@ impl Player {
     }
 
     pub fn hurt(&mut self, amt: usize) {
-        use MeterKind::*;
+        use meter::MeterKind::*;
         let current = self.hp();
         (*self
             .stats
@@ -423,7 +224,7 @@ impl Player {
     }
 
     pub fn hp(&self) -> i64 {
-        use MeterKind::*;
+        use meter::MeterKind::*;
         self.stats
             .iter()
             .find(|s| if let Hit(_) = s { true } else { false })
@@ -466,8 +267,10 @@ impl Player {
 
 #[cfg(test)]
 mod player_test {
+    use crate::player::meter::Meter;
+    use crate::player::meter::MeterKind::*;
+
     use super::*;
-    use MeterKind::*;
 
     #[test]
     fn player_test_uuid() {

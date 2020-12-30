@@ -1,19 +1,19 @@
-use crate::text::message::{Broadcast, Messenger, Message};
-use std::borrow::BorrowMut;
-use crate::game::Game;
-use crate::WriteResult;
-use crate::text::Wrap;
-use std::io::Write;
 use crate::game::util::to_buf;
+use crate::game::Game;
+use crate::text::message::{Broadcast, Message, Messenger};
+use crate::text::Wrap;
+use crate::WriteResult;
+use std::borrow::BorrowMut;
+use std::io::Write;
 
 impl<T> Broadcast for T
-    where
-        T: BorrowMut<Game>,
+where
+    T: BorrowMut<Game>,
 {
     fn send<A, M>(&mut self, audience: A, message: M) -> Vec<WriteResult>
-        where
-            A: Messenger,
-            M: Message,
+    where
+        A: Messenger,
+        M: Message,
     {
         let g = self.borrow_mut();
         let mut v = vec![];
@@ -40,4 +40,3 @@ impl<T> Broadcast for T
         v
     }
 }
-

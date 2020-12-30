@@ -1,28 +1,30 @@
 use std::borrow::{BorrowMut, Cow};
+use std::collections::HashMap;
+use std::error::Error as StdError;
+use std::io;
 use std::io::Write;
+use std::option::NoneError;
 use std::sync::{Arc, MutexGuard};
 
 use rand::Rng;
 
-use crate::game::util::{to_buf, load_rooms};
-use crate::interpreter::{Interpreter, CommandKind, CommandFunc};
+use crate::game::util::{load_rooms, to_buf};
+use crate::interpreter::{CommandFunc, CommandKind, Interpreter};
 use crate::item::{Describe, Holder, Item, ItemListTrait};
 use crate::map::direction::MapDir;
-use crate::map::{coord::Coord, Locate, RoomList, Space, Room};
-use crate::player::{PlayerList, Uuid, Player};
+use crate::map::door::{DoorState, GuardState, ObstacleState};
+use crate::map::{coord::Coord, Locate, Room, RoomList, RoomListTrait, Space};
+use crate::player::list::PlayerList;
+use crate::player::{Player, Uuid};
 use crate::text::message::{Audience, Broadcast, Message, Messenger, Msg};
 use crate::text::Color::*;
 use crate::text::{article, Wrap};
 use crate::WriteResult;
-use std::collections::HashMap;
-use std::error::Error as StdError;
-use std::io;
-use std::option::NoneError;
 
+mod broadcast;
 mod commands;
 mod item;
 mod util;
-mod broadcast;
 
 type Error = Arc<crate::item::error::Error>;
 pub type GameResult<T> = Result<T, Box<dyn StdError>>;
@@ -70,8 +72,8 @@ impl Game {
     }
 
     pub fn broadcast<U>(&mut self, buf: U) -> io::Result<usize>
-        where
-            U: AsRef<[u8]>,
+    where
+        U: AsRef<[u8]>,
     {
         let mut res: usize = 0;
         for (_, p) in &mut *self.players {
@@ -89,14 +91,15 @@ impl Game {
 
         let players = &mut self.players;
         let rooms = &self.rooms;
-        let r = loc.room(rooms)?;
+        let r = rooms.get(&loc)?;
+        let exits = rooms.exits(loc);
 
-        Some(r.display(p.uuid(), players, rooms))
+        Some(r.display(p.uuid(), players, &exits))
     }
 
     fn describe_item<U>(&self, pid: U, handle: &str) -> Option<String>
-        where
-            U: Uuid,
+    where
+        U: Uuid,
     {
         let p = self.players.get(&pid.uuid())?;
 
@@ -132,15 +135,15 @@ impl Game {
     }
 
     fn loc_of<P>(&self, p: P) -> Option<Coord>
-        where
-            P: Uuid,
+    where
+        P: Uuid,
     {
         Some(self.players.get(&p.uuid())?.loc())
     }
 
     fn name_of<P>(&self, p: P) -> Option<String>
-        where
-            P: Uuid,
+    where
+        P: Uuid,
     {
         Some(self.players.get(&p.uuid())?.name().into())
     }
@@ -151,7 +154,7 @@ impl Game {
 
         let mut other_msg = None;
 
-        let msg: Cow<'static, str> = match loc.move_player(self, u, dir.clone()) {
+        let msg: Cow<'static, str> = match self.move_player(loc, u, dir) {
             Ok(_) => {
                 other_msg = Some(format!("{} exits {}", name, dir));
                 format!("you go {:?}\n\n{}", dir, self.describe_room(u)?).into()
@@ -177,7 +180,8 @@ impl Game {
             }
         };
 
-        let others = loc.player_ids(&self)?;
+        let rooms = &self.rooms;
+        let others = rooms.player_ids(loc).except(u);
         let aud = Audience(u, &others);
         let msg = Msg {
             s: msg,
@@ -206,11 +210,12 @@ impl Game {
         Some("".into())
     }
 
-    fn describe_player<T>(&self, pid: T, other: &str) -> Option<String>
-        where
-            T: Uuid,
+    fn describe_player<T>(&self, loc: Coord, pid: T, other: &str) -> Option<String>
+    where
+        T: Uuid,
     {
-        let p = self.loc_of(pid)?.player_by_name(self, other)?;
+        let other_id = self.id_of_in(loc, other)?;
+        let p = self.players.get(&other_id)?;
 
         let mut item_list = format!("{} is holding:", p.name());
         if p.items().len() > 0 {
@@ -243,5 +248,51 @@ impl Game {
         );
 
         Some(ret)
+    }
+
+    fn id_of_in(&self, loc: Coord, name: &str) -> Option<u128> {
+        let rooms = &self.rooms;
+        let players = &self.players;
+        rooms.player_ids(loc).iter().find_map(|i| {
+            let p = players.get(i)?;
+            if p.name() == name {
+                Some(p.uuid())
+            } else {
+                None
+            }
+        })
+    }
+
+    fn move_player(&mut self, loc: Coord, u: u128, dir: MapDir) -> Result<(), DoorState> {
+        let next_coord = loc.add(dir);
+        let rooms = &mut self.rooms;
+
+        let src_room = rooms.get_mut(&loc)?;
+        if let Some(door) = src_room.doors().get(&dir) {
+            match door.state() {
+                DoorState::None | DoorState::Open => (),
+                s => return Err(s),
+            }
+        } else {
+            let items = src_room.items();
+            if let Some((d, g)) = items.iter().find_map(|i| {
+                if let Item::Guard(d, g) = i {
+                    Some((d, g))
+                } else {
+                    None
+                }
+            }) {
+                if d == &dir && g.state() == GuardState::Closed {
+                    return Err(DoorState::Guarded(g.name().to_owned()));
+                }
+            };
+            src_room.players_mut().remove(&u);
+        }
+
+        rooms.get_mut(&next_coord?)?.players_mut().insert(u);
+        let mut players = &mut self.players;
+        players.get_mut(&u)?.set_loc(next_coord?);
+
+        Ok(())
     }
 }

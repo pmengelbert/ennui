@@ -66,5 +66,3 @@ pub fn load_rooms(rooms: &mut RoomList) -> GameResult<()> {
     }
     Ok(())
 }
-
-

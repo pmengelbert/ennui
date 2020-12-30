@@ -11,9 +11,10 @@ pub fn fill_interpreter(i: &mut Interpreter) {
         let msg = match args.len() {
             0 => g.describe_room(u)?,
             1 => {
+                let loc = g.loc_of(u)?;
                 if let Some(item) = g.describe_item(u, args[0]) {
                     item.to_owned()
-                } else if let Some(person) = g.describe_player(u, args[0]) {
+                } else if let Some(person) = g.describe_player(loc, u, args[0]) {
                     person.to_owned()
                 } else {
                     format!("i don't see {} here...", article(args[0]))
@@ -30,7 +31,7 @@ pub fn fill_interpreter(i: &mut Interpreter) {
     i.insert("take", |g, u, a| {
         let name = g.name_of(u)?;
         let loc = g.loc_of(u)?;
-        let aud = Audience(u, loc.player_ids(&g.rooms)?);
+        let aud = Audience(u, g.rooms.player_ids(loc).except(u));
 
         let mut other_msg = None;
         let self_msg = match a.len() {
@@ -107,7 +108,7 @@ pub fn fill_interpreter(i: &mut Interpreter) {
     i.insert("wear", |g, u, a| {
         let name = g.name_of(u)?;
         let loc = g.loc_of(u)?;
-        let aud = Audience(u, loc.player_ids(&g.rooms)?);
+        let aud = Audience(u, g.rooms.player_ids(loc).except(u));
 
         use crate::item::error::Error::*;
 
@@ -164,7 +165,7 @@ pub fn fill_interpreter(i: &mut Interpreter) {
             "be more specific. or less specific.".to_owned()
         };
 
-        let others = loc.player_ids(&g)?;
+        let others = g.rooms.player_ids(loc).except(u);
         g.send(
             Audience(u, &others),
             Msg {
@@ -195,8 +196,7 @@ pub fn fill_interpreter(i: &mut Interpreter) {
             "be more specific. or less specific.".to_owned()
         };
 
-        let others = loc.player_ids(&g)?;
-        let aud = Audience(u, &others);
+        let aud = Audience(u, g.rooms.player_ids(loc).except(u));
         let msg = Msg {
             s: msg,
             o: other_msg,
@@ -221,7 +221,7 @@ pub fn fill_interpreter(i: &mut Interpreter) {
                 Ok(h) => {
                     let art = article(&h);
 
-                    other_id = Some(vec![loc.player_by_name(&g, other)?.uuid()]);
+                    other_id = Some(vec![g.id_of_in(loc, other)?.uuid()]);
                     other_msg = Some(format!("{} gives you {}", name, art));
 
                     format!("you give {} {}", other, art)
@@ -261,7 +261,7 @@ pub fn fill_interpreter(i: &mut Interpreter) {
         let message = a.join(" ");
         let name = g.name_of(u)?;
         let loc = g.loc_of(u)?;
-        let others = loc.player_ids(&g.rooms)?;
+        let others = g.rooms.player_ids(loc).except(u);
 
         let aud = Audience(u, &others);
         let msg = Msg {
@@ -336,7 +336,7 @@ pub fn fill_interpreter(i: &mut Interpreter) {
             _ => format!("I'm not sure what you're getting at"),
         };
 
-        let aud = Audience(u, loc.player_ids(&g.rooms)?);
+        let aud = Audience(u, g.rooms.player_ids(loc).except(u));
         let msg = Msg {
             s: self_msg,
             o: other_msg,
@@ -411,7 +411,7 @@ pub fn fill_interpreter(i: &mut Interpreter) {
             _ => format!("that's pretty much gobbledygook to me"),
         };
 
-        let aud = Audience(u, loc.player_ids(&g.rooms)?);
+        let aud = Audience(u, g.rooms.player_ids(loc).except(u));
         let msg = Msg {
             s: self_msg,
             o: other_msg,

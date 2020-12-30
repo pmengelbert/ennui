@@ -1,22 +1,23 @@
-pub mod coord;
-pub mod direction;
-pub mod door;
-
-use crate::item::{
-    Attribute, Describe, Description, Holder, Item, ItemList, ItemListTrait, Quality, YamlItemList,
-};
-use crate::player::{Player, PlayerIdList, PlayerList, Uuid};
-use crate::text::Color::*;
-use crate::Provider;
-use direction::MapDir;
-
 use std::collections::{HashMap, HashSet};
 use std::ops::{Deref, DerefMut};
 
+use serde::{Deserialize, Serialize};
+
+use direction::MapDir;
+
 use crate::item::handle::Handle;
+use crate::item::{
+    Attribute, Describe, Description, Holder, Item, ItemList, ItemListTrait, Quality, YamlItemList,
+};
 use crate::map::coord::Coord;
 use crate::map::door::{DoorList, DoorState, GuardState, ObstacleState};
-use serde::{Deserialize, Serialize};
+use crate::player::list::{PlayerIdList, PlayerList};
+use crate::player::{Player, Uuid};
+use crate::text::Color::*;
+
+pub mod coord;
+pub mod direction;
+pub mod door;
 
 type StateResult<T> = Result<(), T>;
 
@@ -34,19 +35,6 @@ pub trait Space: Locate + ItemListTrait {
             l.push(id);
         }
         l
-    }
-}
-
-impl<T> Provider<RoomList> for T
-where
-    T: AsRef<RoomList> + AsMut<RoomList>,
-{
-    fn provide(&self) -> &RoomList {
-        self.as_ref()
-    }
-
-    fn provide_mut(&mut self) -> &mut RoomList {
-        self.as_mut()
     }
 }
 
@@ -100,96 +88,24 @@ impl Uuid for RoomList {
     }
 }
 
-pub trait Locate {
-    fn loc(&self) -> Coord;
-    fn room<'a, T>(&self, rooms: &'a T) -> Option<&'a Room>
-    where
-        T: Provider<RoomList>,
-    {
-        let rooms: &RoomList = rooms.provide();
-        rooms.get(&self.loc())
-    }
+pub trait RoomListTrait {
+    fn player_ids(&self, loc: Coord) -> PlayerIdList;
+    fn exits(&self, loc: Coord) -> Vec<MapDir>;
+}
 
-    fn player_ids<T>(&self, rooms: &T) -> Option<PlayerIdList>
-    where
-        T: Provider<RoomList>,
-    {
-        Some(self.room(rooms)?.players().clone())
-    }
-
-    fn player_by_name<'a, T, S>(&self, provider: &'a T, other: S) -> Option<&'a Player>
-    where
-        T: Provider<RoomList> + Provider<PlayerList>,
-        S: AsRef<str>,
-    {
-        let pl: &PlayerList = provider.provide();
-        pl.values()
-            .find(|p| p.name() == other.as_ref() && p.loc() == self.loc())
-    }
-
-    fn player_by_name_mut<'a, T, S>(&self, provider: &'a mut T, other: S) -> Option<&'a mut Player>
-    where
-        T: Provider<RoomList> + Provider<PlayerList>,
-        S: AsRef<str>,
-    {
-        let pl: &mut PlayerList = provider.provide_mut();
-        pl.values_mut()
-            .find(|p| p.name() == other.as_ref() && p.loc() == self.loc())
-    }
-
-    fn move_player<T, U>(&self, provider: &mut T, u: U, dir: MapDir) -> StateResult<DoorState>
-    where
-        T: Provider<RoomList> + Provider<PlayerList>,
-        U: Uuid,
-    {
-        let u = u.uuid();
-        let next_coord = self.loc().add(dir);
-
-        {
-            let rooms: &mut RoomList = provider.provide_mut();
-            {
-                let src_room = rooms.get_mut(&self.loc())?;
-                if let Some(door) = src_room.doors.get(&dir) {
-                    match door.state() {
-                        DoorState::None | DoorState::Open => (),
-                        s => return Err(s),
-                    }
-                } else {
-                    let items = src_room.items();
-                    if let Some((d, g)) = items.iter().find_map(|i| {
-                        if let Item::Guard(d, g) = i {
-                            Some((d, g))
-                        } else {
-                            None
-                        }
-                    }) {
-                        if d == &dir && g.state() == GuardState::Closed {
-                            return Err(DoorState::Guarded(g.name().to_owned()));
-                        }
-                    };
-                    src_room.players_mut().remove(&u);
-                }
-            }
-            rooms.get_mut(&next_coord?)?.players_mut().insert(u);
+impl RoomListTrait for RoomList {
+    fn player_ids(&self, loc: Coord) -> PlayerIdList {
+        match self.get(&loc) {
+            Some(r) => r.players.clone(),
+            None => PlayerIdList::default(),
         }
-
-        {
-            let players: &mut PlayerList = provider.provide_mut();
-            players.get_mut(&u)?.set_loc(next_coord?);
-        }
-
-        Ok(())
     }
 
-    fn exits<T>(&self, provider: &T) -> Vec<MapDir>
-    where
-        T: Provider<RoomList>,
-    {
-        let rooms = provider.provide();
+    fn exits(&self, loc: Coord) -> Vec<MapDir> {
         MapDir::all()
             .iter()
             .filter_map(|d| {
-                if rooms.contains_key(&self.loc().add(*d)?) {
+                if self.contains_key(&loc.add(*d)?) {
                     Some(*d)
                 } else {
                     None
@@ -197,6 +113,10 @@ pub trait Locate {
             })
             .collect()
     }
+}
+
+pub trait Locate {
+    fn loc(&self) -> Coord;
 }
 
 #[repr(transparent)]
@@ -293,7 +213,11 @@ impl Room {
         self.items = inner.into();
     }
 
-    pub fn display(&self, p: u128, global_players: &PlayerList, rooms: &RoomList) -> String {
+    pub fn doors(&self) -> &DoorList {
+        &self.doors
+    }
+
+    pub fn display(&self, p: u128, global_players: &PlayerList, exits: &[MapDir]) -> String {
         let Room {
             info: Description {
                 name, description, ..
@@ -326,8 +250,6 @@ impl Room {
             1 => format!("\n{}", items_list[0]),
             _ => format!("\n{}", items_list.join("\n")),
         });
-
-        let exits = self.exits(rooms);
 
         let mut exit_str = String::from("\n[");
         for (i, dir) in exits.iter().enumerate() {
@@ -377,16 +299,18 @@ impl Room {
 
 #[cfg(test)]
 mod room_test {
-    use super::*;
     use crate::player::Player;
+
+    use super::*;
 }
 
 #[cfg(test)]
 mod map_test {
-    use super::*;
     use crate::item::YamlItem::Clothing;
     use crate::item::{Description, YamlItem};
     use crate::map::direction::MapDir::South;
+
+    use super::*;
 
     #[test]
     fn map_test() {

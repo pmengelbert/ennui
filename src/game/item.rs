@@ -1,14 +1,17 @@
-use super::Error;
+use std::option::NoneError;
+use std::sync::Arc;
+
 use crate::game::Game;
 use crate::item::error::Error::{FatalError, Guarded, ItemNotFound, PlayerNotFound, TooHeavy};
 use crate::item::Item::Scenery;
 use crate::item::{Attribute, Describe, Holder, Item, ItemListTrait, Quality};
 use crate::map::coord::Coord;
 use crate::map::RoomList;
-use crate::player::{PlayerList, Uuid};
+use crate::player::list::PlayerList;
+use crate::player::Uuid;
 use crate::text::article;
-use std::option::NoneError;
-use std::sync::Arc;
+
+use super::Error;
 
 #[derive(Clone, Copy)]
 pub enum Direction {
