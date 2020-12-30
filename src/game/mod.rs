@@ -1,26 +1,26 @@
-mod commands;
-mod item;
-mod util;
+use std::borrow::{BorrowMut, Cow};
+use std::io::Write;
+use std::sync::Arc;
 
-use std::collections::HashMap;
-use std::io;
+use rand::Rng;
 
-use crate::game::MapDir::South;
+use crate::game::util::to_buf;
 use crate::interpreter::Interpreter;
 use crate::item::{Describe, Holder, Item, ItemListTrait};
-use crate::map::{coord::Coord, Locate, Room, RoomList, Space};
-use crate::player::{Player, PlayerList, Uuid};
+use crate::map::direction::MapDir;
+use crate::map::{coord::Coord, Locate, RoomList, Space, Room};
+use crate::player::{PlayerList, Uuid, Player};
 use crate::text::message::{Audience, Broadcast, Message, Messenger, Msg};
 use crate::text::Color::*;
 use crate::text::{article, Wrap};
 use crate::WriteResult;
+use std::collections::HashMap;
+use std::io;
 
-use rand::Rng;
-use serde::{Deserialize, Serialize};
-use std::borrow::{BorrowMut, Cow};
-use std::fmt::{Display, Formatter};
-use std::io::Write;
-use std::sync::Arc;
+mod commands;
+mod item;
+mod util;
+mod broadcast;
 
 type Error = Arc<crate::item::error::Error>;
 
@@ -30,134 +30,21 @@ pub struct Game {
     interpreter: Interpreter,
 }
 
-#[derive(Copy, Clone, Serialize, Deserialize, Eq, PartialEq, Hash)]
-pub enum MapDir {
-    North,
-    South,
-    East,
-    West,
-    Up,
-    Down,
-    NorthEast,
-    // etc
-}
+fn load_rooms(filename: &str, rooms: &mut RoomList) {
+    let bytes = include_bytes!("../../data/map.cbor");
+    let v: Vec<Room> = serde_cbor::from_slice(bytes).expect("ERROR PARSING JSON");
 
-impl Default for MapDir {
-    fn default() -> Self {
-        South
+    for mut r in v {
+        r.init();
+        rooms.insert(r.loc(), r);
     }
-}
-
-impl MapDir {
-    const ALL_DIRS: [MapDir; 7] = [
-        MapDir::North,
-        MapDir::South,
-        MapDir::East,
-        MapDir::West,
-        MapDir::Up,
-        MapDir::Down,
-        MapDir::NorthEast,
-    ];
-
-    pub fn all() -> &'static [Self] {
-        &Self::ALL_DIRS
-    }
-}
-
-impl std::fmt::Debug for MapDir {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        use MapDir::*;
-
-        write!(
-            f,
-            "{}",
-            match self {
-                North => "north",
-                South => "south",
-                East => "east",
-                West => "west",
-                Up => "up",
-                Down => "down",
-                NorthEast => "northeast",
-            }
-        )
-    }
-}
-
-impl Display for MapDir {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        use MapDir::*;
-
-        write!(
-            f,
-            "{}",
-            match self {
-                North => "n",
-                South => "s",
-                East => "e",
-                West => "w",
-                Up => "u",
-                Down => "d",
-                NorthEast => "ne",
-            }
-        )
-    }
-}
-
-impl<T> Broadcast for T
-where
-    T: BorrowMut<Game>,
-{
-    fn send<A, M>(&mut self, audience: A, message: M) -> Vec<WriteResult>
-    where
-        A: Messenger,
-        M: Message,
-    {
-        let g = self.borrow_mut();
-        let mut v = vec![];
-        let self_id = audience.id().unwrap_or_default();
-        let other_ids = audience.others().unwrap_or_default();
-
-        let self_msg = message.to_self();
-        let other_msg = message.to_others();
-
-        if let Some(p) = g.players.get_mut(&self_id) {
-            let self_msg = self_msg.wrap(90);
-            v.push(p.write(to_buf(self_msg).as_slice()));
-        }
-
-        if let Some(msg) = other_msg {
-            let msg = msg.wrap(90);
-            for id in other_ids {
-                if let Some(p) = g.players.get_mut(&id) {
-                    v.push(p.write(to_buf(&msg).as_slice()));
-                }
-            }
-        }
-
-        v
-    }
-}
-
-fn to_buf<T: AsRef<str>>(msg: T) -> Vec<u8> {
-    let buf = msg.as_ref().as_bytes();
-    let mut b = vec![];
-    b.extend_from_slice(b"\n".as_ref());
-    b.extend_from_slice(buf.as_ref());
-    b.extend_from_slice(b"\n\n > ".as_ref());
-    b
 }
 
 impl Game {
     pub fn new() -> Self {
         let (players, mut rooms) = (HashMap::new(), RoomList::default());
-        let bytes = include_bytes!("../../data/map.cbor");
-        let v: Vec<Room> = serde_cbor::from_slice(bytes).expect("ERROR PARSING JSON");
 
-        for mut r in v {
-            r.init();
-            rooms.insert(r.loc(), r);
-        }
+        load_rooms("../../data/map.cbor", &mut rooms);
 
         let mut interpreter = Interpreter::new();
         commands::fill_interpreter(&mut interpreter);
@@ -169,23 +56,6 @@ impl Game {
         };
 
         ret
-    }
-
-    fn describe_room<P: Uuid>(&mut self, p: P) -> Option<String> {
-        let loc = self.loc_of(p.uuid())?;
-
-        let players = &mut self.players;
-        let rooms = &self.rooms;
-        let r = loc.room(rooms)?;
-
-        Some(r.display(p.uuid(), players, rooms))
-    }
-
-    fn id_of(&self, name: &str) -> Option<u128> {
-        self.players
-            .iter()
-            .find(|(_, p)| p.name() == name)
-            .map(|(_, p)| p.uuid())
     }
 
     pub fn interpret(&mut self, p: u128, s: &str) -> Option<String> {
@@ -212,8 +82,8 @@ impl Game {
     }
 
     pub fn broadcast<U>(&mut self, buf: U) -> io::Result<usize>
-    where
-        U: AsRef<[u8]>,
+        where
+            U: AsRef<[u8]>,
     {
         let mut res: usize = 0;
         for (_, p) in &mut *self.players {
@@ -226,15 +96,21 @@ impl Game {
         Ok(res)
     }
 
-    fn get_player(&self, u: u128) -> Option<&Player> {
-        self.players.get(&u)
+    fn describe_room<P: Uuid>(&mut self, p: P) -> Option<String> {
+        let loc = self.loc_of(p.uuid())?;
+
+        let players = &mut self.players;
+        let rooms = &self.rooms;
+        let r = loc.room(rooms)?;
+
+        Some(r.display(p.uuid(), players, rooms))
     }
 
     fn describe_item<U>(&self, pid: U, handle: &str) -> Option<String>
-    where
-        U: Uuid,
+        where
+            U: Uuid,
     {
-        let p = self.get_player(pid.uuid())?;
+        let p = self.players.get(&pid.uuid())?;
 
         let loc = &p.loc();
         let room = self.rooms.get(loc)?;
@@ -260,6 +136,26 @@ impl Game {
         })
     }
 
+    fn id_of(&self, name: &str) -> Option<u128> {
+        self.players
+            .iter()
+            .find(|(_, p)| p.name() == name)
+            .map(|(_, p)| p.uuid())
+    }
+
+    fn loc_of<P>(&self, p: P) -> Option<Coord>
+        where
+            P: Uuid,
+    {
+        Some(self.players.get(&p.uuid())?.loc())
+    }
+
+    fn name_of<P>(&self, p: P) -> Option<String>
+        where
+            P: Uuid,
+    {
+        Some(self.players.get(&p.uuid())?.name().into())
+    }
     fn dir_func<U: Uuid>(&mut self, u: U, dir: MapDir) -> Option<String> {
         let u = u.uuid();
         let loc = self.loc_of(u)?;
@@ -323,8 +219,8 @@ impl Game {
     }
 
     fn describe_player<T>(&self, pid: T, other: &str) -> Option<String>
-    where
-        T: Uuid,
+        where
+            T: Uuid,
     {
         let p = self.loc_of(pid)?.player_by_name(self, other)?;
 
@@ -360,29 +256,4 @@ impl Game {
 
         Some(ret)
     }
-
-    fn loc_of<P>(&self, p: P) -> Option<Coord>
-    where
-        P: Uuid,
-    {
-        Some(self.players.get(&p.uuid())?.loc())
-    }
-
-    fn name_of<P>(&self, p: P) -> Option<String>
-    where
-        P: Uuid,
-    {
-        Some(self.players.get(&p.uuid())?.name().into())
-    }
-}
-
-fn random_insult() -> String {
-    match rand::thread_rng().gen_range(1, 6) {
-        1 => "dude wtf",
-        2 => "i think you should leave",
-        3 => "i'll have to ask my lawyer about that",
-        4 => "that's ... uncommon",
-        _ => "that's an interesting theory... but will it hold up in the laboratory?",
-    }
-    .to_owned()
 }

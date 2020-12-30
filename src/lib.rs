@@ -11,11 +11,11 @@ macro_rules! arc_mutex(
 type WriteResult = std::io::Result<usize>;
 
 pub mod game;
-pub mod interpreter;
-pub mod item;
+mod interpreter;
+mod item;
 pub mod map;
 pub mod player;
-pub mod text;
+mod text;
 
 pub trait Provider<T> {
     fn provide(&self) -> &T;

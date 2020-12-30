@@ -2,16 +2,16 @@ pub mod error;
 pub mod handle;
 pub mod key;
 
-use crate::game::MapDir;
 use crate::item::handle::Handle;
 use crate::item::key::{Key, KeyType};
+use crate::map::direction::MapDir;
 use crate::map::door::{Guard, GuardState, RenaissanceGuard};
 use serde::export::fmt::Debug;
 use serde::{Deserialize, Serialize};
 use std::borrow::{Borrow, BorrowMut};
 use std::mem::take;
 use std::ops::{Deref, DerefMut};
-use BasicItemKind::*;
+use YamlItem::*;
 
 pub trait Describe: Send + Sync + Debug + Attribute<Quality> {
     fn name(&self) -> &str;
@@ -20,8 +20,10 @@ pub trait Describe: Send + Sync + Debug + Attribute<Quality> {
     fn handle(&self) -> &Handle;
 }
 
+/// YamlItem is a no-frills representation of various objects, wrapped in a primary attribute.
+/// Its primary use is for serialization
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub enum BasicItemKind {
+pub enum YamlItem {
     Clothing(Description),
     Weapon(Description),
     Scenery(Description),
@@ -33,10 +35,11 @@ pub enum BasicItemKind {
         info: Description,
         lock: u64,
     },
-    Container(GenericItemList),
+    Container(YamlItemList),
     Key(u64, Description),
 }
 
+/// Item is a simple wrapping of an item-y type in a primary attribute
 #[derive(Debug)]
 pub enum Item {
     Clothing(Box<dyn Describe>),
@@ -49,6 +52,7 @@ pub enum Item {
     Key(Box<dyn Key<u64>>),
 }
 
+/// `Quality` is used to describe extra attributes on players, items and rooms
 #[derive(Copy, Debug, Eq, PartialEq, Clone, Deserialize, Serialize)]
 pub enum Quality {
     Clothing,
@@ -63,8 +67,19 @@ pub enum Quality {
 
 pub trait Attribute<T: Copy + Eq> {
     fn attr(&self) -> &[T];
-    fn is_a(&self, a: T) -> bool {
+
+    fn is(&self, a: T) -> bool {
         self.attr().contains(&a)
+    }
+
+    fn is_all(&self, ats: &[T]) -> bool {
+        for a in ats {
+            if !self.attr().contains(a) {
+                return false;
+            }
+        }
+
+        true
     }
 }
 
@@ -122,7 +137,7 @@ impl Attribute<Quality> for Item {
     }
 }
 
-impl Default for BasicItemKind {
+impl Default for YamlItem {
     fn default() -> Self {
         Holdable(Description::default())
     }
@@ -192,45 +207,44 @@ impl Description {
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 #[serde(default)]
-pub struct GenericItemList {
-    inner: Vec<BasicItemKind>,
+pub struct YamlItemList {
+    inner: Vec<YamlItem>,
     info: Description,
-    attributes: Vec<Quality>,
 }
 
-impl Attribute<Quality> for GenericItemList {
+impl Attribute<Quality> for YamlItemList {
     fn attr(&self) -> &[Quality] {
         &self.info.attributes
     }
 }
 
-impl Deref for GenericItemList {
-    type Target = Vec<BasicItemKind>;
+impl Deref for YamlItemList {
+    type Target = Vec<YamlItem>;
 
     fn deref(&self) -> &Self::Target {
         &self.inner
     }
 }
 
-impl DerefMut for GenericItemList {
+impl DerefMut for YamlItemList {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.inner
     }
 }
 
-impl AsRef<GenericItemList> for GenericItemList {
-    fn as_ref(&self) -> &GenericItemList {
+impl AsRef<YamlItemList> for YamlItemList {
+    fn as_ref(&self) -> &YamlItemList {
         self
     }
 }
 
-impl AsMut<GenericItemList> for GenericItemList {
-    fn as_mut(&mut self) -> &mut GenericItemList {
+impl AsMut<YamlItemList> for YamlItemList {
+    fn as_mut(&mut self) -> &mut YamlItemList {
         self
     }
 }
 
-impl Describe for GenericItemList {
+impl Describe for YamlItemList {
     fn name(&self) -> &str {
         &self.info.name()
     }
@@ -248,7 +262,7 @@ impl Describe for GenericItemList {
     }
 }
 
-impl GenericItemList {
+impl YamlItemList {
     pub fn new() -> Self {
         Self {
             inner: vec![],
@@ -259,20 +273,19 @@ impl GenericItemList {
                 handle: Default::default(),
                 attributes: vec![Quality::Container],
             },
-            attributes: Vec::new(),
         }
     }
-    pub fn get(&self, handle: &str) -> Option<&BasicItemKind> {
+    pub fn get(&self, handle: &str) -> Option<&YamlItem> {
         self.iter().find(|i| i.handle() == handle)
     }
 
-    pub fn get_owned<T: AsRef<str>>(&mut self, handle: T) -> Option<BasicItemKind> {
+    pub fn get_owned<T: AsRef<str>>(&mut self, handle: T) -> Option<YamlItem> {
         let pos = self.iter().position(|i| i.handle() == handle.as_ref())?;
         Some(self.remove(pos))
     }
 }
 
-impl BasicItemKind {
+impl YamlItem {
     fn safe_unwrap(&self) -> &Description {
         match self {
             Key(_, item)
@@ -282,27 +295,22 @@ impl BasicItemKind {
             | Holdable(item)
             | Edible(item) => &item,
             Container(i) => &i.info,
-            BasicItemKind::Guard { info, .. } => &info,
+            YamlItem::Guard { info, .. } => &info,
         }
     }
 }
 
-impl Describe for BasicItemKind {
+impl Describe for YamlItem {
     fn name(&self) -> &str {
-        &self.safe_unwrap()
-            .name()
+        &self.safe_unwrap().name()
     }
 
     fn display(&self) -> &str {
-        &self
-            .safe_unwrap()
-            .display()
+        &self.safe_unwrap().display()
     }
 
     fn description(&self) -> &str {
-        &self
-            .safe_unwrap()
-            .description()
+        &self.safe_unwrap().description()
     }
 
     fn handle(&self) -> &Handle {
@@ -310,7 +318,7 @@ impl Describe for BasicItemKind {
     }
 }
 
-impl Attribute<Quality> for BasicItemKind {
+impl Attribute<Quality> for YamlItem {
     fn attr(&self) -> &[Quality] {
         self.safe_unwrap().attr()
     }
@@ -337,7 +345,7 @@ pub trait ItemListTrait: Describe + Debug {
 
         let name = item.name().to_owned();
         if other.insert(item).is_err() {
-            return Err("COULD NOT TRANSFER ITEM".into())
+            return Err("COULD NOT TRANSFER ITEM".into());
         };
         Ok(name)
     }
@@ -346,7 +354,7 @@ pub trait ItemListTrait: Describe + Debug {
 #[derive(Default, Debug)]
 pub struct ItemList {
     inner: Vec<Item>,
-    info: BasicItemKind,
+    info: YamlItem,
 }
 
 impl Deref for ItemList {
@@ -379,7 +387,6 @@ impl Describe for ItemList {
     fn handle(&self) -> &Handle {
         self.info.handle()
     }
-
 }
 
 impl Attribute<Quality> for ItemList {
@@ -417,15 +424,6 @@ impl ItemListTrait for ItemList {
     }
 }
 
-// impl IntoIterator for ItemList {
-//     type Item = Item;
-//     type IntoIter = std::vec::IntoIter<Self::Item>;
-//
-//     fn into_iter(self) -> Self::IntoIter {
-//         self.list().into_iter()
-//     }
-// }
-
 impl ItemList {
     pub fn new() -> Self {
         Self {
@@ -435,8 +433,8 @@ impl ItemList {
     }
 }
 
-impl From<GenericItemList> for ItemList {
-    fn from(mut l: GenericItemList) -> Self {
+impl From<YamlItemList> for ItemList {
+    fn from(mut l: YamlItemList) -> Self {
         conv(&mut l)
     }
 }
@@ -447,7 +445,7 @@ fn conv_desc(d: &mut Description, q: Quality) -> Box<dyn Describe> {
     Box::new(new)
 }
 
-fn conv(list: &mut GenericItemList) -> ItemList {
+fn conv(list: &mut YamlItemList) -> ItemList {
     let mut ret = ItemList::new();
     for i in &mut **list {
         println!("{:?}", i);
@@ -458,7 +456,7 @@ fn conv(list: &mut GenericItemList) -> ItemList {
             Edible(i) => Item::Edible(conv_desc(i, Quality::Edible)),
             Holdable(i) => Item::Holdable(conv_desc(i, Quality::Holdable)),
             Container(ref mut listy) => Item::Container(Box::new(conv(listy))),
-            BasicItemKind::Guard {
+            YamlItem::Guard {
                 dir, info, lock, ..
             } => {
                 let mut g: RenaissanceGuard = take(info).into();

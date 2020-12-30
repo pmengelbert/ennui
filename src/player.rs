@@ -1,5 +1,7 @@
 use crate::item::handle::Handle;
-use crate::item::{Describe, Description, Holder, Item, ItemList, ItemListTrait, Attribute, Quality};
+use crate::item::{
+    Attribute, Describe, Description, Holder, Item, ItemList, ItemListTrait, Quality,
+};
 use crate::map::coord::Coord;
 use crate::text::message::Messenger;
 use crate::Provider;

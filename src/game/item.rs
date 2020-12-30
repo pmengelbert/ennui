@@ -1,8 +1,8 @@
 use super::Error;
 use crate::game::Game;
-use crate::item::error::Error::{Guarded, ItemNotFound, PlayerNotFound, TooHeavy, FatalError};
+use crate::item::error::Error::{FatalError, Guarded, ItemNotFound, PlayerNotFound, TooHeavy};
 use crate::item::Item::Scenery;
-use crate::item::{Describe, Holder, Item, ItemListTrait, Attribute, Quality};
+use crate::item::{Attribute, Describe, Holder, Item, ItemListTrait, Quality};
 use crate::map::coord::Coord;
 use crate::map::RoomList;
 use crate::player::{PlayerList, Uuid};
@@ -154,25 +154,28 @@ impl Game {
                         )));
                     }
                 };
-                println!("checkpoint 5");
                 match room.get_mut(other_name.unwrap_or_default()) {
                     Some(Item::Guard(_, guard)) => {
-                        println!("checkpoint 6");
                         use std::result::Result::*;
                         match guard.insert(item) {
                             Ok(()) => {
-                                println!("checkpoint 7");
                                 return GuardAppeased(format!(
-                                "you see {} relax a little bit. maybe now they'll let you through",
-                                article(guard.name())
-                            ));
+                                    "you see {} relax a little bit. maybe now they'll let you through",
+                                    article(guard.name())
+                                ));
                             }
                             Err(given_back) => {
-                                println!("checkpoint 8");
                                 match players.get_mut(&uuid) {
                                     Some(p) => {
                                         if p.insert(given_back).is_err() {
-                                            return Err(Arc::new(crate::item::error::Error::FatalError("wasn't able to return item to player after failed transfer to guard type.".into()))).into();
+                                            return Err(Arc::new(
+                                                crate::item::error::Error::FatalError(
+                                                    "wasn't able to return item to player after \
+                                                    failed transfer to guard type."
+                                                        .into(),
+                                                ),
+                                            ))
+                                            .into();
                                         }
                                     }
                                     None => (),
@@ -193,7 +196,7 @@ impl Game {
         };
 
         if other_p.items_mut().insert(item).is_err() {
-            return Err(Arc::new(FatalError("COULD NOT TRANSFER ITEM".into())))
+            return Err(Arc::new(FatalError("COULD NOT TRANSFER ITEM".into())));
         };
         Ok(item_name)
     }
@@ -208,7 +211,7 @@ impl Game {
             .all_items_mut()
         };
         match items.get(handle) {
-            Some(i) if i.is_a(Quality::Clothing) => (),
+            Some(i) if i.is(Quality::Clothing) => (),
             None => return Err(a(handle)),
             _ => return Err(Arc::new(Clothing(handle.to_owned()))),
         }

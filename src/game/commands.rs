@@ -1,7 +1,7 @@
 use super::item::Direction;
-
 use super::item::TransferResult::*;
 use super::*;
+use crate::game::util::random_insult;
 use crate::item::error::Error::*;
 use crate::map::door::{DoorState, Lock, ObstacleState};
 use crate::text::message::{Audience, Msg};
@@ -289,7 +289,7 @@ pub fn fill_interpreter(i: &mut Interpreter) {
     });
 
     i.insert("evaluate", |g, u, _| {
-        let p = g.get_player(u)?;
+        let p = g.players.get(&u)?;
 
         let mut s = String::new();
         for meter in p.stats() {

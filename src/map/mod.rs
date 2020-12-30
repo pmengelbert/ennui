@@ -1,11 +1,14 @@
 pub mod coord;
+pub mod direction;
 pub mod door;
 
-use crate::game::MapDir;
-use crate::item::{Describe, GenericItemList, Holder, Item, ItemList, ItemListTrait, Attribute, Quality, Description};
+use crate::item::{
+    Attribute, Describe, Description, Holder, Item, ItemList, ItemListTrait, Quality, YamlItemList,
+};
 use crate::player::{Player, PlayerIdList, PlayerList, Uuid};
 use crate::text::Color::*;
 use crate::Provider;
+use direction::MapDir;
 
 use std::collections::{HashMap, HashSet};
 use std::ops::{Deref, DerefMut};
@@ -232,7 +235,7 @@ pub struct Room {
     players: PlayerIdList,
     #[serde(skip_serializing, skip_deserializing)]
     items: ItemList,
-    inner_items: Option<GenericItemList>,
+    inner_items: Option<YamlItemList>,
     #[serde(default)]
     doors: DoorList,
 }
@@ -275,7 +278,7 @@ impl Room {
                 description,
                 handle: Handle(vec![name.clone()]),
                 display: "".to_owned(),
-                attributes: vec![]
+                attributes: vec![],
             },
             loc: loc,
             players: PlayerIdList(HashSet::new()),
@@ -293,9 +296,7 @@ impl Room {
     pub fn display(&self, p: u128, global_players: &PlayerList, rooms: &RoomList) -> String {
         let Room {
             info: Description {
-                name,
-                description,
-                ..
+                name, description, ..
             },
             players,
             items,
@@ -383,9 +384,9 @@ mod room_test {
 #[cfg(test)]
 mod map_test {
     use super::*;
-    use crate::game::MapDir::South;
-    use crate::item::BasicItemKind::Clothing;
-    use crate::item::{BasicItemKind, Description};
+    use crate::item::YamlItem::Clothing;
+    use crate::item::{Description, YamlItem};
+    use crate::map::direction::MapDir::South;
 
     #[test]
     fn map_test() {
@@ -411,15 +412,15 @@ mod map_test {
         // };
 
         let mut r = Room::default();
-        let mut items = GenericItemList::new();
-        items.push(BasicItemKind::Weapon(Description::default()));
-        let mut items2 = GenericItemList::new();
-        items2.push(BasicItemKind::Weapon(Description::new(
+        let mut items = YamlItemList::new();
+        items.push(YamlItem::Weapon(Description::default()));
+        let mut items2 = YamlItemList::new();
+        items2.push(YamlItem::Weapon(Description::new(
             "butt",
             None,
             Handle(vec!["but".to_owned()]),
         )));
-        items.push(BasicItemKind::Container(items2));
+        items.push(YamlItem::Container(items2));
         r.inner_items = Some(items);
         std::fs::write("/tmp/sample.yaml", &serde_yaml::to_vec(&r).expect("eerr"));
     }

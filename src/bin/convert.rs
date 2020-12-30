@@ -1,7 +1,7 @@
-use ennui::map::Room;
 use std::env::args;
 use std::fs;
 use std::io;
+use ennui::map::Room;
 
 fn main() -> io::Result<()> {
     if let [srcfile, dstfile, ..] = args().skip(1).take(2).collect::<Vec<String>>().as_slice() {

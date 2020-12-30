@@ -1,4 +1,4 @@
-use crate::game::MapDir;
+use crate::map::direction::MapDir;
 use crate::map::Locate;
 use crate::player::Uuid;
 use serde::{Deserialize, Serialize};
@@ -48,7 +48,7 @@ impl Coord {
     }
 
     pub fn add(&self, dir: MapDir) -> Option<Self> {
-        use MapDir::*;
+        use crate::map::direction::MapDir::*;
 
         Some(match dir {
             North => self.north(),

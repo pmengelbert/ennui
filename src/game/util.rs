@@ -35,3 +35,23 @@ impl AsMut<PlayerList> for Game {
         &mut self.players
     }
 }
+
+pub fn random_insult() -> String {
+    match rand::thread_rng().gen_range(1, 6) {
+        1 => "dude wtf",
+        2 => "i think you should leave",
+        3 => "i'll have to ask my lawyer about that",
+        4 => "that's ... uncommon",
+        _ => "that's an interesting theory... but will it hold up in the laboratory?",
+    }
+    .to_owned()
+}
+
+pub fn to_buf<T: AsRef<str>>(msg: T) -> Vec<u8> {
+    let buf = msg.as_ref().as_bytes();
+    let mut b = vec![];
+    b.extend_from_slice(b"\n".as_ref());
+    b.extend_from_slice(buf.as_ref());
+    b.extend_from_slice(b"\n\n > ".as_ref());
+    b
+}

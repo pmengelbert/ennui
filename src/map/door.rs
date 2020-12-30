@@ -1,8 +1,8 @@
-use crate::game::MapDir;
 use crate::item::handle::Handle;
 use crate::item::key::Key;
-use crate::item::{Describe, Description, Item, ItemList, ItemListTrait, Attribute, Quality};
+use crate::item::{Attribute, Describe, Description, Item, ItemList, ItemListTrait, Quality};
 use crate::map::coord::Coord;
+use crate::map::direction::MapDir;
 use crate::map::door::DoorState::{Locked, Open};
 use crate::map::StateResult;
 use serde::export::Formatter;
@@ -286,7 +286,7 @@ impl DerefMut for DoorList {
 mod test_doors {
     use super::*;
     use crate::game::Game;
-    use crate::game::MapDir::{North, South, West};
+    use crate::map::direction::MapDir::{North, South, West};
     use crate::map::door::DoorState::{Closed, Locked};
     use crate::map::{Locate, Room};
     use crate::player::Player;

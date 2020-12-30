@@ -1,5 +1,5 @@
 use crate::item::handle::Handle;
-use crate::item::{Describe, Description, Quality, Attribute};
+use crate::item::{Attribute, Describe, Description, Quality};
 use std::fmt::Debug;
 
 pub trait Key<T>: Describe + Debug {
@@ -57,4 +57,3 @@ impl Key<u64> for KeyType {
         self.key
     }
 }
-
