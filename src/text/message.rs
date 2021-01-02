@@ -1,24 +1,14 @@
 use crate::player::Uuid;
 use std::io;
+use std::borrow::Cow;
+
+
 
 type WriteResult = io::Result<usize>;
 
 pub trait Message {
     fn to_self(&self) -> String;
     fn to_others(&self) -> Option<String>;
-}
-
-impl<T> Message for T
-where
-    T: AsRef<str>,
-{
-    fn to_self(&self) -> String {
-        self.as_ref().to_owned()
-    }
-
-    fn to_others(&self) -> Option<String> {
-        None
-    }
 }
 
 impl<T, U> Message for Msg<T, U>
@@ -37,17 +27,17 @@ where
 
 pub trait Messenger {
     fn id(&self) -> Option<u128>;
-    fn others(&self) -> Option<Vec<u128>> {
-        None
+    fn others(&self) -> Vec<u128> {
+        vec![]
     }
 }
 
-impl Uuid for Option<Vec<u128>> {
+impl Uuid for Vec<u128> {
     fn uuid(&self) -> u128 {
         0
     }
 
-    fn others(&self) -> Option<Vec<u128>> {
+    fn others(&self) -> Vec<u128> {
         self.clone()
     }
 }
@@ -84,20 +74,14 @@ where
         }
     }
 
-    fn others(&self) -> Option<Vec<u128>> {
-        let id = self.id();
+    fn others(&self) -> Vec<u128> {
         let v: Vec<u128> = self
             .1
-            .others()?
+            .others()
             .iter()
             .cloned()
-            .filter(|&i| Some(i) != id)
             .collect();
-        if v.is_empty() {
-            None
-        } else {
-            Some(v)
-        }
+        v
     }
 }
 
@@ -109,4 +93,72 @@ where
 {
     pub s: T,
     pub o: Option<U>,
+}
+
+impl Message for &str {
+    fn to_self(&self) -> String {
+        self.to_string()
+    }
+
+    fn to_others(&self) -> Option<String> {
+        Some(self.to_string())
+    }
+}
+
+impl Message for Cow<'static, str> {
+    fn to_self(&self) -> String {
+        let mut s = String::new();
+        s.push_str(&self);
+        s
+    }
+
+    fn to_others(&self) -> Option<String> {
+        let mut s = String::new();
+        s.push_str(&self);
+        Some(s)
+    }
+}
+
+impl Message for &String {
+    fn to_self(&self) -> String {
+        (*self).clone()
+    }
+
+    fn to_others(&self) -> Option<String> {
+        Some((*self).clone())
+    }
+}
+
+#[cfg(test)]
+mod test_message {
+    use super::*;
+    use crate::game::Game;
+    use crate::map::coord::Coord;
+    use crate::map::Space;
+
+    #[test]
+    fn test_message_1() {
+        let mut g = Game::new().unwrap();
+        let s = "poo butts poo";
+        let n = 8_u128;
+        g.send(n, s);
+    }
+
+    #[test]
+    fn test_message_2() {
+        let mut g = Game::new().unwrap();
+        let s = "poo butts poo".to_owned();
+        let n = 8_u128;
+        g.send(n, &s);
+    }
+
+    #[test]
+    fn test_message_3() {
+        let mut g = Game::new().unwrap();
+        let s = "poo butts poo".to_owned();
+        let n = 8_u128;
+        let room = g.get_room(&Coord(0, 0)).unwrap();
+        let _audience = Audience(n, room.players().except(n));
+        g.send(n, &s);
+    }
 }

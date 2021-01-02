@@ -33,8 +33,8 @@ pub struct Player {
 
 pub trait Uuid {
     fn uuid(&self) -> u128;
-    fn others(&self) -> Option<Vec<u128>> {
-        None
+    fn others(&self) -> Vec<u128> {
+        vec![]
     }
 }
 

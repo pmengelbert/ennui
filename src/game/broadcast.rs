@@ -18,7 +18,7 @@ where
         let g = self.borrow_mut();
         let mut v = vec![];
         let self_id = audience.id().unwrap_or_default();
-        let other_ids = audience.others().unwrap_or_default();
+        let other_ids = audience.others();
 
         let self_msg = message.to_self();
         let other_msg = message.to_others();

@@ -10,16 +10,16 @@ use crate::text::message::{Audience, Msg};
 
 pub fn fill_interpreter(i: &mut Interpreter) {
     i.insert("look", |g, u, args| {
-        let msg = match args.len() {
-            0 => g.describe_room(u)?,
+        let msg: Cow<'static, str> = match args.len() {
+            0 => g.describe_room(u)?.into(),
             1 => {
                 let loc = g.loc_of(u)?;
                 if let Some(item) = g.describe_item(u, args[0]) {
-                    item.to_owned()
+                    item.into()
                 } else if let Some(person) = g.describe_player(loc, u, args[0]) {
-                    person.to_owned()
+                    person.into()
                 } else {
-                    format!("i don't see {} here...", article(args[0]))
+                    format!("i don't see {} here...", article(args[0])).into()
                 }
             }
             _ => "what you're saying is not clear from context".into(),
@@ -219,7 +219,7 @@ pub fn fill_interpreter(i: &mut Interpreter) {
         let name = g.name_of(u)?;
         let loc = g.loc_of(u)?;
 
-        let mut other_id = None;
+        let mut other_id = vec![];
         let mut other_msg = None;
 
         let p_msg = if a.len() == 2 {
@@ -229,7 +229,7 @@ pub fn fill_interpreter(i: &mut Interpreter) {
                 Ok(h) => {
                     let art = article(&h);
 
-                    other_id = Some(vec![g.id_of_in(loc, other)?.uuid()]);
+                    other_id.push(g.id_of_in(loc, other)?.uuid());
                     other_msg = Some(format!("{} gives you {}", name, art));
 
                     format!("you give {} {}", other, art)
@@ -314,6 +314,7 @@ pub fn fill_interpreter(i: &mut Interpreter) {
         for meter in p.stats() {
             s.push_str(&format!("{:#?}", meter));
         }
+
         g.send(u, &s);
 
         Some("".into())
@@ -355,7 +356,7 @@ pub fn fill_interpreter(i: &mut Interpreter) {
             _ => format!("I'm not sure what you're getting at"),
         };
 
-        let aud = Audience(u, g.rooms.player_ids(loc).except(u));
+        let aud = Audience(u, g.players_in(loc).except(u));
         let msg = Msg {
             s: self_msg,
             o: other_msg,
@@ -452,7 +453,7 @@ pub fn fill_interpreter(i: &mut Interpreter) {
 
         g.send(
             u,
-            format!("{}", Red("that hurt a surprising amount".into())),
+            &format!("{}", Red("that hurt a surprising amount".into())),
         );
         Some("".into())
     });
@@ -460,7 +461,7 @@ pub fn fill_interpreter(i: &mut Interpreter) {
     i.insert("inventory", |g, u, _a| {
         let aud = u;
         let msg = g.list_inventory(u)?;
-        g.send(aud, msg);
+        g.send(aud, &msg);
         Some("".into())
     });
 

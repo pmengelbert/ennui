@@ -122,7 +122,7 @@ impl Uuid for Room {
         0
     }
 
-    fn others(&self) -> Option<Vec<u128>> {
+    fn others(&self) -> Vec<u128> {
         let mut v = vec![];
         for id in self.players.iter() {
             if *id == self.uuid() {
@@ -131,11 +131,7 @@ impl Uuid for Room {
             v.push(*id)
         }
 
-        if v.is_empty() {
-            None
-        } else {
-            Some(v)
-        }
+        v
     }
 }
 

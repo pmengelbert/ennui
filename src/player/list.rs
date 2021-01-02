@@ -30,13 +30,8 @@ impl Uuid for PlayerIdList {
         0
     }
 
-    fn others(&self) -> Option<Vec<u128>> {
-        let v: Vec<u128> = self.iter().cloned().collect();
-        if v.is_empty() {
-            None
-        } else {
-            Some(v)
-        }
+    fn others(&self) -> Vec<u128> {
+        self.iter().cloned().collect()
     }
 }
 
@@ -45,8 +40,8 @@ impl Messenger for PlayerIdList {
         None
     }
 
-    fn others(&self) -> Option<Vec<u128>> {
-        Some(self.iter().cloned().collect())
+    fn others(&self) -> Vec<u128> {
+        self.iter().cloned().collect()
     }
 }
 
@@ -109,13 +104,8 @@ impl Uuid for PlayerList {
         0
     }
 
-    fn others(&self) -> Option<Vec<u128>> {
-        let v: Vec<_> = self.keys().cloned().collect();
-        if v.is_empty() {
-            None
-        } else {
-            Some(v)
-        }
+    fn others(&self) -> Vec<u128> {
+        self.keys().cloned().collect()
     }
 }
 
@@ -124,13 +114,8 @@ impl Uuid for &PlayerIdList {
         0
     }
 
-    fn others(&self) -> Option<Vec<u128>> {
-        let v: Vec<u128> = self.iter().cloned().collect();
-        if v.is_empty() {
-            None
-        } else {
-            Some(v)
-        }
+    fn others(&self) -> Vec<u128> {
+        self.iter().cloned().collect()
     }
 }
 
@@ -139,12 +124,7 @@ impl Uuid for &PlayerList {
         0
     }
 
-    fn others(&self) -> Option<Vec<u128>> {
-        let v: Vec<_> = self.keys().cloned().collect();
-        if v.is_empty() {
-            None
-        } else {
-            Some(v)
-        }
+    fn others(&self) -> Vec<u128> {
+        self.keys().cloned().collect()
     }
 }

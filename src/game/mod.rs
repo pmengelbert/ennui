@@ -15,7 +15,7 @@ use crate::map::direction::MapDir;
 use crate::map::door::{DoorState, GuardState, ObstacleState};
 use crate::map::list::{RoomList, RoomListTrait};
 use crate::map::{coord::Coord, Locate, Room, Space};
-use crate::player::list::PlayerList;
+use crate::player::list::{PlayerList, PlayerIdList};
 use crate::player::{Player, Uuid};
 use crate::text::article;
 use crate::text::message::{Audience, Broadcast, Msg};
@@ -83,6 +83,13 @@ impl Game {
             p.flush()?;
         }
         Ok(res)
+    }
+
+    pub fn players_in(&mut self, loc: Coord) -> Cow<PlayerIdList> {
+        match self.rooms.get(&loc) {
+            Some(r) => Cow::Borrowed(r.players()),
+            None => Cow::Owned(PlayerIdList::default()),
+        }
     }
 
     fn describe_room<P: Uuid>(&mut self, p: P) -> Option<String> {
@@ -194,7 +201,7 @@ impl Game {
 
         let next_room_aud = {
             let next_room = self.rooms.get(&loc.add(dir)?)?;
-            Audience(0, Some(next_room.players_except(u)))
+            Audience(0, next_room.players_except(u))
         };
 
         let for_others = format!("{} enters the room", name);
@@ -326,5 +333,10 @@ impl Game {
         }
 
         Ok(())
+    }
+
+    #[cfg(test)]
+    pub fn get_room(&self, loc: &Coord) -> Option<&Room> {
+        self.rooms.get(loc)
     }
 }
