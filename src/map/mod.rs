@@ -4,8 +4,9 @@ use serde::{Deserialize, Serialize};
 
 use direction::MapDir;
 
+use crate::error::EnnuiError;
 use crate::item::handle::Handle;
-use crate::item::list::{Holder, ItemList, ItemListTrait};
+use crate::item::list::{Holder, ItemList, ListTrait};
 use crate::item::{Attribute, Describe, Description, Item, Quality, YamlItemList};
 use crate::map::coord::Coord;
 use crate::map::door::DoorList;
@@ -32,7 +33,7 @@ pub struct Room {
     doors: DoorList,
 }
 
-pub trait Space: Locate + ItemListTrait {
+pub trait Space: Locate + ListTrait {
     fn players(&self) -> &PlayerIdList;
     fn doors(&mut self) -> &mut DoorList;
     fn players_except(&self, u: u128) -> Vec<u128> {
@@ -85,23 +86,22 @@ impl Attribute<Quality> for Room {
     }
 }
 
-impl ItemListTrait for Room {
+impl ListTrait for Room {
     type Kind = ItemList;
 
-    fn get(&self, handle: &str) -> Option<&Item> {
+    fn get_item(&self, handle: &str) -> Option<&Item> {
         self.items.iter().find(|i| i.handle() == handle)
     }
 
-    fn get_mut(&mut self, handle: &str) -> Option<&mut Item> {
+    fn get_item_mut(&mut self, handle: &str) -> Option<&mut Item> {
         self.items.iter_mut().find(|i| i.handle() == handle)
     }
 
-    fn get_owned(&mut self, handle: &str) -> Option<Item> {
-        let pos = self.items.iter().position(|i| i.handle() == handle)?;
-        Some(self.items.remove(pos))
+    fn get_item_owned(&mut self, handle: &str) -> Result<Item, EnnuiError> {
+        self.items.get_owned(handle)
     }
 
-    fn insert(&mut self, item: Item) -> Result<(), Item> {
+    fn insert_item(&mut self, item: Item) -> Result<(), Item> {
         self.items.push(item);
         Ok(())
     }

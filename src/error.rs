@@ -1,53 +1,74 @@
-use std::error;
+use crate::interpreter::CommandKind;
 use serde::export::Formatter;
+use std::error;
 use std::io::Error;
+use std::option::NoneError;
+
+#[derive(Debug)]
+pub enum Simple {
+    Clothing,
+    ItemNotFound,
+    TooHeavy,
+    Fatal,
+    Guarded,
+    NotClothing,
+    PlayerNotFound,
+    CannotAcceptGivenItem,
+}
 
 #[derive(Debug)]
 pub enum EnnuiError {
-    Test1,
-    Test2 { source: std::io::Error },
-    Test3(std::io::Error),
-    Test4(std::option::NoneError)
+    UnidentifiedError,
+    FatalError(String),
+    SimpleError(Simple),
+    MessageError(String),
+    ComplexError(Simple, String),
+    ReturnToPlayer { src: CommandKind, msg: String },
+    IoError(std::io::Error),
+    NoneFound(std::option::NoneError),
 }
 
 impl std::fmt::Display for EnnuiError {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        match *self {
-            EnnuiError::Test1 => {
-                write!(f, "Source contains no data")
-            }
-            EnnuiError::Test2{ .. } => {
-                write!(f, "Read error")
-            }
-            EnnuiError::Test3(ref err) => {
-                err.fmt(f)
-            }
-            EnnuiError::Test4(ref _err) => {
-                write!(f, "None error encountered")
-            }
+        match self {
+            EnnuiError::UnidentifiedError => write!(f, "Source contains no data"),
+            EnnuiError::IoError(ref err) => err.fmt(f),
+            EnnuiError::NoneFound(ref _err) => write!(f, "None error encountered"),
+            e => write!(f, "{:?}", e),
         }
     }
 }
 
 impl error::Error for EnnuiError {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
-        match *self {
-            EnnuiError::Test1 => None,
-            EnnuiError::Test2 { ref source } => Some(source),
-            EnnuiError::Test3(_) => None,
-            EnnuiError::Test4(_) => None,
+        match self {
+            EnnuiError::UnidentifiedError => None,
+            EnnuiError::IoError(_) => None,
+            EnnuiError::NoneFound(_) => None,
+            EnnuiError::SimpleError(e) => None,
+            EnnuiError::MessageError(_) => None,
+            EnnuiError::ComplexError(_, _) => None,
+            EnnuiError::ReturnToPlayer { .. } => None,
+            _ => None,
         }
     }
 }
 
 impl From<std::io::Error> for EnnuiError {
     fn from(err: Error) -> Self {
-        EnnuiError::Test3(err)
+        EnnuiError::IoError(err)
     }
 }
 
 impl From<std::option::NoneError> for EnnuiError {
     fn from(err: std::option::NoneError) -> Self {
-        EnnuiError::Test4(err)
+        EnnuiError::NoneFound(err)
+    }
+}
+
+impl From<EnnuiError> for std::option::NoneError {
+    fn from(_: EnnuiError) -> Self {
+        use EnnuiError::*;
+        std::option::NoneError
     }
 }

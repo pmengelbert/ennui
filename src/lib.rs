@@ -10,10 +10,10 @@ macro_rules! arc_mutex(
 
 type WriteResult = std::io::Result<usize>;
 
+pub mod error;
 pub mod game;
 mod interpreter;
 mod item;
 pub mod map;
 pub mod player;
 mod text;
-pub mod error;

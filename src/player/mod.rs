@@ -6,8 +6,9 @@ use uuid::Uuid as CrateUuid;
 
 use meter::MeterKind;
 
+use crate::error::EnnuiError;
 use crate::item::handle::Handle;
-use crate::item::list::{Holder, ItemList, ItemListTrait};
+use crate::item::list::{Holder, ItemList, ListTrait};
 use crate::item::{Attribute, Describe, Description, Item, Quality};
 use crate::map::coord::Coord;
 use crate::map::Locate;
@@ -37,23 +38,22 @@ pub trait Uuid {
     }
 }
 
-impl ItemListTrait for Player {
+impl ListTrait for Player {
     type Kind = ItemList;
 
-    fn get(&self, handle: &str) -> Option<&Item> {
+    fn get_item(&self, handle: &str) -> Option<&Item> {
         self.items.iter().find(|i| i.handle() == handle)
     }
 
-    fn get_mut(&mut self, handle: &str) -> Option<&mut Item> {
+    fn get_item_mut(&mut self, handle: &str) -> Option<&mut Item> {
         self.items.iter_mut().find(|i| i.handle() == handle)
     }
 
-    fn get_owned(&mut self, handle: &str) -> Option<Item> {
-        let pos = self.items().iter().position(|i| i.handle() == handle)?;
-        Some(self.items.remove(pos))
+    fn get_item_owned(&mut self, handle: &str) -> Result<Item, EnnuiError> {
+        self.items.get_owned(handle)
     }
 
-    fn insert(&mut self, item: Item) -> Result<(), Item> {
+    fn insert_item(&mut self, item: Item) -> Result<(), Item> {
         self.items.push(item);
         Ok(())
     }

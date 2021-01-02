@@ -2,17 +2,20 @@ use std::option::NoneError;
 use std::sync::Arc;
 
 use crate::game::Game;
-use crate::item::error::Error::{FatalError, Guarded, ItemNotFound, PlayerNotFound, TooHeavy};
+use crate::item::error::Error::{FatalError, Guarded, PlayerNotFound};
 use crate::item::Item::Scenery;
 use crate::item::{Attribute, Describe, Item, Quality};
 use crate::map::coord::Coord;
 use crate::map::list::RoomList;
 use crate::player::list::PlayerList;
-use crate::player::Uuid;
+use crate::player::{Player, Uuid};
 use crate::text::article;
 
 use super::Error;
-use crate::item::list::{Holder, ItemListTrait};
+use crate::error::EnnuiError::{ComplexError, MessageError, SimpleError};
+use crate::error::Simple::{CannotAcceptGivenItem, Fatal, ItemNotFound, NotClothing, TooHeavy};
+use crate::error::{EnnuiError, Simple};
+use crate::item::list::{Holder, ListTrait};
 
 #[derive(Clone, Copy)]
 pub enum Direction {
@@ -53,7 +56,7 @@ impl Game {
         other: Option<&str>,
         dir: Direction,
         handle: &str,
-    ) -> TransferResult
+    ) -> Result<String, EnnuiError>
     where
         T: Uuid,
     {
@@ -65,8 +68,9 @@ impl Game {
         let other_id = oid.unwrap_or_default();
 
         if let Err(_) = self.validate_other_player(other, loc, dir) {
-            return TransferResult::Err(Arc::new(PlayerNotFound(
-                other.unwrap_or_default().to_owned(),
+            return Err(MessageError(format!(
+                "You don't see {} in here. I'm beginning to question your sanity",
+                other.unwrap_or_default()
             )));
         };
 
@@ -88,21 +92,26 @@ impl Game {
         uuid: u128,
         loc: &Coord,
         handle: &str,
-    ) -> Result<String, Error> {
+    ) -> Result<String, EnnuiError> {
         let room = match rooms.get_mut(loc) {
             Some(r) => r,
-            None => return Err(a(handle)),
+            None => return Err(SimpleError(ItemNotFound)),
         };
 
-        if let Some(Scenery(_)) = room.items().get(handle) {
-            return Err(Arc::new(TooHeavy(handle.to_owned())));
+        if let Some(Scenery(_)) = room.items().get_item(handle) {
+            return Err(SimpleError(TooHeavy));
         }
 
         let player = match players.get_mut(&uuid) {
             Some(p) => p,
-            None => return Err(a(handle)),
+            None => {
+                return Err(ComplexError(
+                    Fatal,
+                    format!("Could not find primary player with uuid: {}", uuid),
+                ))
+            }
         };
-        room.transfer(player, handle.into()).map_err(|e| a(&e))
+        room.transfer(player, handle.into())
     }
 
     fn drop(
@@ -111,16 +120,26 @@ impl Game {
         uuid: u128,
         loc: &Coord,
         handle: &str,
-    ) -> Result<String, Error> {
+    ) -> Result<String, EnnuiError> {
         let room = match rooms.get_mut(loc) {
             Some(r) => r,
-            None => return Err(a(handle)),
+            None => {
+                return Err(ComplexError(
+                    Fatal,
+                    format!("unable to find room for player {} at {:?}", uuid, loc),
+                ))
+            }
         };
         let player = match players.get_mut(&uuid) {
             Some(p) => p,
-            None => return Err(a(handle)),
+            None => {
+                return Err(ComplexError(
+                    Fatal,
+                    format!("unable to find player {}", uuid),
+                ))
+            }
         };
-        player.transfer(room, handle).map_err(|e| a(&e))
+        player.transfer(room, handle)
     }
 
     fn give(
@@ -130,20 +149,20 @@ impl Game {
         ids: (u128, u128),
         other_name: Option<&str>,
         handle: &str,
-    ) -> TransferResult {
-        use TransferResult::*;
-
+    ) -> Result<String, EnnuiError> {
         let (uuid, other_id) = ids;
         let item = {
             let p = match players.get_mut(&uuid) {
                 Some(p) => p,
-                None => return Err(a(handle)),
+                None => {
+                    return Err(ComplexError(
+                        Fatal,
+                        format!("unable to find player {}", uuid),
+                    ))
+                }
             };
 
-            match p.items_mut().get_owned(handle) {
-                Some(i) => i,
-                None => return Err(a(handle)),
-            }
+            p.items_mut().get_item_owned(handle)?
         };
 
         let item_name = item.name().to_owned();
@@ -153,84 +172,94 @@ impl Game {
                 let room = match rooms.get_mut(&loc) {
                     Some(r) => r,
                     None => {
-                        return Err(Arc::new(PlayerNotFound(
-                            other_name.unwrap_or_default().to_owned(),
-                        )));
+                        return Err(ComplexError(
+                            Fatal,
+                            format!(
+                                "unable to find other player {:?} in room at {:?}",
+                                other_id, loc
+                            ),
+                        ));
                     }
                 };
-                match room.get_mut(other_name.unwrap_or_default()) {
+                match room.get_item_mut(other_name.unwrap_or_default()) {
                     Some(Item::Guard(_, guard)) => {
                         use std::result::Result::*;
-                        match guard.insert(item) {
+                        match guard.insert_item(item) {
                             Ok(()) => {
-                                return GuardAppeased(format!(
-                                    "you see {} relax a little bit. maybe now they'll let you through",
-                                    article(guard.name())
+                                return Err(MessageError(format!("you see {} relax a little bit. maybe now they'll let you through",
+                                                                article(guard.name()))
+
                                 ));
                             }
                             Err(given_back) => {
+                                let name = given_back.name().to_owned();
                                 match players.get_mut(&uuid) {
                                     Some(p) => {
-                                        if p.insert(given_back).is_err() {
-                                            return Err(Arc::new(
-                                                crate::item::error::Error::FatalError(
-                                                    "wasn't able to return item to player after \
+                                        if p.insert_item(given_back).is_err() {
+                                            return Err(EnnuiError::FatalError(
+                                                "wasn't able to return item to player after \
                                                     failed transfer to guard type."
-                                                        .into(),
-                                                ),
-                                            ))
-                                            .into();
+                                                    .to_owned(),
+                                            ));
                                         }
                                     }
                                     None => (),
                                 }
-                                return TransferResult::Err(Arc::new(Guarded(
-                                    guard.name().to_owned(),
+                                return Err(MessageError(format!(
+                                    "uh.. I don't think {} can accept your {}",
+                                    article(guard.name()),
+                                    name
                                 )));
                             }
                         };
                     }
                     _ => {
-                        return Err(Arc::new(PlayerNotFound(
-                            other_name.unwrap_or_default().to_owned(),
+                        return Err(MessageError(format!(
+                            "you don't see {} here!",
+                            other_name.unwrap_or_default()
                         )));
                     }
                 }
             }
         };
 
-        if other_p.items_mut().insert(item).is_err() {
-            return Err(Arc::new(FatalError("COULD NOT TRANSFER ITEM".into())));
+        if other_p.items_mut().insert_item(item).is_err() {
+            return Err(ComplexError(
+                Fatal,
+                format!(
+                    "COULD NOT RETURN ITEM {} TO OTHER PLAYER {}",
+                    item_name,
+                    other_p.uuid()
+                ),
+            ));
         };
         Ok(item_name)
     }
 
-    fn wear(players: &mut PlayerList, uuid: u128, handle: &str) -> Result<String, Error> {
+    fn wear(players: &mut PlayerList, uuid: u128, handle: &str) -> Result<String, EnnuiError> {
         use crate::item::error::Error::Clothing;
-        let (items, clothing) = {
-            match players.get_mut(&uuid) {
-                Some(p) => p,
-                None => return Err(a(handle)),
-            }
-            .all_items_mut()
-        };
-        match items.get(handle) {
+        let (items, clothing) = { Self::get_player_mut(players, uuid)?.all_items_mut() };
+        match items.get_item(handle) {
             Some(i) if i.is(Quality::Clothing) => (),
-            None => return Err(a(handle)),
-            _ => return Err(Arc::new(Clothing(handle.to_owned()))),
+            None => return Err(SimpleError(ItemNotFound)),
+            _ => return Err(SimpleError(NotClothing)),
         }
-        items.transfer(clothing, handle).map_err(|e| a(&e))
+        items.transfer(clothing, handle)
     }
 
-    fn remove(players: &mut PlayerList, uuid: u128, handle: &str) -> Result<String, Error> {
-        let (items, clothing) = {
-            match players.get_mut(&uuid) {
-                Some(p) => p,
-                None => return Err(a(handle)),
-            }
-            .all_items_mut()
-        };
-        clothing.transfer(items, handle).map_err(|e| a(&e))
+    fn remove(players: &mut PlayerList, uuid: u128, handle: &str) -> Result<String, EnnuiError> {
+        let (items, clothing) = { Self::get_player_mut(players, uuid)?.all_items_mut() };
+        clothing.transfer(items, handle)
+    }
+
+    fn get_player_mut(players: &mut PlayerList, uuid: u128) -> Result<&mut Player, EnnuiError> {
+        match players.get_mut(&uuid) {
+            Some(p) => Ok(p),
+            None => Err(ComplexError(
+                Fatal,
+                format!("UNABLE TO FIND PLAYER {}", uuid),
+            )),
+        }
     }
 
     fn validate_other_player(
@@ -254,7 +283,7 @@ impl Game {
                     match rooms.get(loc) {
                         Some(room) => {
                             println!("checkpoint 3");
-                            match room.get(other.unwrap_or_default()) {
+                            match room.get_item(other.unwrap_or_default()) {
                                 Some(_) => {
                                     println!("checkpoint 4");
                                     return Ok(());
@@ -288,9 +317,4 @@ impl Game {
 
         Ok(())
     }
-}
-
-fn a<T: AsRef<str>>(s: T) -> Error {
-    let s = s.as_ref().to_owned();
-    Arc::new(ItemNotFound(s))
 }

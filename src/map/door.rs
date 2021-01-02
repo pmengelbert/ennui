@@ -1,6 +1,7 @@
+use crate::error::EnnuiError;
 use crate::item::handle::Handle;
 use crate::item::key::Key;
-use crate::item::list::{ItemList, ItemListTrait};
+use crate::item::list::{ItemList, ListTrait};
 use crate::item::{Attribute, Describe, Description, Item, Quality};
 use crate::map::coord::Coord;
 use crate::map::direction::MapDir;
@@ -178,24 +179,24 @@ impl Lock<GuardState> for RenaissanceGuard {
     }
 }
 
-pub trait Guard: Lock<GuardState> + ItemListTrait<Kind = ItemList> {}
+pub trait Guard: Lock<GuardState> + ListTrait<Kind = ItemList> {}
 
-impl ItemListTrait for RenaissanceGuard {
+impl ListTrait for RenaissanceGuard {
     type Kind = ItemList;
 
-    fn get(&self, handle: &str) -> Option<&Item> {
-        self.items.get(handle)
+    fn get_item(&self, handle: &str) -> Option<&Item> {
+        self.items.get_item(handle)
     }
 
-    fn get_mut(&mut self, handle: &str) -> Option<&mut Item> {
-        self.items.get_mut(handle)
+    fn get_item_mut(&mut self, handle: &str) -> Option<&mut Item> {
+        self.items.get_item_mut(handle)
     }
 
-    fn get_owned(&mut self, handle: &str) -> Option<Item> {
-        self.items.get_owned(handle)
+    fn get_item_owned(&mut self, handle: &str) -> Result<Item, EnnuiError> {
+        self.items.get_item_owned(handle)
     }
 
-    fn insert(&mut self, item: Item) -> Result<(), Item> {
+    fn insert_item(&mut self, item: Item) -> Result<(), Item> {
         match &item {
             Item::Key(k) => match self.unlock(GuardState::Open, Some(&**k)) {
                 Ok(()) => Ok(()),

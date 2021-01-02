@@ -7,7 +7,7 @@ use YamlItem::*;
 
 use crate::item::handle::Handle;
 use crate::item::key::Key;
-use crate::item::list::{ItemList, ItemListTrait};
+use crate::item::list::{ItemList, ListTrait};
 use crate::map::direction::MapDir;
 use crate::map::door::{Guard, GuardState};
 
@@ -50,7 +50,7 @@ pub enum Item {
     Scenery(Box<dyn Describe>),
     Edible(Box<dyn Describe>),
     Holdable(Box<dyn Describe>),
-    Container(Box<dyn ItemListTrait<Kind = ItemList>>),
+    Container(Box<dyn ListTrait<Kind = ItemList>>),
     Guard(MapDir, Box<dyn Guard<Lock = u64, Kind = ItemList>>),
     Key(Box<dyn Key<u64>>),
 }

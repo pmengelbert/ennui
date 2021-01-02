@@ -1,8 +1,10 @@
 use super::item::Direction;
-use super::item::TransferResult::*;
+// use super::item::TransferResult::*;
 use super::*;
 use crate::game::util::random_insult;
-use crate::item::error::Error::*;
+// use crate::item::error::Error::*;
+use crate::error::EnnuiError::*;
+use crate::error::{EnnuiError, Simple};
 use crate::map::door::{DoorState, Lock, ObstacleState};
 use crate::text::message::{Audience, Msg};
 
@@ -44,8 +46,10 @@ pub fn fill_interpreter(i: &mut Interpreter) {
                             Some(format!("{} picks up a {}", name, article(&handle.clone())));
                         format!("you take the {}", handle)
                     }
-                    Err(err) => match &*err {
-                        TooHeavy(s) => format!("you can't pick up {}. It's too heavy", article(&s)),
+                    Err(err) => match err {
+                        SimpleError(Simple::TooHeavy) => {
+                            format!("you can't pick up {}. It's too heavy", article(handle))
+                        }
                         _ => format!("you don't see {} here", article(&handle)),
                     },
                     _ => todo!(),
@@ -59,11 +63,11 @@ pub fn fill_interpreter(i: &mut Interpreter) {
                 let room = rooms.get_mut(&loc)?;
                 let player = players.get_mut(&u)?;
 
-                match room.get_mut(container) {
+                match room.get_item_mut(container) {
                     Some(c) => {
                         if let Item::Container(cont) = c {
                             use std::result::Result::*;
-                            match cont.get(object) {
+                            match cont.get_item(object) {
                                 Some(_) => match cont.transfer(player, object) {
                                     Ok(handle) => {
                                         other_msg = Some(format!(
@@ -110,8 +114,6 @@ pub fn fill_interpreter(i: &mut Interpreter) {
         let loc = g.loc_of(u)?;
         let aud = Audience(u, g.rooms.player_ids(loc).except(u));
 
-        use crate::item::error::Error::*;
-
         let mut other_msg = None;
         let self_msg = match a.len() {
             0 => "there seems to be an error".to_owned(),
@@ -122,9 +124,19 @@ pub fn fill_interpreter(i: &mut Interpreter) {
                         other_msg = Some(format!("{} puts on {}", name, article(&item_name)));
                         format!("you wear the {}", handle)
                     }
-                    Err(err) => match &*err {
-                        Clothing(s) => format!("you can't wear {}!", article(s)),
-                        s => format!("you're not holding {}", article(s.safe_unwrap())),
+                    Err(err) => match err {
+                        SimpleError(Simple::NotClothing) => {
+                            format!("you can't wear {}!", article(handle))
+                        }
+                        SimpleError(Simple::ItemNotFound) => {
+                            format!("you're not holding {}", article(handle))
+                        }
+                        FatalError(e) => {
+                            println!("[{}]: {}", Red("FATAL".into()), e);
+                            return Some("".into());
+                        }
+                        MessageError(m) => m,
+                        _ => todo!(),
                     },
                     _ => todo!(),
                 }
@@ -226,20 +238,31 @@ pub fn fill_interpreter(i: &mut Interpreter) {
 
                     format!("you give {} {}", other, art)
                 }
-                Err(err) => match &*err {
-                    ItemNotFound(s) => format!("you're not holding {}", article(&s)),
-                    PlayerNotFound(s) => {
-                        format!("now where did {} go? you don't see them here...", s)
+                Err(err) => match err {
+                    SimpleError(s) => match s {
+                        Simple::ItemNotFound => format!("you're not holding {}", article(handle)),
+                        Simple::TooHeavy => format!(
+                            "you fail in your effort. {} is too heavy for them to carry",
+                            article(handle)
+                        ),
+                        Simple::PlayerNotFound => {
+                            format!("you realize you don't see them here, and you begin to panic")
+                        }
+                        _ => {
+                            println!("GIVE: SHOULD BE UNREACHABLE");
+                            return Some("".into());
+                        }
+                    },
+                    FatalError(e) => {
+                        println!("FATAL: {}", e);
+                        return Some("".into());
                     }
-                    Clothing(_) => format!("they must not like the look of it"),
-                    TooHeavy(_) => format!("they can't hold that! it's too heavy"),
-                    Guarded(s) => format!("I don't think {} can accept that...", s),
-                    FatalError(s) => {
-                        println!("FATAL: {}", s);
-                        format!("something went seriously wrong. please contact the administrator of this MUD")
+                    MessageError(s) => s,
+                    _ => {
+                        println!("GIVE: SHOULD BE UNREACHABLE");
+                        return Some("".into());
                     }
                 },
-                GuardAppeased(s) => s,
             }
         } else {
             "E - NUN - CI - ATE".to_owned()

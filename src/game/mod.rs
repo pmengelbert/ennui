@@ -10,7 +10,7 @@ use rand::Rng;
 use crate::game::util::load_rooms;
 use crate::interpreter::Interpreter;
 use crate::item::list::Holder;
-use crate::item::list::ItemListTrait;
+use crate::item::list::ListTrait;
 use crate::item::{Describe, Item};
 use crate::map::direction::MapDir;
 use crate::map::door::{DoorState, GuardState, ObstacleState};
@@ -107,7 +107,7 @@ impl Game {
         let loc = &p.loc();
         let room = self.rooms.get(loc)?;
 
-        Some(if let Some(item) = room.get(handle) {
+        Some(if let Some(item) = room.get_item(handle) {
             let mut s = item.description().to_owned();
             if let Item::Container(lst) = item {
                 s.push_str(&format!("\nthe {} is holding:\n", item.name()));
@@ -124,7 +124,7 @@ impl Game {
             }
             s
         } else {
-            p.items().get(handle)?.description().to_owned()
+            p.items().get_item(handle)?.description().to_owned()
         })
     }
 

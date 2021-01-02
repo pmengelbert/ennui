@@ -1,3 +1,6 @@
+use crate::error::EnnuiError::{ComplexError, SimpleError};
+use crate::error::Simple::{Fatal, ItemNotFound};
+use crate::error::{EnnuiError, Simple};
 use crate::item::handle::Handle;
 use crate::item::key::KeyType;
 use crate::item::YamlItem::{Clothing, Container, Edible, Holdable, Key, Scenery, Weapon};
@@ -14,28 +17,25 @@ pub trait Holder: Describe {
     fn items_mut(&mut self) -> &mut Self::Kind;
 }
 
-pub trait ItemListTrait: Describe + Debug {
+pub trait ListTrait: Describe + Debug {
     type Kind: Debug;
-    fn get(&self, handle: &str) -> Option<&Item>;
-    fn get_mut(&mut self, handle: &str) -> Option<&mut Item>;
-    fn get_owned(&mut self, handle: &str) -> Option<Item>;
-    fn insert(&mut self, item: Item) -> Result<(), Item>;
+    fn get_item(&self, handle: &str) -> Option<&Item>;
+    fn get_item_mut(&mut self, handle: &str) -> Option<&mut Item>;
+    fn get_item_owned(&mut self, handle: &str) -> Result<Item, EnnuiError>;
+    fn insert_item(&mut self, item: Item) -> Result<(), Item>;
     fn list(&self) -> &Self::Kind;
 
     fn transfer(
         &mut self,
-        other: &mut dyn ItemListTrait<Kind = ItemList>,
+        other: &mut dyn ListTrait<Kind = Self::Kind>,
         handle: &str,
-    ) -> Result<String, String> {
+    ) -> Result<String, EnnuiError> {
         let handle = handle.as_ref();
-        let item = match self.get_owned(handle) {
-            Some(i) => i,
-            None => return Err(handle.to_owned()),
-        };
+        let item = self.get_item_owned(handle)?;
 
         let name = item.name().to_owned();
-        if other.insert(item).is_err() {
-            return Err("COULD NOT TRANSFER ITEM".into());
+        if other.insert_item(item).is_err() {
+            return Err(ComplexError(Fatal, "COULD NOT TRANSFER ITEM".into()));
         };
         Ok(name)
     }
@@ -85,22 +85,21 @@ impl Attribute<Quality> for ItemList {
     }
 }
 
-impl ItemListTrait for ItemList {
+impl ListTrait for ItemList {
     type Kind = ItemList;
-    fn get(&self, handle: &str) -> Option<&Item> {
+    fn get_item(&self, handle: &str) -> Option<&Item> {
         self.iter().find(|i| i.handle() == handle)
     }
 
-    fn get_mut(&mut self, handle: &str) -> Option<&mut Item> {
+    fn get_item_mut(&mut self, handle: &str) -> Option<&mut Item> {
         self.iter_mut().find(|i| i.handle() == handle)
     }
 
-    fn get_owned(&mut self, handle: &str) -> Option<Item> {
-        let pos = self.iter().position(|i| i.handle() == handle)?;
-        Some(self.inner.remove(pos))
+    fn get_item_owned(&mut self, handle: &str) -> Result<Item, EnnuiError> {
+        self.get_owned(handle)
     }
 
-    fn insert(&mut self, item: Item) -> Result<(), Item> {
+    fn insert_item(&mut self, item: Item) -> Result<(), Item> {
         self.inner.push(item);
         Ok(())
     }
@@ -116,6 +115,14 @@ impl ItemList {
             inner: vec![],
             info: Default::default(),
         }
+    }
+
+    pub fn get_owned(&mut self, handle: &str) -> Result<Item, EnnuiError> {
+        let pos = match self.iter().position(|i| i.handle() == handle) {
+            Some(i) => i,
+            None => return Err(SimpleError(ItemNotFound)),
+        };
+        Ok(self.inner.remove(pos))
     }
 }
 
