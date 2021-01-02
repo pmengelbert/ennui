@@ -10,11 +10,7 @@ impl<T> Broadcast for T
 where
     T: BorrowMut<Game>,
 {
-    fn send<A, M>(&mut self, audience: A, message: M) -> Vec<WriteResult>
-    where
-        A: Messenger,
-        M: Message,
-    {
+    fn send(&mut self, audience: &dyn Messenger, message: &dyn Message) -> Vec<WriteResult> {
         let g = self.borrow_mut();
         let mut v = vec![];
         let self_id = audience.id().unwrap_or_default();

@@ -3,8 +3,12 @@ use std::net::TcpListener;
 use std::sync::{Arc, Mutex};
 use std::thread::spawn;
 
+use ennui::error::EnnuiError;
+
 use ennui::game::{Game, GameResult};
 use ennui::player::{Player, Uuid};
+use ennui::text::message::Broadcast;
+use ennui::text::Color::Red;
 
 macro_rules! arc_mutex(
     ($wrapped:expr) => {
@@ -86,12 +90,18 @@ fn handle_client<T: ReadLine + Write>(
             };
 
             let resp = g.interpret(p, &s);
-            if let Some(_) = resp {
-                continue;
+            match resp {
+                Ok((aud, msg)) => {
+                    g.send(&*aud, &*msg);
+                }
+                Err(e) => match e {
+                    EnnuiError::Quit => {
+                        g.remove_player(p);
+                        break;
+                    }
+                    e => println!("[{}]: {:?}", Red("FATAL".to_owned()), e),
+                },
             }
-
-            g.remove_player(p);
-            break;
         }
     }
 

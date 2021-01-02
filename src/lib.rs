@@ -16,4 +16,4 @@ mod interpreter;
 mod item;
 pub mod map;
 pub mod player;
-mod text;
+pub mod text;

@@ -6,8 +6,10 @@ use std::io::Write;
 
 use rand::Rng;
 
+use crate::error::EnnuiError;
+use crate::error::EnnuiError::Fatal;
 use crate::game::util::load_rooms;
-use crate::interpreter::Interpreter;
+use crate::interpreter::{CommandMessage, Interpreter};
 use crate::item::list::Holder;
 use crate::item::list::ListTrait;
 use crate::item::{Describe, Item};
@@ -15,10 +17,10 @@ use crate::map::direction::MapDir;
 use crate::map::door::{DoorState, GuardState, ObstacleState};
 use crate::map::list::{RoomList, RoomListTrait};
 use crate::map::{coord::Coord, Locate, Room, Space};
-use crate::player::list::{PlayerList, PlayerIdList};
+use crate::player::list::{PlayerIdList, PlayerList};
 use crate::player::{Player, Uuid};
 use crate::text::article;
-use crate::text::message::{Audience, Broadcast, Msg};
+use crate::text::message::{Audience, Broadcast, Message, Messenger, Msg};
 use crate::text::Color::*;
 
 mod broadcast;
@@ -50,7 +52,7 @@ impl Game {
         })
     }
 
-    pub fn interpret(&mut self, p: u128, s: &str) -> Option<String> {
+    pub fn interpret(&mut self, p: u128, s: &str) -> Result<CommandMessage, EnnuiError> {
         let (cmd, args) = Interpreter::process_string_command(s);
 
         let commands = self.interpreter.commands();
@@ -154,10 +156,14 @@ impl Game {
         Some(self.players.get(&p.uuid())?.name().into())
     }
 
-    fn dir_func<U: Uuid>(&mut self, u: U, dir: MapDir) -> Option<String> {
+    fn dir_func<U: Uuid>(
+        &mut self,
+        u: U,
+        dir: MapDir,
+    ) -> Result<(Box<dyn Messenger>, Box<dyn Message>), EnnuiError> {
         let u = u.uuid();
-        let loc = self.loc_of(u)?;
-        let name = self.name_of(u)?;
+        let loc = self.loc_of(u).ok_or(Fatal(format!("player not found")))?;
+        let name = self.name_of(u).ok_or(Fatal(format!("player not found")))?;
 
         let mut other_msg = None;
 
@@ -194,9 +200,9 @@ impl Game {
             s: msg,
             o: other_msg.clone(),
         };
-        self.send(aud, msg);
+        self.send(&aud, &msg);
         if other_msg.is_none() {
-            return Some("".into());
+            return message(0, "");
         }
 
         let next_room_aud = {
@@ -207,14 +213,14 @@ impl Game {
         let for_others = format!("{} enters the room", name);
         let msg = "";
         self.send(
-            next_room_aud,
-            Msg {
+            &next_room_aud,
+            &Msg {
                 s: msg,
                 o: Some(for_others),
             },
         );
 
-        Some("".into())
+        message(0, "")
     }
 
     fn describe_player<T>(&self, loc: Coord, _pid: T, other: &str) -> Option<String>
@@ -339,4 +345,15 @@ impl Game {
     pub fn get_room(&self, loc: &Coord) -> Option<&Room> {
         self.rooms.get(loc)
     }
+}
+
+pub fn message<A: 'static, M: 'static>(
+    aud: A,
+    msg: M,
+) -> Result<(Box<dyn Messenger>, Box<dyn Message>), EnnuiError>
+where
+    A: Messenger,
+    M: Message,
+{
+    Ok((Box::new(aud), Box::new(msg)))
 }

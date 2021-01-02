@@ -1,10 +1,14 @@
 use std::collections::HashMap;
 use std::ops::Deref;
 
-use crate::game::Game;
+use crate::error::EnnuiError;
+use crate::game::{message, Game};
+use crate::text::message::{Message, Messenger};
 use std::sync::{Arc, Mutex};
 
-type CommandFunction = Arc<Mutex<dyn FnMut(&mut Game, u128, &[&str]) -> Option<String>>>;
+pub type CommandMessage = (Box<dyn Messenger>, Box<dyn Message>);
+type CommandFunction =
+    Arc<Mutex<dyn FnMut(&mut Game, u128, &[&str]) -> Result<CommandMessage, EnnuiError>>>;
 pub struct CommandFunc(CommandFunction);
 
 #[derive(Default)]
@@ -52,7 +56,7 @@ unsafe impl Send for CommandFunc {}
 
 impl Default for CommandFunc {
     fn default() -> Self {
-        b(|_, _, _| Some("".into()))
+        b(|_, _, _| message(0, ""))
     }
 }
 
@@ -98,7 +102,11 @@ impl Interpreter {
 
     pub fn insert<F: 'static>(&mut self, c: &str, f: F)
     where
-        F: FnMut(&mut Game, u128, &[&str]) -> Option<String>,
+        F: FnMut(
+            &mut Game,
+            u128,
+            &[&str],
+        ) -> Result<(Box<dyn Messenger>, Box<dyn Message>), EnnuiError>,
     {
         self.commands
             .lock()
@@ -121,7 +129,7 @@ impl Interpreter {
 
 fn b<F: 'static>(cf: F) -> CommandFunc
 where
-    F: FnMut(&mut Game, u128, &[&str]) -> Option<String>,
+    F: FnMut(&mut Game, u128, &[&str]) -> Result<CommandMessage, EnnuiError>,
 {
     CommandFunc(Arc::new(Mutex::new(cf)))
 }

@@ -17,8 +17,9 @@ pub enum EnnuiError {
     Unidentified,
     Fatal(String),
     Simple(CmdErr),
-    Message(String),
+    Msg(String),
     NoneFound(std::option::NoneError),
+    Quit,
 }
 
 impl std::fmt::Display for EnnuiError {
@@ -37,7 +38,7 @@ impl error::Error for EnnuiError {
             EnnuiError::Unidentified => None,
             EnnuiError::NoneFound(_) => None,
             EnnuiError::Simple(_e) => None,
-            EnnuiError::Message(_) => None,
+            EnnuiError::Msg(_) => None,
             // EnnuiError::Complex(_, _) => None,
             _ => None,
         }

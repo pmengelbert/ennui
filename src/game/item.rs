@@ -9,7 +9,7 @@ use crate::text::article;
 
 use crate::error::CmdErr::{ItemNotFound, NotClothing, PlayerNotFound, TooHeavy};
 use crate::error::EnnuiError;
-use crate::error::EnnuiError::{Fatal, Message, Simple};
+use crate::error::EnnuiError::{Fatal, Msg, Simple};
 use crate::item::list::{Holder, ItemList, ListTrait};
 
 #[derive(Clone, Copy)]
@@ -40,7 +40,7 @@ impl Game {
         let other_id = oid.unwrap_or_default();
 
         if let Err(_) = self.validate_other_player(other, loc, dir) {
-            return Err(Message(format!(
+            return Err(Msg(format!(
                 "You don't see {} in here. I'm beginning to question your sanity",
                 other.unwrap_or_default()
             )));
@@ -127,7 +127,7 @@ impl Game {
                 )))?;
                 return match room.get_item_mut(other_name.unwrap_or_default()) {
                     Some(Item::Guard(_, guard)) => match guard.insert_item(item) {
-                        Ok(()) => Err(Message(format!(
+                        Ok(()) => Err(Msg(format!(
                             "you see {} relax a little bit. maybe now they'll let you through",
                             article(guard.name())
                         ))),
@@ -146,14 +146,14 @@ impl Game {
                                     )
                                 })?;
 
-                            Err(Message(format!(
+                            Err(Msg(format!(
                                 "I don't think {} can accept {}",
                                 article(guard.name()),
                                 article(&item_name)
                             )))
                         }
                     },
-                    _ => Err(Message(format!(
+                    _ => Err(Msg(format!(
                         "you don't see {} here!",
                         other_name.unwrap_or_default()
                     ))),
@@ -215,11 +215,11 @@ impl Game {
                 (Some(o), None) => {
                     match rooms.get(loc) {
                         Some(room) => match room.get_item(o) {
-                                Some(_) => {
-                                    return Ok(());
-                                }
-                                None => (),
+                            Some(_) => {
+                                return Ok(());
                             }
+                            None => (),
+                        },
                         None => (),
                     }
 
@@ -231,7 +231,7 @@ impl Game {
             match self.loc_of(other_id) {
                 Some(other_loc) if &other_loc != loc => {
                     println!("made it!");
-                    return Err(Message(format!(
+                    return Err(Msg(format!(
                         "you don't see {} here !",
                         other.unwrap_or_default()
                     )));

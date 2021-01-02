@@ -1,8 +1,6 @@
 use crate::player::Uuid;
-use std::io;
 use std::borrow::Cow;
-
-
+use std::io;
 
 type WriteResult = io::Result<usize>;
 
@@ -32,6 +30,12 @@ pub trait Messenger {
     }
 }
 
+impl Messenger for u128 {
+    fn id(&self) -> Option<u128> {
+        Some(*self)
+    }
+}
+
 impl Uuid for Vec<u128> {
     fn uuid(&self) -> u128 {
         0
@@ -43,16 +47,7 @@ impl Uuid for Vec<u128> {
 }
 
 pub trait Broadcast {
-    fn send<A, M>(&mut self, audience: A, message: M) -> Vec<WriteResult>
-    where
-        A: Messenger,
-        M: Message;
-}
-
-impl Messenger for u128 {
-    fn id(&self) -> Option<u128> {
-        Some(*self)
-    }
+    fn send(&mut self, audience: &dyn Messenger, message: &dyn Message) -> Vec<WriteResult>;
 }
 
 pub struct Audience<T, U>(pub T, pub U)
@@ -75,12 +70,7 @@ where
     }
 
     fn others(&self) -> Vec<u128> {
-        let v: Vec<u128> = self
-            .1
-            .others()
-            .iter()
-            .cloned()
-            .collect();
+        let v: Vec<u128> = self.1.others().iter().cloned().collect();
         v
     }
 }
@@ -119,13 +109,13 @@ impl Message for Cow<'static, str> {
     }
 }
 
-impl Message for &String {
+impl Message for String {
     fn to_self(&self) -> String {
-        (*self).clone()
+        self.clone()
     }
 
     fn to_others(&self) -> Option<String> {
-        Some((*self).clone())
+        Some(self.clone())
     }
 }
 
@@ -141,7 +131,7 @@ mod test_message {
         let mut g = Game::new().unwrap();
         let s = "poo butts poo";
         let n = 8_u128;
-        g.send(n, s);
+        g.send(&n, &s);
     }
 
     #[test]
@@ -149,7 +139,7 @@ mod test_message {
         let mut g = Game::new().unwrap();
         let s = "poo butts poo".to_owned();
         let n = 8_u128;
-        g.send(n, &s);
+        g.send(&n, &s);
     }
 
     #[test]
@@ -159,6 +149,6 @@ mod test_message {
         let n = 8_u128;
         let room = g.get_room(&Coord(0, 0)).unwrap();
         let _audience = Audience(n, room.players().except(n));
-        g.send(n, &s);
+        g.send(&n, &s);
     }
 }

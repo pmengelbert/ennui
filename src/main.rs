@@ -18,8 +18,14 @@ fn main() -> GameResult<()> {
 
         let s = s.trim();
 
-        if let Some(msg) = g.interpret(uuid, s) {
-            println!("{}", msg);
+        if let Ok((aud, msg)) = g.interpret(uuid, s) {
+            println!(
+                "\n\n{:?}\n{:?}\n{}\n{:?}\n\n",
+                aud.id(),
+                aud.others(),
+                msg.to_self(),
+                msg.to_others()
+            );
         } else {
             break;
         }

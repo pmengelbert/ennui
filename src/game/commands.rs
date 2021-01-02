@@ -3,8 +3,8 @@ use super::item::Direction;
 use super::*;
 use crate::game::util::random_insult;
 // use crate::item::error::Error::*;
-use crate::error::CmdErr;
 use crate::error::EnnuiError::*;
+use crate::error::{CmdErr, EnnuiError};
 use crate::map::door::{DoorState, Lock, ObstacleState};
 use crate::text::message::{Audience, Msg};
 
@@ -25,9 +25,7 @@ pub fn fill_interpreter(i: &mut Interpreter) {
             _ => "what you're saying is not clear from context".into(),
         };
 
-        g.send(u, msg);
-
-        Some("".into())
+        message(u, msg)
     });
 
     i.insert("take", |g, u, a| {
@@ -97,15 +95,13 @@ pub fn fill_interpreter(i: &mut Interpreter) {
             _ => "be more specific. or less specific.".to_owned(),
         };
 
-        g.send(
+        message(
             aud,
             Msg {
                 s: self_msg,
                 o: other_msg,
             },
-        );
-
-        Some("".into())
+        )
     });
 
     i.insert("wear", |g, u, a| {
@@ -131,10 +127,9 @@ pub fn fill_interpreter(i: &mut Interpreter) {
                             format!("you're not holding {}", article(handle))
                         }
                         Fatal(e) => {
-                            println!("[{}]: {}", Red("FATAL".into()), e);
-                            return Some("".into());
+                            return Err(Fatal(format!("[{}]: {}", Red("FATAL".into()), e)));
                         }
-                        Message(m) => m,
+                        Msg(m) => m,
                         _ => todo!(),
                     },
                 }
@@ -142,15 +137,13 @@ pub fn fill_interpreter(i: &mut Interpreter) {
             _ => "be more specific. or less specific.".to_owned(),
         };
 
-        g.send(
+        message(
             aud,
             Msg {
                 s: self_msg,
                 o: other_msg,
             },
-        );
-
-        Some("".into())
+        )
     });
 
     i.insert("remove", |g, u, a| {
@@ -175,15 +168,13 @@ pub fn fill_interpreter(i: &mut Interpreter) {
         };
 
         let others = g.rooms.player_ids(loc).except(u);
-        g.send(
-            Audience(u, &others),
+        message(
+            Audience(u, others),
             Msg {
                 s: msg,
                 o: other_msg,
             },
-        );
-
-        Some("".into())
+        )
     });
 
     i.insert("drop", |g, u, a| {
@@ -210,9 +201,7 @@ pub fn fill_interpreter(i: &mut Interpreter) {
             o: other_msg,
         };
 
-        g.send(aud, msg);
-
-        Some("".into())
+        message(aud, msg)
     });
 
     i.insert("give", |g, u, a| {
@@ -245,18 +234,13 @@ pub fn fill_interpreter(i: &mut Interpreter) {
                             format!("you realize you don't see them here, and you begin to panic")
                         }
                         _ => {
-                            println!("GIVE: SHOULD BE UNREACHABLE");
-                            return Some("".into());
+                            return Err(Fatal(format!("GIVE: SHOULD BE UNREACHABLE")));
                         }
                     },
-                    Fatal(e) => {
-                        println!("FATAL: {}", e);
-                        return Some("".into());
-                    }
-                    Message(s) => s,
+                    EnnuiError::Fatal(e) => return Err(EnnuiError::Fatal(e)),
+                    Msg(s) => s,
                     _ => {
-                        println!("GIVE: SHOULD BE UNREACHABLE");
-                        return Some("".into());
+                        return Err(Fatal(format!("GIVE: SHOULD BE UNREACHABLE")));
                     }
                 },
             }
@@ -265,31 +249,28 @@ pub fn fill_interpreter(i: &mut Interpreter) {
         };
 
         let aud = Audience(u, other_id);
-        g.send(
+        message(
             aud,
             Msg {
                 s: p_msg,
                 o: other_msg,
             },
-        );
-
-        Some("".into())
+        )
     });
 
     i.insert("say", |g, u, a| {
-        let message = a.join(" ");
+        let msg = a.join(" ");
         let name = g.name_of(u)?;
         let loc = g.loc_of(u)?;
         let others = g.rooms.player_ids(loc).except(u);
 
-        let aud = Audience(u, &others);
+        let aud = Audience(u, others);
         let msg = Msg {
-            s: format!("you say '{}'", message),
-            o: Some(format!("{} says '{}'", name, message)),
+            s: format!("you say '{}'", msg),
+            o: Some(format!("{} says '{}'", name, msg)),
         };
 
-        g.send(aud, msg);
-        Some("".into())
+        message(aud, msg)
     });
 
     i.insert("chat", |g, u, a| {
@@ -302,9 +283,7 @@ pub fn fill_interpreter(i: &mut Interpreter) {
             o: Some(format!("{} chats '{}'", name, statement)),
         };
 
-        g.send(aud, msg);
-
-        Some("".into())
+        message(aud, msg)
     });
 
     i.insert("evaluate", |g, u, _| {
@@ -315,16 +294,13 @@ pub fn fill_interpreter(i: &mut Interpreter) {
             s.push_str(&format!("{:#?}", meter));
         }
 
-        g.send(u, &s);
-
-        Some("".into())
+        message(u, s)
     });
 
     i.insert("open", |g, u, a| {
-        use crate::map::door::DoorState::*;
         let loc = g.loc_of(u)?;
         let name = g.name_of(u)?;
-        let mut other_msg = std::option::Option::None;
+        let mut other_msg = None;
         let self_msg = match a.len() {
             0 => format!("ok, what do you want to open?"),
             1 => {
@@ -334,19 +310,24 @@ pub fn fill_interpreter(i: &mut Interpreter) {
                 if room.doors().len() > 1 {
                     format!("which door do you want to open?")
                 } else {
-                    let (_, door) = room.doors().iter_mut().next()?;
+                    let door = match room.doors().iter_mut().next() {
+                        Some((_, d)) => d,
+                        None => return message(u, "there's no door here"),
+                    };
                     use std::result::Result::*;
-                    match door.unlock(Open, std::option::Option::None) {
+                    match door.unlock(DoorState::Open, std::option::Option::None) {
                         Ok(_) => {
                             println!("doorstate: {}", door.state());
                             other_msg = Some(format!("{} opens a door", name));
                             format!("the door swings open")
                         }
                         Err(err) => match err {
-                            Locked => format!("that door is locked"),
-                            Open => format!("it's already open"),
-                            MagicallySealed => format!("it's sealed by some unfamiliar magic"),
-                            PermaLocked => format!("it ain't gonna budge"),
+                            DoorState::Locked => format!("that door is locked"),
+                            DoorState::Open => format!("it's already open"),
+                            DoorState::MagicallySealed => {
+                                format!("it's sealed by some unfamiliar magic")
+                            }
+                            DoorState::PermaLocked => format!("it ain't gonna budge"),
                             _ => format!("wtf"),
                         },
                     }
@@ -361,9 +342,7 @@ pub fn fill_interpreter(i: &mut Interpreter) {
             s: self_msg,
             o: other_msg,
         };
-        g.send(aud, msg);
-
-        Some("".into())
+        message(aud, msg)
     });
 
     i.insert("unlock", |g, u, a| {
@@ -378,8 +357,13 @@ pub fn fill_interpreter(i: &mut Interpreter) {
                 let rooms = &mut g.rooms;
                 let players = &mut g.players;
 
-                let room = rooms.get_mut(&loc)?; // TODO: fix early exit
-                let player = players.get_mut(&u)?;
+                let room = rooms.get_mut(&loc).ok_or(Fatal(format!(
+                    "UNABLE TO FIND ROOM {:?} for player {}",
+                    loc, u
+                )))?; // TODO: fix early exit
+                let player = players
+                    .get_mut(&u)
+                    .ok_or(Fatal(format!("UNABLE TO FIND player {}", u)))?; // TODO: fix early exit
 
                 let num_doors = room.doors().len();
                 match num_doors {
@@ -387,7 +371,10 @@ pub fn fill_interpreter(i: &mut Interpreter) {
                     1 => {
                         match handle.to_lowercase().as_str() {
                             "door" => {
-                                let (_, door) = room.doors().iter_mut().next()?;
+                                let door = match room.doors().iter_mut().next() {
+                                    Some((_, d)) => d,
+                                    None => return message(u, "there's no door here"),
+                                };
                                 let mut res = None;
 
                                 for item in player.items_mut().iter_mut() {
@@ -437,9 +424,7 @@ pub fn fill_interpreter(i: &mut Interpreter) {
             o: other_msg,
         };
 
-        g.send(aud, msg);
-
-        Some("".into())
+        message(aud, msg)
     });
 
     i.insert("north", |g, u, _| g.dir_func(u, MapDir::North));
@@ -451,23 +436,21 @@ pub fn fill_interpreter(i: &mut Interpreter) {
         const PRICK: usize = 5;
         g.players.entry(u).or_default().hurt(PRICK);
 
-        g.send(
+        message(
             u,
-            &format!("{}", Red("that hurt a surprising amount".into())),
-        );
-        Some("".into())
+            format!("{}", Red("that hurt a surprising amount".into())),
+        )
     });
 
     i.insert("inventory", |g, u, _a| {
         let aud = u;
         let msg = g.list_inventory(u)?;
-        g.send(aud, &msg);
-        Some("".into())
+        message(aud, msg)
     });
 
-    i.insert("", |_, _, _| Some("".to_owned()));
+    i.insert("", |_, _, _| message(0, ""));
 
-    i.insert("none", |_, _, _| Some(random_insult()));
+    i.insert("none", |_, u, _| message(u, random_insult()));
 
-    i.insert("quit", |_, _, _| return None)
+    i.insert("quit", |_, _, _| Err(Quit))
 }
