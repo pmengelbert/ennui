@@ -4,7 +4,7 @@ use super::*;
 use crate::game::util::random_insult;
 // use crate::item::error::Error::*;
 use crate::error::EnnuiError::*;
-use crate::error::{EnnuiError, Simple};
+use crate::error::{CmdErr};
 use crate::map::door::{DoorState, Lock, ObstacleState};
 use crate::text::message::{Audience, Msg};
 
@@ -47,12 +47,11 @@ pub fn fill_interpreter(i: &mut Interpreter) {
                         format!("you take the {}", handle)
                     }
                     Err(err) => match err {
-                        SimpleError(Simple::TooHeavy) => {
+                        Simple(CmdErr::TooHeavy) => {
                             format!("you can't pick up {}. It's too heavy", article(handle))
                         }
                         _ => format!("you don't see {} here", article(&handle)),
                     },
-                    _ => todo!(),
                 }
             }
             2 => {
@@ -125,20 +124,19 @@ pub fn fill_interpreter(i: &mut Interpreter) {
                         format!("you wear the {}", handle)
                     }
                     Err(err) => match err {
-                        SimpleError(Simple::NotClothing) => {
+                        Simple(CmdErr::NotClothing) => {
                             format!("you can't wear {}!", article(handle))
                         }
-                        SimpleError(Simple::ItemNotFound) => {
+                        Simple(CmdErr::ItemNotFound) => {
                             format!("you're not holding {}", article(handle))
                         }
-                        FatalError(e) => {
+                        Fatal(e) => {
                             println!("[{}]: {}", Red("FATAL".into()), e);
                             return Some("".into());
                         }
-                        MessageError(m) => m,
+                        Message(m) => m,
                         _ => todo!(),
                     },
-                    _ => todo!(),
                 }
             }
             _ => "be more specific. or less specific.".to_owned(),
@@ -239,13 +237,13 @@ pub fn fill_interpreter(i: &mut Interpreter) {
                     format!("you give {} {}", other, art)
                 }
                 Err(err) => match err {
-                    SimpleError(s) => match s {
-                        Simple::ItemNotFound => format!("you're not holding {}", article(handle)),
-                        Simple::TooHeavy => format!(
+                    Simple(s) => match s {
+                        CmdErr::ItemNotFound => format!("you're not holding {}", article(handle)),
+                        CmdErr::TooHeavy => format!(
                             "you fail in your effort. {} is too heavy for them to carry",
                             article(handle)
                         ),
-                        Simple::PlayerNotFound => {
+                        CmdErr::PlayerNotFound => {
                             format!("you realize you don't see them here, and you begin to panic")
                         }
                         _ => {
@@ -253,11 +251,11 @@ pub fn fill_interpreter(i: &mut Interpreter) {
                             return Some("".into());
                         }
                     },
-                    FatalError(e) => {
+                    Fatal(e) => {
                         println!("FATAL: {}", e);
                         return Some("".into());
                     }
-                    MessageError(s) => s,
+                    Message(s) => s,
                     _ => {
                         println!("GIVE: SHOULD BE UNREACHABLE");
                         return Some("".into());

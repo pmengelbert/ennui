@@ -2,7 +2,7 @@ use std::option::NoneError;
 use std::sync::Arc;
 
 use crate::game::Game;
-use crate::item::error::Error::{FatalError, Guarded, PlayerNotFound};
+use crate::item::error::Error::{PlayerNotFound};
 use crate::item::Item::Scenery;
 use crate::item::{Attribute, Describe, Item, Quality};
 use crate::map::coord::Coord;
@@ -12,9 +12,9 @@ use crate::player::{Player, Uuid};
 use crate::text::article;
 
 use super::Error;
-use crate::error::EnnuiError::{ComplexError, MessageError, SimpleError};
-use crate::error::Simple::{CannotAcceptGivenItem, Fatal, ItemNotFound, NotClothing, TooHeavy};
-use crate::error::{EnnuiError, Simple};
+use crate::error::EnnuiError::{Fatal, Message, Simple};
+use crate::error::CmdErr::{ItemNotFound, NotClothing, TooHeavy};
+use crate::error::{EnnuiError};
 use crate::item::list::{Holder, ListTrait};
 
 #[derive(Clone, Copy)]
@@ -68,7 +68,7 @@ impl Game {
         let other_id = oid.unwrap_or_default();
 
         if let Err(_) = self.validate_other_player(other, loc, dir) {
-            return Err(MessageError(format!(
+            return Err(Message(format!(
                 "You don't see {} in here. I'm beginning to question your sanity",
                 other.unwrap_or_default()
             )));
@@ -95,18 +95,17 @@ impl Game {
     ) -> Result<String, EnnuiError> {
         let room = match rooms.get_mut(loc) {
             Some(r) => r,
-            None => return Err(SimpleError(ItemNotFound)),
+            None => return Err(Simple(ItemNotFound)),
         };
 
         if let Some(Scenery(_)) = room.items().get_item(handle) {
-            return Err(SimpleError(TooHeavy));
+            return Err(Simple(TooHeavy));
         }
 
         let player = match players.get_mut(&uuid) {
             Some(p) => p,
             None => {
-                return Err(ComplexError(
-                    Fatal,
+                return Err(Fatal(
                     format!("Could not find primary player with uuid: {}", uuid),
                 ))
             }
@@ -124,8 +123,7 @@ impl Game {
         let room = match rooms.get_mut(loc) {
             Some(r) => r,
             None => {
-                return Err(ComplexError(
-                    Fatal,
+                return Err(Fatal(
                     format!("unable to find room for player {} at {:?}", uuid, loc),
                 ))
             }
@@ -133,8 +131,7 @@ impl Game {
         let player = match players.get_mut(&uuid) {
             Some(p) => p,
             None => {
-                return Err(ComplexError(
-                    Fatal,
+                return Err(Fatal(
                     format!("unable to find player {}", uuid),
                 ))
             }
@@ -155,8 +152,7 @@ impl Game {
             let p = match players.get_mut(&uuid) {
                 Some(p) => p,
                 None => {
-                    return Err(ComplexError(
-                        Fatal,
+                    return Err(Fatal(
                         format!("unable to find player {}", uuid),
                     ))
                 }
@@ -172,8 +168,7 @@ impl Game {
                 let room = match rooms.get_mut(&loc) {
                     Some(r) => r,
                     None => {
-                        return Err(ComplexError(
-                            Fatal,
+                        return Err(Fatal(
                             format!(
                                 "unable to find other player {:?} in room at {:?}",
                                 other_id, loc
@@ -186,8 +181,8 @@ impl Game {
                         use std::result::Result::*;
                         match guard.insert_item(item) {
                             Ok(()) => {
-                                return Err(MessageError(format!("you see {} relax a little bit. maybe now they'll let you through",
-                                                                article(guard.name()))
+                                return Err(Message(format!("you see {} relax a little bit. maybe now they'll let you through",
+                                                           article(guard.name()))
 
                                 ));
                             }
@@ -196,7 +191,7 @@ impl Game {
                                 match players.get_mut(&uuid) {
                                     Some(p) => {
                                         if p.insert_item(given_back).is_err() {
-                                            return Err(EnnuiError::FatalError(
+                                            return Err(EnnuiError::Fatal(
                                                 "wasn't able to return item to player after \
                                                     failed transfer to guard type."
                                                     .to_owned(),
@@ -205,7 +200,7 @@ impl Game {
                                     }
                                     None => (),
                                 }
-                                return Err(MessageError(format!(
+                                return Err(Message(format!(
                                     "uh.. I don't think {} can accept your {}",
                                     article(guard.name()),
                                     name
@@ -214,7 +209,7 @@ impl Game {
                         };
                     }
                     _ => {
-                        return Err(MessageError(format!(
+                        return Err(Message(format!(
                             "you don't see {} here!",
                             other_name.unwrap_or_default()
                         )));
@@ -224,8 +219,7 @@ impl Game {
         };
 
         if other_p.items_mut().insert_item(item).is_err() {
-            return Err(ComplexError(
-                Fatal,
+            return Err(Fatal(
                 format!(
                     "COULD NOT RETURN ITEM {} TO OTHER PLAYER {}",
                     item_name,
@@ -237,12 +231,12 @@ impl Game {
     }
 
     fn wear(players: &mut PlayerList, uuid: u128, handle: &str) -> Result<String, EnnuiError> {
-        use crate::item::error::Error::Clothing;
+        
         let (items, clothing) = { Self::get_player_mut(players, uuid)?.all_items_mut() };
         match items.get_item(handle) {
             Some(i) if i.is(Quality::Clothing) => (),
-            None => return Err(SimpleError(ItemNotFound)),
-            _ => return Err(SimpleError(NotClothing)),
+            None => return Err(Simple(ItemNotFound)),
+            _ => return Err(Simple(NotClothing)),
         }
         items.transfer(clothing, handle)
     }
@@ -255,8 +249,7 @@ impl Game {
     fn get_player_mut(players: &mut PlayerList, uuid: u128) -> Result<&mut Player, EnnuiError> {
         match players.get_mut(&uuid) {
             Some(p) => Ok(p),
-            None => Err(ComplexError(
-                Fatal,
+            None => Err(Fatal(
                 format!("UNABLE TO FIND PLAYER {}", uuid),
             )),
         }

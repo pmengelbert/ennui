@@ -1,6 +1,6 @@
-use crate::error::EnnuiError::{ComplexError, SimpleError};
-use crate::error::Simple::{Fatal, ItemNotFound};
-use crate::error::{EnnuiError, Simple};
+use crate::error::EnnuiError::{Simple, Fatal};
+use crate::error::CmdErr::ItemNotFound;
+use crate::error::{EnnuiError};
 use crate::item::handle::Handle;
 use crate::item::key::KeyType;
 use crate::item::YamlItem::{Clothing, Container, Edible, Holdable, Key, Scenery, Weapon};
@@ -35,7 +35,7 @@ pub trait ListTrait: Describe + Debug {
 
         let name = item.name().to_owned();
         if other.insert_item(item).is_err() {
-            return Err(ComplexError(Fatal, "COULD NOT TRANSFER ITEM".into()));
+            return Err(Fatal("COULD NOT TRANSFER ITEM".into()));
         };
         Ok(name)
     }
@@ -120,7 +120,7 @@ impl ItemList {
     pub fn get_owned(&mut self, handle: &str) -> Result<Item, EnnuiError> {
         let pos = match self.iter().position(|i| i.handle() == handle) {
             Some(i) => i,
-            None => return Err(SimpleError(ItemNotFound)),
+            None => return Err(Simple(ItemNotFound)),
         };
         Ok(self.inner.remove(pos))
     }

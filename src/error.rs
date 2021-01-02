@@ -2,14 +2,13 @@ use crate::interpreter::CommandKind;
 use serde::export::Formatter;
 use std::error;
 use std::io::Error;
-use std::option::NoneError;
+
 
 #[derive(Debug)]
-pub enum Simple {
+pub enum CmdErr {
     Clothing,
     ItemNotFound,
     TooHeavy,
-    Fatal,
     Guarded,
     NotClothing,
     PlayerNotFound,
@@ -18,21 +17,17 @@ pub enum Simple {
 
 #[derive(Debug)]
 pub enum EnnuiError {
-    UnidentifiedError,
-    FatalError(String),
-    SimpleError(Simple),
-    MessageError(String),
-    ComplexError(Simple, String),
-    ReturnToPlayer { src: CommandKind, msg: String },
-    IoError(std::io::Error),
+    Unidentified,
+    Fatal(String),
+    Simple(CmdErr),
+    Message(String),
     NoneFound(std::option::NoneError),
 }
 
 impl std::fmt::Display for EnnuiError {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            EnnuiError::UnidentifiedError => write!(f, "Source contains no data"),
-            EnnuiError::IoError(ref err) => err.fmt(f),
+            EnnuiError::Unidentified => write!(f, "Source contains no data"),
             EnnuiError::NoneFound(ref _err) => write!(f, "None error encountered"),
             e => write!(f, "{:?}", e),
         }
@@ -42,21 +37,13 @@ impl std::fmt::Display for EnnuiError {
 impl error::Error for EnnuiError {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
-            EnnuiError::UnidentifiedError => None,
-            EnnuiError::IoError(_) => None,
+            EnnuiError::Unidentified => None,
             EnnuiError::NoneFound(_) => None,
-            EnnuiError::SimpleError(e) => None,
-            EnnuiError::MessageError(_) => None,
-            EnnuiError::ComplexError(_, _) => None,
-            EnnuiError::ReturnToPlayer { .. } => None,
+            EnnuiError::Simple(_e) => None,
+            EnnuiError::Message(_) => None,
+            // EnnuiError::Complex(_, _) => None,
             _ => None,
         }
-    }
-}
-
-impl From<std::io::Error> for EnnuiError {
-    fn from(err: Error) -> Self {
-        EnnuiError::IoError(err)
     }
 }
 
@@ -68,7 +55,6 @@ impl From<std::option::NoneError> for EnnuiError {
 
 impl From<EnnuiError> for std::option::NoneError {
     fn from(_: EnnuiError) -> Self {
-        use EnnuiError::*;
         std::option::NoneError
     }
 }
