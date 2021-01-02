@@ -1,8 +1,5 @@
-use crate::interpreter::CommandKind;
 use serde::export::Formatter;
 use std::error;
-use std::io::Error;
-
 
 #[derive(Debug)]
 pub enum CmdErr {

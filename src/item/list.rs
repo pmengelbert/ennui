@@ -1,6 +1,6 @@
-use crate::error::EnnuiError::{Simple, Fatal};
 use crate::error::CmdErr::ItemNotFound;
-use crate::error::{EnnuiError};
+use crate::error::EnnuiError;
+use crate::error::EnnuiError::{Fatal, Simple};
 use crate::item::handle::Handle;
 use crate::item::key::KeyType;
 use crate::item::YamlItem::{Clothing, Container, Edible, Holdable, Key, Scenery, Weapon};

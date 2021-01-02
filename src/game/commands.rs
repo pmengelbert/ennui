@@ -3,8 +3,8 @@ use super::item::Direction;
 use super::*;
 use crate::game::util::random_insult;
 // use crate::item::error::Error::*;
+use crate::error::CmdErr;
 use crate::error::EnnuiError::*;
-use crate::error::{CmdErr};
 use crate::map::door::{DoorState, Lock, ObstacleState};
 use crate::text::message::{Audience, Msg};
 
@@ -169,7 +169,6 @@ pub fn fill_interpreter(i: &mut Interpreter) {
                 Err(err) => match err {
                     _ => format!("you're not wearing {}", article(&handle)),
                 },
-                _ => todo!(),
             }
         } else {
             "be more specific. or less specific.".to_owned()
@@ -200,7 +199,6 @@ pub fn fill_interpreter(i: &mut Interpreter) {
                     format!("you drop the {}", handle)
                 }
                 Err(_) => format!("you don't see {} here", article(handle)),
-                _ => todo!(),
             }
         } else {
             "be more specific. or less specific.".to_owned()

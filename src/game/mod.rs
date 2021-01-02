@@ -27,7 +27,6 @@ mod commands;
 mod item;
 mod util;
 
-type Error = Arc<crate::item::error::Error>;
 pub type GameResult<T> = Result<T, Box<dyn StdError>>;
 
 pub struct Game {
