@@ -1,6 +1,3 @@
-
-
-
 use crate::game::Game;
 
 use crate::item::{Attribute, Describe, Item, Quality};
@@ -13,7 +10,7 @@ use crate::text::article;
 use crate::error::CmdErr::{ItemNotFound, NotClothing, PlayerNotFound, TooHeavy};
 use crate::error::EnnuiError;
 use crate::error::EnnuiError::{Fatal, Message, Simple};
-use crate::item::list::{Holder, ListTrait};
+use crate::item::list::{Holder, ItemList, ListTrait};
 
 #[derive(Clone, Copy)]
 pub enum Direction {
@@ -75,8 +72,7 @@ impl Game {
 
         match room.get_item(handle) {
             Some(s) if s.is(Quality::Scenery) => return Err(Simple(TooHeavy)),
-            _ => ()
-
+            _ => (),
         }
 
         let player = players.get_mut(&uuid).ok_or(Fatal(format!(
@@ -144,8 +140,8 @@ impl Game {
                                 .insert_item(given_back)
                                 .map_err(|_| {
                                     Fatal(
-                                        "wasn't able to return item to player after \
-                                                    failed transfer to guard type."
+                                        "wasn't able to return item to player after failed transfer \
+                                        to guard type."
                                             .to_owned(),
                                     )
                                 })?;
@@ -177,12 +173,16 @@ impl Game {
 
     fn wear(players: &mut PlayerList, uuid: u128, handle: &str) -> Result<String, EnnuiError> {
         let (items, clothing) = { Self::get_player_mut(players, uuid)?.all_items_mut() };
-        match items.get_item(handle) {
-            Some(i) if i.is(Quality::Clothing) => (),
-            None => return Err(Simple(ItemNotFound)),
-            _ => return Err(Simple(NotClothing)),
-        }
+        Self::check_if_clothing(handle, items)?;
         items.transfer(clothing, handle)
+    }
+
+    fn check_if_clothing(handle: &str, items: &mut ItemList) -> Result<(), EnnuiError> {
+        match items.get_item(handle) {
+            Some(i) if i.is(Quality::Clothing) => Ok(()),
+            None => Err(Simple(ItemNotFound)),
+            _ => Err(Simple(NotClothing)),
+        }
     }
 
     fn remove(players: &mut PlayerList, uuid: u128, handle: &str) -> Result<String, EnnuiError> {
@@ -211,23 +211,18 @@ impl Game {
         let rooms = &self.rooms;
 
         if let Give = dir {
-            println!("checkpoint 1");
             match (other, oid) {
-                (Some(_), None) => {
-                    println!("checkpoint 2");
+                (Some(o), None) => {
                     match rooms.get(loc) {
-                        Some(room) => {
-                            println!("checkpoint 3");
-                            match room.get_item(other.unwrap_or_default()) {
+                        Some(room) => match room.get_item(o) {
                                 Some(_) => {
-                                    println!("checkpoint 4");
                                     return Ok(());
                                 }
                                 None => (),
                             }
-                        }
                         None => (),
                     }
+
                     return Err(Simple(PlayerNotFound));
                 }
                 _ => (),

@@ -4,7 +4,6 @@ use std::error::Error as StdError;
 use std::io;
 use std::io::Write;
 
-
 use rand::Rng;
 
 use crate::game::util::load_rooms;
@@ -147,6 +146,7 @@ impl Game {
     {
         Some(self.players.get(&p.uuid())?.name().into())
     }
+
     fn dir_func<U: Uuid>(&mut self, u: U, dir: MapDir) -> Option<String> {
         let u = u.uuid();
         let loc = self.loc_of(u)?;
@@ -266,32 +266,64 @@ impl Game {
     fn move_player(&mut self, loc: Coord, u: u128, dir: MapDir) -> Result<(), DoorState> {
         let next_coord = loc.add(dir);
         let rooms = &mut self.rooms;
+        let players = &mut self.players;
 
         let src_room = rooms.get_mut(&loc)?;
+
+        Game::check_doors(dir, src_room)?;
+        Self::check_guard(dir, src_room)?;
+
+        src_room.players_mut().remove(&u);
+
+        Self::do_player_move(players, u, next_coord, rooms)
+    }
+
+    fn do_player_move(
+        players: &mut PlayerList,
+        u: u128,
+        next_coord: Option<Coord>,
+        rooms: &mut RoomList,
+    ) -> Result<(), DoorState> {
+        let next_coord = next_coord.ok_or(DoorState::None)?;
+
+        rooms
+            .get_mut(&next_coord)
+            .ok_or(DoorState::None)?
+            .players_mut()
+            .insert(u);
+
+        players
+            .get_mut(&u)
+            .ok_or(DoorState::None)?
+            .set_loc(next_coord);
+
+        Ok(())
+    }
+
+    fn check_doors(dir: MapDir, src_room: &mut Room) -> Result<(), DoorState> {
         if let Some(door) = src_room.doors().get(&dir) {
             match door.state() {
                 DoorState::None | DoorState::Open => (),
                 s => return Err(s),
             }
-        } else {
-            let items = src_room.items();
-            if let Some((d, g)) = items.iter().find_map(|i| {
-                if let Item::Guard(d, g) = i {
-                    Some((d, g))
-                } else {
-                    None
-                }
-            }) {
-                if d == &dir && g.state() == GuardState::Closed {
-                    return Err(DoorState::Guarded(g.name().to_owned()));
-                }
-            };
-            src_room.players_mut().remove(&u);
         }
 
-        rooms.get_mut(&next_coord?)?.players_mut().insert(u);
-        let players = &mut self.players;
-        players.get_mut(&u)?.set_loc(next_coord?);
+        Ok(())
+    }
+
+    fn check_guard(dir: MapDir, src_room: &Room) -> Result<(), DoorState> {
+        let items = src_room.items();
+        if let Some((d, g)) = items.iter().find_map(|i| {
+            if let Item::Guard(d, g) = i {
+                Some((d, g))
+            } else {
+                None
+            }
+        }) {
+            if d == &dir && g.state() == GuardState::Closed {
+                return Err(DoorState::Guarded(g.name().to_owned()));
+            }
+        }
 
         Ok(())
     }
