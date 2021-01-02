@@ -16,3 +16,4 @@ mod item;
 pub mod map;
 pub mod player;
 mod text;
+pub mod error;
