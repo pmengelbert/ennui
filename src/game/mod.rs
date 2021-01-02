@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use std::error::Error as StdError;
 use std::io;
 use std::io::Write;
-use std::sync::Arc;
+
 
 use rand::Rng;
 

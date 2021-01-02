@@ -1,8 +1,8 @@
-use std::option::NoneError;
-use std::sync::Arc;
+
+
 
 use crate::game::Game;
-use crate::item::Item::Scenery;
+
 use crate::item::{Attribute, Describe, Item, Quality};
 use crate::map::coord::Coord;
 use crate::map::list::RoomList;
@@ -73,8 +73,10 @@ impl Game {
             None => return Err(Simple(ItemNotFound)),
         };
 
-        if let Some(Scenery(_)) = room.items().get_item(handle) {
-            return Err(Simple(TooHeavy));
+        match room.get_item(handle) {
+            Some(s) if s.is(Quality::Scenery) => return Err(Simple(TooHeavy)),
+            _ => ()
+
         }
 
         let player = players.get_mut(&uuid).ok_or(Fatal(format!(
@@ -120,59 +122,46 @@ impl Game {
 
         let item_name = item.name().to_owned();
 
-        // let other_p = players.get_mut
-
         let other_p = match players.get_mut(&other_id) {
             Some(p) => p,
             None => {
-                let room = match rooms.get_mut(&loc) {
-                    Some(r) => r,
-                    None => {
-                        return Err(Fatal(format!(
-                            "unable to find other player {:?} in room at {:?}",
-                            other_id, loc
-                        )));
-                    }
-                };
-                match room.get_item_mut(other_name.unwrap_or_default()) {
-                    Some(Item::Guard(_, guard)) => {
-                        use std::result::Result::*;
-                        match guard.insert_item(item) {
-                            Ok(()) => {
-                                return Err(Message(format!("you see {} relax a little bit. maybe now they'll let you through",
-                                                           article(guard.name()))
-
-                                ));
-                            }
-                            Err(given_back) => {
-                                let name = given_back.name().to_owned();
-                                match players.get_mut(&uuid) {
-                                    Some(p) => {
-                                        if p.insert_item(given_back).is_err() {
-                                            return Err(EnnuiError::Fatal(
-                                                "wasn't able to return item to player after \
+                let room = rooms.get_mut(&loc).ok_or(Fatal(format!(
+                    "unable to find other player {:?} in room at {:?}",
+                    other_id, loc
+                )))?;
+                return match room.get_item_mut(other_name.unwrap_or_default()) {
+                    Some(Item::Guard(_, guard)) => match guard.insert_item(item) {
+                        Ok(()) => Err(Message(format!(
+                            "you see {} relax a little bit. maybe now they'll let you through",
+                            article(guard.name())
+                        ))),
+                        Err(given_back) => {
+                            players
+                                .get_mut(&uuid)
+                                .ok_or(Fatal(
+                                    "wasn't able to find the original player ...".to_owned(),
+                                ))?
+                                .insert_item(given_back)
+                                .map_err(|_| {
+                                    Fatal(
+                                        "wasn't able to return item to player after \
                                                     failed transfer to guard type."
-                                                    .to_owned(),
-                                            ));
-                                        }
-                                    }
-                                    None => (),
-                                }
-                                return Err(Message(format!(
-                                    "uh.. I don't think {} can accept your {}",
-                                    article(guard.name()),
-                                    name
-                                )));
-                            }
-                        };
-                    }
-                    _ => {
-                        return Err(Message(format!(
-                            "you don't see {} here!",
-                            other_name.unwrap_or_default()
-                        )));
-                    }
-                }
+                                            .to_owned(),
+                                    )
+                                })?;
+
+                            Err(Message(format!(
+                                "I don't think {} can accept {}",
+                                article(guard.name()),
+                                article(&item_name)
+                            )))
+                        }
+                    },
+                    _ => Err(Message(format!(
+                        "you don't see {} here!",
+                        other_name.unwrap_or_default()
+                    ))),
+                };
             }
         };
 
