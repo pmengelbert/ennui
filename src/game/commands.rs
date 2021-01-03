@@ -8,7 +8,10 @@ use crate::error::{CmdErr, EnnuiError};
 use crate::map::door::{DoorState, Lock, ObstacleState};
 use crate::text::message::{Audience, Msg};
 
+use crate::fight::{BasicFight, Fight, FightInfo};
 use std::ops::DerefMut;
+use std::time::Duration;
+
 
 pub fn fill_interpreter(i: &mut Interpreter) {
     i.insert("look", |g, u, args| {
@@ -431,6 +434,45 @@ pub fn fill_interpreter(i: &mut Interpreter) {
         };
 
         message(aud, msg)
+    });
+
+    i.insert("hit", |g, u, a| {
+        let loc = g
+            .loc_of(u)
+            .ok_or(EnnuiError::Fatal("hit: PLAYER NOT FOUND".into()))?;
+
+        if a.len() > 0 {
+            let object = a[0];
+            let _rooms = &g.rooms;
+            let players = &g.players;
+
+            let p = players
+                .get(&u)
+                .ok_or(EnnuiError::Fatal("hit: PLAYER NOT FOUND (2)".into()))?
+                .clone();
+
+            let other_p = match g.id_of_in(loc, object) {
+                None => return message(u, format!("you don't see {} here", object)),
+                Some(p) => p,
+            };
+
+            let other_p = players
+                .get(&other_p)
+                .ok_or(EnnuiError::Fatal("hit: OTHER PLAYER NOT FOUND".into()))?
+                .clone();
+
+            let mut fight = arc_mutex!(BasicFight::new(FightInfo {
+                player_a: p,
+                player_b: other_p,
+                delay: Duration::new(3, 0),
+            }));
+
+            match fight.begin() {
+                Ok(_) => {}
+                Err(_) => return Err(EnnuiError::Fatal("problem happened with the fight".to_owned()))
+            };
+        }
+        message(u, "oh no")
     });
 
     i.insert("north", |g, u, _| g.dir_func(u, MapDir::North));

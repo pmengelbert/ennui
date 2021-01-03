@@ -85,12 +85,12 @@ impl Game {
     }
 
     pub fn remove_player<T: Uuid>(&mut self, p: T) -> Option<Arc<Mutex<Player>>> {
-        self.players
-            .get_mut(&p.uuid())?
-            .lock()
-            .unwrap()
-            .flush()
-            .ok()?;
+        {
+            let player = self.players.get_mut(&p.uuid())?;
+            let mut player = player.lock().unwrap();
+            player.flush().ok()?;
+            player.drop_stream();
+        }
         self.players.remove(&p.uuid())
     }
 

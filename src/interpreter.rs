@@ -36,6 +36,7 @@ pub enum CommandKind {
     Ouch,
     Open,
     Unlock,
+    Hit,
     Quit,
     // not yet implemented
     #[allow(dead_code)]
@@ -95,6 +96,7 @@ impl Interpreter {
             s if sw(s, "inventory") => Inventory,
             s if sw(s, "evaluate") => Eval,
             s if sw(s, "ouch") => Ouch,
+            s if sw(s, "hit") => Hit,
             s if sw(s, "quit") => Quit,
             _ => NotFound,
         }

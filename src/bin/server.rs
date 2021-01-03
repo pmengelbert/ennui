@@ -113,6 +113,7 @@ fn handle_client(p: u128, g: Arc<Mutex<Game>>) -> std::io::Result<()> {
                             Err(e) => {
                                 println!("[{}]: {:?}", Red("ERROR".to_owned()), e);
                                 let p = g.remove_player(id).unwrap_or_default();
+
                                 std::mem::drop(p);
                             }
                             _ => (),

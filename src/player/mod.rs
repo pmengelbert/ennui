@@ -237,6 +237,14 @@ impl Player {
         self.stream.as_ref().map(|s| s.try_clone().unwrap())
     }
 
+    pub fn is_connected(&self) -> bool {
+        self.stream.is_some()
+    }
+
+    pub fn drop_stream(&mut self) {
+        self.stream = None
+    }
+
     fn assign_stream(&mut self, stream: TcpStream) {
         self.stream = Some(stream);
     }
