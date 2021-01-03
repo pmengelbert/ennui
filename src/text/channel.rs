@@ -1,7 +1,7 @@
+use crate::text::message::{Audience, Broadcast, Message, Messenger, Msg};
 use std::sync::mpsc::Receiver;
-use crate::text::message::{Messenger, Message, Broadcast, Audience, Msg};
-use std::thread::{JoinHandle, spawn};
-use std::sync::{Mutex, Arc};
+use std::sync::{Arc, Mutex};
+use std::thread::{spawn, JoinHandle};
 
 type Listener = Audience<u128, Vec<u128>>;
 type Content = Msg<String, String>;
@@ -13,7 +13,7 @@ pub trait MessageHandler {
 pub struct MessageReceiver(pub Receiver<(Listener, Content)>);
 
 impl MessageHandler for MessageReceiver {
-    fn start<T: Broadcast + Send + 'static>(mut self, caster: Arc<Mutex<T>>) -> JoinHandle<()> {
+    fn start<T: Broadcast + Send + 'static>(self, caster: Arc<Mutex<T>>) -> JoinHandle<()> {
         spawn(move || {
             let caster = caster.clone();
             for (aud, msg) in self.0 {
@@ -22,4 +22,3 @@ impl MessageHandler for MessageReceiver {
         })
     }
 }
-

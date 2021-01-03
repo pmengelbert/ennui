@@ -1,6 +1,7 @@
-use crate::player::Uuid;
 use std::borrow::Cow;
 use std::io;
+
+use crate::player::Uuid;
 
 type WriteResult = io::Result<usize>;
 
@@ -122,10 +123,11 @@ impl Message for String {
 
 #[cfg(test)]
 mod test_message {
-    use super::*;
     use crate::game::Game;
     use crate::map::coord::Coord;
     use crate::map::Space;
+
+    use super::*;
 
     #[test]
     fn test_message_1() {
@@ -151,5 +153,36 @@ mod test_message {
         let room = g.get_room(&Coord(0, 0)).unwrap();
         let _audience = Audience(n, room.players().except(n));
         g.send(&n, &s);
+    }
+}
+
+pub trait MessageFormat {
+    fn un_padded(&self) -> String;
+    fn padded(&self) -> String {
+        let mut b = String::new();
+        b.push('\n');
+        b.push_str(&self.un_padded());
+        b.push_str("\n\n > ");
+        b
+    }
+
+    fn custom_padded(&self, before: &str, after: &str) -> String {
+        let mut s = String::new();
+        s.push_str(before);
+        s.push_str(&self.un_padded());
+        s.push_str(after);
+        s
+    }
+}
+
+impl MessageFormat for String {
+    fn un_padded(&self) -> String {
+        self.clone()
+    }
+}
+
+impl MessageFormat for &str {
+    fn un_padded(&self) -> String {
+        (*self).to_owned()
     }
 }

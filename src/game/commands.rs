@@ -12,7 +12,6 @@ use crate::fight::{BasicFight, Fight, FightInfo};
 use std::ops::DerefMut;
 use std::time::Duration;
 
-
 pub fn fill_interpreter(i: &mut Interpreter) {
     i.insert("look", |g, u, args| {
         println!("[{}]: made it to handler", Green("SUCCESS".to_owned()));
@@ -461,18 +460,23 @@ pub fn fill_interpreter(i: &mut Interpreter) {
                 .ok_or(EnnuiError::Fatal("hit: OTHER PLAYER NOT FOUND".into()))?
                 .clone();
 
-            let sender = g.clone_sender()
+            let sender = g
+                .clone_sender()
                 .ok_or(EnnuiError::Fatal("hit: UNABLE TO CLONE SENDER".into()))?;
             let mut fight = BasicFight::new(FightInfo {
                 player_a: p,
                 player_b: other_p,
                 delay: Duration::new(3, 0),
-                sender
+                sender,
             });
 
             match fight.begin() {
                 Ok(_) => {}
-                Err(_) => return Err(EnnuiError::Fatal("problem happened with the fight".to_owned()))
+                Err(_) => {
+                    return Err(EnnuiError::Fatal(
+                        "problem happened with the fight".to_owned(),
+                    ))
+                }
             };
         }
         message(u, "oh no")

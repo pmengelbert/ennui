@@ -3,6 +3,8 @@ use std::collections::HashMap;
 use std::error::Error as StdError;
 use std::io;
 use std::io::Write;
+use std::sync::{Arc, Mutex};
+use std::sync::mpsc::Sender;
 
 use rand::Rng;
 
@@ -10,20 +12,18 @@ use crate::error::EnnuiError;
 use crate::error::EnnuiError::Fatal;
 use crate::game::util::load_rooms;
 use crate::interpreter::{CommandMessage, Interpreter};
+use crate::item::{Describe, Item};
 use crate::item::list::Holder;
 use crate::item::list::ListTrait;
-use crate::item::{Describe, Item};
+use crate::map::{coord::Coord, Locate, Room, Space};
 use crate::map::direction::MapDir;
 use crate::map::door::{DoorState, GuardState, ObstacleState};
 use crate::map::list::{RoomList, RoomListTrait};
-use crate::map::{coord::Coord, Locate, Room, Space};
-use crate::player::list::{PlayerIdList, PlayerList};
 use crate::player::{Player, Uuid};
+use crate::player::list::{PlayerIdList, PlayerList};
 use crate::text::article;
-use crate::text::message::{Audience, Broadcast, Message, Messenger, Msg};
 use crate::text::Color::*;
-use std::sync::{Arc, Mutex};
-use std::sync::mpsc::Sender;
+use crate::text::message::{Audience, Broadcast, Message, MessageFormat, Messenger, Msg};
 
 mod broadcast;
 mod commands;
@@ -88,7 +88,7 @@ impl Game {
                 self.players.to_id_list().except(u),
             )
         };
-        self.send(&players, &format!("{} has joined the game.", name));
+        self.send(&players, &format!("{} has joined the game.", name).custom_padded("\n\n", "\n\n > "));
     }
 
     pub fn remove_player<T: Uuid>(&mut self, p: T) -> Option<Arc<Mutex<Player>>> {
@@ -99,22 +99,6 @@ impl Game {
             player.drop_stream();
         }
         self.players.remove(&p.uuid())
-    }
-
-    pub fn broadcast<U>(&mut self, buf: U) -> io::Result<usize>
-    where
-        U: AsRef<[u8]>,
-    {
-        let mut res = 0_usize;
-        for (_, p) in &mut *self.players {
-            let mut s = String::from("\n\n");
-            s.push_str(&String::from_utf8(buf.as_ref().to_owned()).unwrap());
-            s.push_str("\n\n > ");
-            let mut p = p.lock().unwrap();
-            res = p.write(s.as_bytes())?;
-            p.flush()?;
-        }
-        Ok(res)
     }
 
     pub fn players_in(&mut self, loc: Coord) -> Cow<PlayerIdList> {
@@ -254,9 +238,10 @@ impl Game {
         let rooms = &self.rooms;
         let others = rooms.player_ids(loc).except(u);
         let aud = Audience(u, &others);
+        let msg = String::from(msg).padded();
         let msg = Msg {
             s: msg,
-            o: other_msg.clone(),
+            o: other_msg.clone().map(|s| s.padded()),
         };
         self.send(&aud, &msg);
         if other_msg.is_none() {
@@ -274,7 +259,7 @@ impl Game {
             &next_room_aud,
             &Msg {
                 s: msg,
-                o: Some(for_others),
+                o: Some(for_others.padded()),
             },
         );
 
@@ -418,5 +403,11 @@ where
     A: Messenger,
     M: Message,
 {
+    let to_others = msg.to_others().map(|m| m.padded());
+    let msg = Msg {
+        s: msg.to_self().padded(),
+        o: to_others,
+    };
+
     Ok((Box::new(aud), Box::new(msg)))
 }

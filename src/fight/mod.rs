@@ -1,6 +1,6 @@
 use crate::map::Locate;
 use crate::player::{Player as BarePlayer, Uuid};
-use crate::text::Color::Red;
+use crate::text::Color::{Red, Yellow};
 
 use std::io::Write;
 use std::ops::DerefMut;
@@ -8,12 +8,12 @@ use std::ops::DerefMut;
 use std::sync::mpsc::{channel, Sender};
 use std::sync::{Arc, Mutex};
 
+use crate::item::Describe;
+use crate::text::message::{Audience, Msg, MessageFormat};
+use std::error::Error as StdError;
 use std::thread;
 use std::thread::{spawn, JoinHandle};
 use std::time::Duration;
-use std::error::Error as StdError;
-use crate::text::message::{Audience, Msg};
-use crate::item::Describe;
 
 type Player = Arc<Mutex<BarePlayer>>;
 type Error = Box<dyn StdError>;
@@ -49,15 +49,13 @@ impl BasicFight {
             sender,
         } = info;
 
-        arc_mutex!(
-            Self {
-                player_a,
-                player_b,
-                delay,
-                sender,
-                ended: arc_mutex!(false),
-            }
-        )
+        arc_mutex!(Self {
+            player_a,
+            player_b,
+            delay,
+            sender,
+            ended: arc_mutex!(false),
+        })
     }
 }
 
@@ -108,7 +106,14 @@ impl Fight for Arc<Mutex<BasicFight>> {
                     }
 
                     a.hurt(5);
-                    fight_sender.send((Audience(aid, vec![bid]), Msg { s: format!("you hit {}", bname), o: Some(format!("{}", Red(format!("{} hits you", aname)))) }))
+                    fight_sender
+                        .send((
+                            Audience(aid, vec![bid]),
+                            Msg {
+                                s: format!("{}", Yellow(format!("you hit {}", bname))).custom_padded("\n\n", ""),
+                                o: Some(format!("{}", Red(format!("{} hits you", aname))).custom_padded("\n\n", "")),
+                            },
+                        ))
                         .map_err(|_| String::from("player a write error"))?;
                     if a.hp() <= 0 {
                         cl.end();
@@ -130,7 +135,14 @@ impl Fight for Arc<Mutex<BasicFight>> {
                         }
                     }
                     b.hurt(5);
-                    fight_sender.send((Audience(bid, vec![aid]), Msg { s: format!("you hit {}", aname), o: Some(format!("{}", Red(format!("{} hits you", bname)))) }))
+                    fight_sender
+                        .send((
+                            Audience(bid, vec![aid]),
+                            Msg {
+                                s: format!("{}", Yellow(format!("you hit {}", aname))).custom_padded("\n", "\n\n > "),
+                                o: Some(format!("{}", Red(format!("{} hits you", bname))).custom_padded("\n", "\n\n > ")),
+                            },
+                        ))
                         .map_err(|_| String::from("player b write error"))?;
                     if b.hp() <= 0 {
                         cl.end();
