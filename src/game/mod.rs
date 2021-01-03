@@ -67,6 +67,20 @@ impl Game {
         self.players.insert(p.uuid(), p);
     }
 
+    pub fn announce_player(&mut self, u: u128) {
+        let (name, players) = {
+            (
+                self.players
+                    .get(&u)
+                    .unwrap_or(&Player::default())
+                    .name()
+                    .to_owned(),
+                self.players.to_id_list().except(u),
+            )
+        };
+        self.send(&players, &format!("{} has joined the game.", name));
+    }
+
     pub fn remove_player<T: Uuid>(&mut self, p: T) -> Option<Player> {
         self.players.get_mut(&p.uuid())?.flush().ok()?;
         self.players.remove(&p.uuid())
@@ -96,6 +110,16 @@ impl Game {
 
     pub fn players_mut(&mut self) -> &mut PlayerList {
         &mut self.players
+    }
+
+    pub fn set_player_name(&mut self, u: u128, name: &str) -> Result<(), EnnuiError> {
+        Ok(self
+            .players
+            .get_mut(&u)
+            .ok_or(EnnuiError::Fatal(
+                "CANNOT SET NAME: Player Not Found".to_owned(),
+            ))?
+            .set_name(name))
     }
 
     fn describe_room<P: Uuid>(&mut self, p: P) -> Option<String> {

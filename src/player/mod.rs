@@ -1,4 +1,4 @@
-use std::io::Write;
+use std::io::{Read, Write};
 use std::net::TcpStream;
 
 use serde::{Deserialize, Serialize};
@@ -12,7 +12,8 @@ use crate::item::list::{Holder, ItemList, ListTrait};
 use crate::item::{Attribute, Describe, Description, Item, Quality};
 use crate::map::coord::Coord;
 use crate::map::Locate;
-use std::mem::take;
+
+use std::net::Shutdown::Both;
 
 pub mod list;
 mod meter;
@@ -29,6 +30,7 @@ pub struct Player {
     clothing: ItemList,
     #[serde(skip_serializing, skip_deserializing)]
     stream: Option<TcpStream>,
+    // drop_game: Arc<Mutex<Game>>,
     stats: Vec<MeterKind>,
 }
 
@@ -36,6 +38,26 @@ pub trait Uuid {
     fn uuid(&self) -> u128;
     fn others(&self) -> Vec<u128> {
         vec![]
+    }
+}
+
+impl Read for Player {
+    fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
+        self.stream
+            .as_ref()
+            .ok_or(std::io::ErrorKind::BrokenPipe)?
+            .read(buf)
+    }
+}
+
+impl Drop for Player {
+    fn drop(&mut self) {
+        match &self.stream {
+            Some(s) => {
+                s.shutdown(Both).unwrap_or_default();
+            }
+            None => (),
+        }
     }
 }
 
@@ -118,17 +140,7 @@ impl Write for Player {
             Some(ref mut s) => s.write(buf),
             None => Ok(0),
         };
-        match res {
-            Err(e) if e.kind() == std::io::ErrorKind::BrokenPipe => {
-                let x = take(&mut self.stream);
-                match x {
-                    None => (),
-                    Some(_) => (),
-                }
-                Err(e)
-            }
-            o => o,
-        }
+        res
     }
 
     fn flush(&mut self) -> std::io::Result<()> {
@@ -220,6 +232,10 @@ impl Player {
 
     pub fn stats(&self) -> &[MeterKind] {
         &self.stats
+    }
+
+    pub fn clone_stream(&self) -> Option<TcpStream> {
+        self.stream.as_ref().map(|s| s.try_clone().unwrap())
     }
 
     fn assign_stream(&mut self, stream: TcpStream) {

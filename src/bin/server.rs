@@ -1,7 +1,7 @@
 use std::io::{Read, Write};
-use std::net::{TcpListener};
+use std::net::TcpListener;
 use std::sync::{Arc, Mutex};
-use std::thread::spawn;
+use std::thread::{spawn, JoinHandle};
 
 use ennui::error::EnnuiError;
 
@@ -10,6 +10,7 @@ use ennui::player::{Player, Uuid};
 use ennui::text::message::Broadcast;
 use ennui::text::Color::Red;
 
+use std::sync::mpsc::channel;
 
 macro_rules! arc_mutex(
     ($wrapped:expr) => {
@@ -46,14 +47,25 @@ fn main() -> GameResult<()> {
 
     let g = Game::new()?;
     let shared_game = arc_mutex!(g);
-    let mut join_handles = vec![];
+
+    let (sender, receiver) = channel::<JoinHandle<std::io::Result<()>>>();
+    spawn(move || {
+        for handle in receiver {
+            match handle.join() {
+                Ok(_) => (),
+                Err(err) => {
+                    println!("[{}]: {:#?}", Red("ERROR".to_owned()), err);
+                }
+            }
+        }
+    });
 
     for stream in listener.incoming() {
         let game_clone = shared_game.clone();
 
         let stream = stream?;
 
-        let p = Player::new_with_stream(stream.try_clone().unwrap());
+        let p = Player::new_with_stream(stream);
         let uuid = p.uuid();
         {
             let mut game = match game_clone.lock() {
@@ -66,44 +78,16 @@ fn main() -> GameResult<()> {
             game.add_player(p);
         }
 
-        let stream_clone = stream.try_clone()?;
-
-        join_handles.push(spawn(move || handle_client(stream_clone, uuid, game_clone)));
-    }
-
-    for handle in join_handles {
-        match handle.join() {
-            Ok(_) => (),
-            Err(err) => {
-                println!("{:#?}", err);
-            }
-        }
+        sender.send(spawn(move || handle_client(uuid, game_clone))).unwrap();
     }
 
     Ok(())
 }
 
-fn handle_client<T: ReadLine + Write>(
-    mut stream: T,
-    p: u128,
-    g: Arc<Mutex<Game>>,
-) -> std::io::Result<()> {
-    write!(stream, "enter your name: ")?;
-    let name = stream.read_line()?;
-    let _results = {
-        let mut game = g.lock().map_err(|_| std::io::ErrorKind::AddrNotAvailable)?;
-        game.players_mut()
-            .get_mut(&p)
-            .ok_or(std::io::ErrorKind::NotFound)?
-            .set_name(&name);
-        let players = game.players_mut().to_id_list().except(p);
-        println!("{:#?}", players);
-        game.send(&players, &format!("{} has joined the game.", name))
-    };
-
-    stream.write(b" > ")?;
+fn handle_client(p: u128, g: Arc<Mutex<Game>>) -> std::io::Result<()> {
+    get_and_set_player_name(p, g.clone())?;
     loop {
-        let s = stream.read_line()?;
+        let s = get_player_command(p, g.clone())?;
 
         {
             let mut g = match g.lock() {
@@ -121,8 +105,9 @@ fn handle_client<T: ReadLine + Write>(
                     for (id, result) in results {
                         match result {
                             Err(e) => {
-                                println!("ERROR: {:?}", e);
-                                g.remove_player(id);
+                                println!("[{}]: {:?}", Red("ERROR".to_owned()), e);
+                                let p = g.remove_player(id).unwrap_or_default();
+                                std::mem::drop(p);
                             }
                             _ => (),
                         }
@@ -140,4 +125,48 @@ fn handle_client<T: ReadLine + Write>(
     }
 
     Ok(())
+}
+
+fn get_player_command(p: u128, g: Arc<Mutex<Game>>) -> std::io::Result<String> {
+    let mut stream = {
+        let mut g = g.lock().map_err(|_| std::io::ErrorKind::AddrNotAvailable)?;
+        g.players_mut()
+            .get_mut(&p)
+            .ok_or(std::io::ErrorKind::NotFound)?
+            .clone_stream()
+            .ok_or(std::io::ErrorKind::NotFound)?
+    };
+
+    stream.read_line()
+}
+
+fn get_and_set_player_name(p: u128, g: Arc<Mutex<Game>>) -> std::io::Result<()> {
+    let clone = g.clone();
+    let result = spawn(move || {
+        let mut g = clone.lock().unwrap();
+
+        std::io::Result::Ok(
+            g.players_mut()
+                .get_mut(&p)
+                .ok_or(std::io::Error::from(std::io::ErrorKind::NotFound))?
+                .clone_stream()
+                .ok_or(std::io::Error::from(std::io::ErrorKind::NotFound))?,
+        )
+    });
+
+    let mut stream = result
+        .join()
+        .map_err(|_| std::io::ErrorKind::AddrNotAvailable)?
+        .map_err(|_| std::io::ErrorKind::AddrNotAvailable)?;
+
+    stream.write(b"enter your name: ")?;
+    let name = stream.read_line()?;
+    stream.write(b" > ")?;
+
+    let mut g = g.lock().unwrap();
+    let res = g
+        .set_player_name(p, &name)
+        .map_err(|_| std::io::Error::from(std::io::ErrorKind::NotFound));
+    g.announce_player(p);
+    res
 }
