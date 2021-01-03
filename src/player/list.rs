@@ -3,9 +3,11 @@ use std::ops::{Deref, DerefMut};
 
 use serde::{Deserialize, Serialize};
 
-use crate::item::Describe;
+
 use crate::player::{Player, Uuid};
 use crate::text::message::Messenger;
+
+use std::sync::{Arc, Mutex};
 
 #[repr(transparent)]
 #[derive(Debug, Default, Deserialize, Serialize, Clone)]
@@ -46,28 +48,6 @@ impl Messenger for PlayerIdList {
 }
 
 impl PlayerIdList {
-    pub fn get_player_by_name<'a>(&self, pl: &'a PlayerList, name: &str) -> Option<&'a Player> {
-        let u = self.id_of_name(pl, name)?;
-        pl.get(&u)
-    }
-
-    pub fn get_player_mut_by_name<'a>(
-        &self,
-        pl: &'a mut PlayerList,
-        name: &str,
-    ) -> Option<&'a mut Player> {
-        let u = self.id_of_name(pl, name)?;
-        pl.get_mut(&u)
-    }
-
-    fn id_of_name(&self, g: &PlayerList, name: &str) -> Option<u128> {
-        Some(
-            *self
-                .iter()
-                .find(|p| g.get(p).unwrap_or(&Player::default()).name() == name)?,
-        )
-    }
-
     pub fn except(&self, id: u128) -> PlayerIdList {
         let mut cl = self.clone();
         cl.remove(&id);
@@ -77,10 +57,10 @@ impl PlayerIdList {
 
 #[derive(Default)]
 #[repr(transparent)]
-pub struct PlayerList(pub HashMap<u128, Player>);
+pub struct PlayerList(pub HashMap<u128, Arc<Mutex<Player>>>);
 
 impl Deref for PlayerList {
-    type Target = HashMap<u128, Player>;
+    type Target = HashMap<u128, Arc<Mutex<Player>>>;
 
     fn deref(&self) -> &Self::Target {
         &self.0
@@ -131,7 +111,6 @@ impl Uuid for &PlayerList {
 
 impl PlayerList {
     pub fn to_id_list(&self) -> PlayerIdList {
-        println!("DEBUG: {:#?}", **self);
         let mut pil = PlayerIdList::default();
         for id in self.keys() {
             pil.insert(*id);

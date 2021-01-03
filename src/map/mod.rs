@@ -209,7 +209,11 @@ impl Room {
         let player_list = players
             .iter()
             .filter_map(|uuid| match global_players.get(uuid) {
-                Some(player) if player.uuid() != p && player.uuid() != 0 => Some(player.name()),
+                Some(player)
+                    if player.lock().unwrap().uuid() != p && player.lock().unwrap().uuid() != 0 =>
+                {
+                    Some(player.lock().unwrap().name().to_owned())
+                }
                 _ => None,
             })
             .collect::<Vec<_>>();

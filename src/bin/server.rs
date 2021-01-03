@@ -78,7 +78,9 @@ fn main() -> GameResult<()> {
             game.add_player(p);
         }
 
-        sender.send(spawn(move || handle_client(uuid, game_clone))).unwrap();
+        sender
+            .send(spawn(move || handle_client(uuid, game_clone)))
+            .unwrap();
     }
 
     Ok(())
@@ -130,11 +132,14 @@ fn handle_client(p: u128, g: Arc<Mutex<Game>>) -> std::io::Result<()> {
 fn get_player_command(p: u128, g: Arc<Mutex<Game>>) -> std::io::Result<String> {
     let mut stream = {
         let mut g = g.lock().map_err(|_| std::io::ErrorKind::AddrNotAvailable)?;
-        g.players_mut()
+        let p = g
+            .players_mut()
             .get_mut(&p)
             .ok_or(std::io::ErrorKind::NotFound)?
-            .clone_stream()
-            .ok_or(std::io::ErrorKind::NotFound)?
+            .clone();
+
+        let p = p.lock().unwrap();
+        p.clone_stream().ok_or(std::io::ErrorKind::NotFound)?
     };
 
     stream.read_line()
@@ -145,13 +150,16 @@ fn get_and_set_player_name(p: u128, g: Arc<Mutex<Game>>) -> std::io::Result<()> 
     let result = spawn(move || {
         let mut g = clone.lock().unwrap();
 
-        std::io::Result::Ok(
-            g.players_mut()
+        std::io::Result::Ok({
+            let p = g
+                .players_mut()
                 .get_mut(&p)
-                .ok_or(std::io::Error::from(std::io::ErrorKind::NotFound))?
-                .clone_stream()
-                .ok_or(std::io::Error::from(std::io::ErrorKind::NotFound))?,
-        )
+                .ok_or(std::io::ErrorKind::NotFound)?
+                .clone();
+
+            let p = p.lock().unwrap();
+            p.clone_stream().ok_or(std::io::ErrorKind::NotFound)?
+        })
     });
 
     let mut stream = result

@@ -22,6 +22,7 @@ use crate::player::{Player, Uuid};
 use crate::text::article;
 use crate::text::message::{Audience, Broadcast, Message, Messenger, Msg};
 use crate::text::Color::*;
+use std::sync::{Arc, Mutex};
 
 mod broadcast;
 mod commands;
@@ -64,7 +65,7 @@ impl Game {
 
     pub fn add_player(&mut self, p: Player) {
         self.rooms.entry(p.loc()).or_default().add_player(&p);
-        self.players.insert(p.uuid(), p);
+        self.players.insert(p.uuid(), arc_mutex!(p));
     }
 
     pub fn announce_player(&mut self, u: u128) {
@@ -72,7 +73,9 @@ impl Game {
             (
                 self.players
                     .get(&u)
-                    .unwrap_or(&Player::default())
+                    .unwrap()
+                    .lock()
+                    .unwrap()
                     .name()
                     .to_owned(),
                 self.players.to_id_list().except(u),
@@ -81,8 +84,13 @@ impl Game {
         self.send(&players, &format!("{} has joined the game.", name));
     }
 
-    pub fn remove_player<T: Uuid>(&mut self, p: T) -> Option<Player> {
-        self.players.get_mut(&p.uuid())?.flush().ok()?;
+    pub fn remove_player<T: Uuid>(&mut self, p: T) -> Option<Arc<Mutex<Player>>> {
+        self.players
+            .get_mut(&p.uuid())?
+            .lock()
+            .unwrap()
+            .flush()
+            .ok()?;
         self.players.remove(&p.uuid())
     }
 
@@ -95,6 +103,7 @@ impl Game {
             let mut s = String::from("\n\n");
             s.push_str(&String::from_utf8(buf.as_ref().to_owned()).unwrap());
             s.push_str("\n\n > ");
+            let mut p = p.lock().unwrap();
             res = p.write(s.as_bytes())?;
             p.flush()?;
         }
@@ -119,6 +128,8 @@ impl Game {
             .ok_or(EnnuiError::Fatal(
                 "CANNOT SET NAME: Player Not Found".to_owned(),
             ))?
+            .lock()
+            .unwrap()
             .set_name(name))
     }
 
@@ -139,7 +150,7 @@ impl Game {
     {
         let p = self.players.get(&pid.uuid())?;
 
-        let loc = &p.loc();
+        let loc = &p.lock().unwrap().loc();
         let room = self.rooms.get(loc)?;
 
         Some(if let Some(item) = room.get_item(handle) {
@@ -159,29 +170,34 @@ impl Game {
             }
             s
         } else {
-            p.items().get_item(handle)?.description().to_owned()
+            p.lock()
+                .unwrap()
+                .items()
+                .get_item(handle)?
+                .description()
+                .to_owned()
         })
     }
 
     fn id_of(&self, name: &str) -> Option<u128> {
         self.players
             .iter()
-            .find(|(_, p)| p.name() == name)
-            .map(|(_, p)| p.uuid())
+            .find(|(_, p)| p.lock().unwrap().name() == name)
+            .map(|(_, p)| p.lock().unwrap().uuid())
     }
 
     fn loc_of<P>(&self, p: P) -> Option<Coord>
     where
         P: Uuid,
     {
-        Some(self.players.get(&p.uuid())?.loc())
+        Some(self.players.get(&p.uuid())?.lock().unwrap().loc())
     }
 
     fn name_of<P>(&self, p: P) -> Option<String>
     where
         P: Uuid,
     {
-        Some(self.players.get(&p.uuid())?.name().into())
+        Some(self.players.get(&p.uuid())?.lock().unwrap().name().into())
     }
 
     fn dir_func<U: Uuid>(
@@ -258,13 +274,15 @@ impl Game {
         let other_id = self.id_of_in(loc, other)?;
         let p = self.players.get(&other_id)?;
 
-        let mut item_list = format!("{} is holding:", p.name());
-        if p.items().len() > 0 {
+        let mut item_list = format!("{} is holding:", p.lock().unwrap().name());
+        if p.lock().unwrap().items().len() > 0 {
             item_list.push('\n');
         }
 
         item_list.push_str(
-            p.items()
+            p.lock()
+                .unwrap()
+                .items()
                 .iter()
                 .map(|i| format!("{}", article(i.name())))
                 .collect::<Vec<_>>()
@@ -272,13 +290,14 @@ impl Game {
                 .as_str(),
         );
 
-        Some(format!("{}{}", p.description(), item_list))
+        Some(format!("{}{}", p.lock().unwrap().description(), item_list))
     }
 
     fn list_inventory<T: Uuid>(&self, u: T) -> Option<String> {
         let mut ret = String::new();
         ret.push_str("you are holding:\n");
-        let items = self.players.get(&u.uuid())?.items();
+        let player = self.players.get(&u.uuid())?.lock().unwrap();
+        let items = player.items();
         ret.push_str(
             items
                 .iter()
@@ -296,8 +315,8 @@ impl Game {
         let players = &self.players;
         rooms.player_ids(loc).iter().find_map(|i| {
             let p = players.get(i)?;
-            if p.name() == name {
-                Some(p.uuid())
+            if p.lock().unwrap().name() == name {
+                Some(p.lock().unwrap().uuid())
             } else {
                 None
             }
@@ -336,6 +355,8 @@ impl Game {
         players
             .get_mut(&u)
             .ok_or(DoorState::None)?
+            .lock()
+            .unwrap()
             .set_loc(next_coord);
 
         Ok(())

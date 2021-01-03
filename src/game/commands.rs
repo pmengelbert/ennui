@@ -8,6 +8,9 @@ use crate::error::{CmdErr, EnnuiError};
 use crate::map::door::{DoorState, Lock, ObstacleState};
 use crate::text::message::{Audience, Msg};
 
+
+use std::ops::DerefMut;
+
 pub fn fill_interpreter(i: &mut Interpreter) {
     i.insert("look", |g, u, args| {
         let msg: Cow<'static, str> = match args.len() {
@@ -65,7 +68,9 @@ pub fn fill_interpreter(i: &mut Interpreter) {
                         if let Item::Container(cont) = c {
                             use std::result::Result::*;
                             match cont.get_item(object) {
-                                Some(_) => match cont.transfer(player, object) {
+                                Some(_) => match cont
+                                    .transfer(player.lock().unwrap().deref_mut(), object)
+                                {
                                     Ok(handle) => {
                                         other_msg = Some(format!(
                                             "{} takes {} from {}",
@@ -290,7 +295,7 @@ pub fn fill_interpreter(i: &mut Interpreter) {
         let p = g.players.get(&u)?;
 
         let mut s = String::new();
-        for meter in p.stats() {
+        for meter in p.lock().unwrap().stats() {
             s.push_str(&format!("{:#?}", meter));
         }
 
@@ -376,10 +381,10 @@ pub fn fill_interpreter(i: &mut Interpreter) {
                                 };
                                 let mut res = None;
 
-                                for item in player.items_mut().iter_mut() {
+                                for item in player.lock().unwrap().items_mut().iter_mut() {
                                     if let Item::Key(k) = item {
                                         use std::result::Result::*;
-                                        match door.unlock(DoorState::Closed, Some(&**k)) {
+                                        match door.unlock(DoorState::Closed, Some(k.as_ref())) {
                                             Ok(()) => {
                                                 other_msg =
                                                     Some(format!("{} unlocks a door", name));
@@ -430,15 +435,15 @@ pub fn fill_interpreter(i: &mut Interpreter) {
     i.insert("east", |g, u, _| g.dir_func(u, MapDir::East));
     i.insert("west", |g, u, _| g.dir_func(u, MapDir::West));
 
-    i.insert("ouch", |g, u, _| {
-        const PRICK: usize = 5;
-        g.players.entry(u).or_default().hurt(PRICK);
+    // i.insert("ouch", |g, u, _| {
+    //     const PRICK: usize = 5;
+    //     g.players.entry(u).or_default().hurt(PRICK);
 
-        message(
-            u,
-            format!("{}", Red("that hurt a surprising amount".into())),
-        )
-    });
+    //     message(
+    //         u,
+    //         format!("{}", Red("that hurt a surprising amount".into())),
+    //     )
+    // });
 
     i.insert("inventory", |g, u, _a| {
         let aud = u;

@@ -11,6 +11,8 @@ use crate::error::CmdErr::{ItemNotFound, NotClothing, PlayerNotFound, TooHeavy};
 use crate::error::EnnuiError;
 use crate::error::EnnuiError::{Fatal, Msg, Simple};
 use crate::item::list::{Holder, ItemList, ListTrait};
+use std::ops::DerefMut;
+use std::sync::{Arc, Mutex};
 
 #[derive(Clone, Copy)]
 pub enum Direction {
@@ -79,7 +81,7 @@ impl Game {
             "Could not find primary player with uuid: {}",
             uuid
         )))?;
-        room.transfer(player, handle.into())
+        room.transfer(player.lock().unwrap().deref_mut(), handle.into())
     }
 
     fn drop(
@@ -96,7 +98,7 @@ impl Game {
         let player = players
             .get_mut(&uuid)
             .ok_or(Fatal(format!("unable to find player {}", uuid)))?;
-        player.transfer(room, handle)
+        player.lock().unwrap().transfer(room, handle)
     }
 
     fn give(
@@ -113,7 +115,7 @@ impl Game {
                 .get_mut(&uuid)
                 .ok_or(Fatal(format!("unable to find player {}", uuid)))?;
 
-            p.items_mut().get_item_owned(handle)?
+            p.lock().unwrap().items_mut().get_item_owned(handle)?
         };
 
         let item_name = item.name().to_owned();
@@ -137,6 +139,8 @@ impl Game {
                                 .ok_or(Fatal(
                                     "wasn't able to find the original player ...".to_owned(),
                                 ))?
+                                .lock()
+                                .unwrap()
                                 .insert_item(given_back)
                                 .map_err(|_| {
                                     Fatal(
@@ -161,18 +165,26 @@ impl Game {
             }
         };
 
-        if other_p.items_mut().insert_item(item).is_err() {
+        if other_p
+            .lock()
+            .unwrap()
+            .items_mut()
+            .insert_item(item)
+            .is_err()
+        {
             return Err(Fatal(format!(
                 "COULD NOT RETURN ITEM {} TO OTHER PLAYER {}",
                 item_name,
-                other_p.uuid()
+                other_p.lock().unwrap().uuid()
             )));
         };
         Ok(item_name)
     }
 
     fn wear(players: &mut PlayerList, uuid: u128, handle: &str) -> Result<String, EnnuiError> {
-        let (items, clothing) = { Self::get_player_mut(players, uuid)?.all_items_mut() };
+        let p = Self::get_player_mut(players, uuid)?;
+        let mut p = p.lock().unwrap();
+        let (items, clothing) = p.all_items_mut();
         Self::check_if_clothing(handle, items)?;
         items.transfer(clothing, handle)
     }
@@ -186,13 +198,18 @@ impl Game {
     }
 
     fn remove(players: &mut PlayerList, uuid: u128, handle: &str) -> Result<String, EnnuiError> {
-        let (items, clothing) = { Self::get_player_mut(players, uuid)?.all_items_mut() };
+        let p = Self::get_player_mut(players, uuid)?;
+        let mut p = p.lock().unwrap();
+        let (items, clothing) = p.all_items_mut();
         clothing.transfer(items, handle)
     }
 
-    fn get_player_mut(players: &mut PlayerList, uuid: u128) -> Result<&mut Player, EnnuiError> {
+    fn get_player_mut(
+        players: &mut PlayerList,
+        uuid: u128,
+    ) -> Result<Arc<Mutex<Player>>, EnnuiError> {
         match players.get_mut(&uuid) {
-            Some(p) => Ok(p),
+            Some(p) => Ok(p.clone()),
             None => Err(Fatal(format!("UNABLE TO FIND PLAYER {}", uuid))),
         }
     }

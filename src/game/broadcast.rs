@@ -26,14 +26,17 @@ where
 
         if let Some(p) = g.players.get_mut(&self_id) {
             let self_msg = self_msg.wrap(90);
-            v.push((self_id, p.write(to_buf(self_msg).as_slice())));
+            v.push((
+                self_id,
+                p.lock().unwrap().write(to_buf(self_msg).as_slice()),
+            ));
         }
 
         if let Some(msg) = other_msg {
             let msg = msg.wrap(90);
             for id in other_ids {
                 if let Some(p) = g.players.get_mut(&id) {
-                    v.push((id, p.write(to_buf(&msg).as_slice())));
+                    v.push((id, p.lock().unwrap().write(to_buf(&msg).as_slice())));
                 }
             }
         }

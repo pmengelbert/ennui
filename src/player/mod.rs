@@ -30,7 +30,6 @@ pub struct Player {
     clothing: ItemList,
     #[serde(skip_serializing, skip_deserializing)]
     stream: Option<TcpStream>,
-    // drop_game: Arc<Mutex<Game>>,
     stats: Vec<MeterKind>,
 }
 
@@ -170,10 +169,10 @@ impl Player {
         Self {
             uuid: CrateUuid::new_v4().as_u128(),
             info: Description {
-                description: "".to_owned(),
+                description: String::new(),
                 name: String::new(),
                 handle: Handle(vec![]),
-                display: "".to_owned(),
+                display: String::new(),
                 attributes: vec![],
             },
             loc: Coord(0, 0),
