@@ -1,10 +1,10 @@
 use std::borrow::Cow;
 use std::collections::HashMap;
 use std::error::Error as StdError;
-use std::io;
+
 use std::io::Write;
-use std::sync::{Arc, Mutex};
 use std::sync::mpsc::Sender;
+use std::sync::{Arc, Mutex};
 
 use rand::Rng;
 
@@ -12,18 +12,18 @@ use crate::error::EnnuiError;
 use crate::error::EnnuiError::Fatal;
 use crate::game::util::load_rooms;
 use crate::interpreter::{CommandMessage, Interpreter};
-use crate::item::{Describe, Item};
 use crate::item::list::Holder;
 use crate::item::list::ListTrait;
-use crate::map::{coord::Coord, Locate, Room, Space};
+use crate::item::{Describe, Item};
 use crate::map::direction::MapDir;
 use crate::map::door::{DoorState, GuardState, ObstacleState};
 use crate::map::list::{RoomList, RoomListTrait};
-use crate::player::{Player, Uuid};
+use crate::map::{coord::Coord, Locate, Room, Space};
 use crate::player::list::{PlayerIdList, PlayerList};
+use crate::player::{Player, Uuid};
 use crate::text::article;
-use crate::text::Color::*;
 use crate::text::message::{Audience, Broadcast, Message, MessageFormat, Messenger, Msg};
+use crate::text::Color::*;
 
 mod broadcast;
 mod commands;
@@ -88,7 +88,10 @@ impl Game {
                 self.players.to_id_list().except(u),
             )
         };
-        self.send(&players, &format!("{} has joined the game.", name).custom_padded("\n\n", "\n\n > "));
+        self.send(
+            &players,
+            &format!("{} has joined the game.", name).custom_padded("\n\n", "\n\n > "),
+        );
     }
 
     pub fn remove_player<T: Uuid>(&mut self, p: T) -> Option<Arc<Mutex<Player>>> {

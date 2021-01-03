@@ -2,14 +2,13 @@ use crate::map::Locate;
 use crate::player::{Player as BarePlayer, Uuid};
 use crate::text::Color::{Red, Yellow};
 
-use std::io::Write;
 use std::ops::DerefMut;
 
 use std::sync::mpsc::{channel, Sender};
 use std::sync::{Arc, Mutex};
 
 use crate::item::Describe;
-use crate::text::message::{Audience, Msg, MessageFormat};
+use crate::text::message::{Audience, MessageFormat, Msg};
 use std::error::Error as StdError;
 use std::thread;
 use std::thread::{spawn, JoinHandle};
@@ -110,8 +109,12 @@ impl Fight for Arc<Mutex<BasicFight>> {
                         .send((
                             Audience(aid, vec![bid]),
                             Msg {
-                                s: format!("{}", Yellow(format!("you hit {}", bname))).custom_padded("\n\n", ""),
-                                o: Some(format!("{}", Red(format!("{} hits you", aname))).custom_padded("\n\n", "")),
+                                s: format!("{}", Yellow(format!("you hit {}", bname)))
+                                    .custom_padded("\n\n", ""),
+                                o: Some(
+                                    format!("{}", Red(format!("{} hits you", aname)))
+                                        .custom_padded("\n\n", ""),
+                                ),
                             },
                         ))
                         .map_err(|_| String::from("player a write error"))?;
@@ -139,8 +142,12 @@ impl Fight for Arc<Mutex<BasicFight>> {
                         .send((
                             Audience(bid, vec![aid]),
                             Msg {
-                                s: format!("{}", Yellow(format!("you hit {}", aname))).custom_padded("\n", "\n\n > "),
-                                o: Some(format!("{}", Red(format!("{} hits you", bname))).custom_padded("\n", "\n\n > ")),
+                                s: format!("{}", Yellow(format!("you hit {}", aname)))
+                                    .custom_padded("\n", "\n\n > "),
+                                o: Some(
+                                    format!("{}", Red(format!("{} hits you", bname)))
+                                        .custom_padded("\n", "\n\n > "),
+                                ),
                             },
                         ))
                         .map_err(|_| String::from("player b write error"))?;

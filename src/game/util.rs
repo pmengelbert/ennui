@@ -47,15 +47,6 @@ pub fn random_insult() -> String {
     .to_owned()
 }
 
-pub fn to_buf<T: AsRef<str>>(msg: T) -> Vec<u8> {
-    let buf = msg.as_ref().as_bytes();
-    let mut b = vec![];
-    b.extend_from_slice(b"\n".as_ref());
-    b.extend_from_slice(buf.as_ref());
-    b.extend_from_slice(b"\n\n > ".as_ref());
-    b
-}
-
 pub fn load_rooms(rooms: &mut RoomList) -> GameResult<()> {
     let bytes = include_bytes!("../../data/map.cbor");
     let v: Vec<Room> = serde_cbor::from_slice(bytes)?;

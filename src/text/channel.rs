@@ -1,4 +1,4 @@
-use crate::text::message::{Audience, Broadcast, Message, Messenger, Msg};
+use crate::text::message::{Audience, Broadcast, Msg};
 use std::sync::mpsc::Receiver;
 use std::sync::{Arc, Mutex};
 use std::thread::{spawn, JoinHandle};

@@ -5,7 +5,7 @@ use crate::game::util::random_insult;
 // use crate::item::error::Error::*;
 use crate::error::EnnuiError::*;
 use crate::error::{CmdErr, EnnuiError};
-use crate::map::door::{DoorState, Lock, ObstacleState};
+use crate::map::door::{Door, DoorState, Lock, ObstacleState};
 use crate::text::message::{Audience, Msg};
 
 use crate::fight::{BasicFight, Fight, FightInfo};
@@ -324,25 +324,21 @@ pub fn fill_interpreter(i: &mut Interpreter) {
                         Some((_, d)) => d,
                         None => return message(u, "there's no door here"),
                     };
-                    use std::result::Result::*;
-                    match door.unlock(DoorState::Open, std::option::Option::None) {
-                        Ok(_) => {
-                            other_msg = Some(format!("{} opens a door", name));
-                            format!("the door swings open")
-                        }
-                        Err(err) => match err {
-                            DoorState::Locked => format!("that door is locked"),
-                            DoorState::Open => format!("it's already open"),
-                            DoorState::MagicallySealed => {
-                                format!("it's sealed by some unfamiliar magic")
-                            }
-                            DoorState::PermaLocked => format!("it ain't gonna budge"),
-                            _ => format!("wtf"),
-                        },
-                    }
+
+                    try_door_open(&name, &mut other_msg, door)
                 }
             }
-            2 => todo!(),
+            2 => {
+                let rooms = &mut g.rooms;
+                let room = rooms.get_mut(&loc)?;
+
+                let dir: MapDir = a[1].into();
+                let door = match room.doors().get_mut(&dir) {
+                    Some(d) => d,
+                    None => return message(u, "there's no door in that direction"),
+                };
+                try_door_open(&name, &mut other_msg, door)
+            }
             _ => format!("I'm not sure what you're getting at"),
         };
 
@@ -359,12 +355,12 @@ pub fn fill_interpreter(i: &mut Interpreter) {
         let name = g.name_of(u)?;
 
         let mut other_msg = None;
+        let rooms = &mut g.rooms;
+        let players = &mut g.players;
         let self_msg = match a.len() {
             0 => format!("ok, what do you want to unlock?"),
             1 => {
                 let handle = a[0];
-                let rooms = &mut g.rooms;
-                let players = &mut g.players;
 
                 let room = rooms.get_mut(&loc).ok_or(Fatal(format!(
                     "UNABLE TO FIND ROOM {:?} for player {}",
@@ -384,37 +380,7 @@ pub fn fill_interpreter(i: &mut Interpreter) {
                                     Some((_, d)) => d,
                                     None => return message(u, "there's no door here"),
                                 };
-                                let mut res = None;
-
-                                for item in player.lock().unwrap().items_mut().iter_mut() {
-                                    if let Item::Key(k) = item {
-                                        use std::result::Result::*;
-                                        match door.unlock(DoorState::Closed, Some(k.as_ref())) {
-                                            Ok(()) => {
-                                                other_msg =
-                                                    Some(format!("{} unlocks a door", name));
-                                                res = Some(());
-                                                break;
-                                            }
-                                            Err(_) => continue,
-                                        }
-                                    }
-                                }
-                                match res {
-                                    Some(()) => format!("*click*"),
-                                    None => match door.state() {
-                                        DoorState::Locked => {
-                                            format!("you don't have the proper key")
-                                        }
-                                        DoorState::Closed => format!("you've already unlocked it"),
-                                        DoorState::Open => format!("it's already open"),
-                                        DoorState::MagicallySealed => {
-                                            format!("it's sealed by some unfamiliar magic")
-                                        }
-                                        DoorState::PermaLocked => format!("it ain't gonna budge"),
-                                        _ => format!("wtf"),
-                                    },
-                                }
+                                try_door_unlock(name, &mut other_msg, player, door)
                             }
                             // TODO: handle other unlockable items (such as chests) here
                             _ => format!("I'm not sure that you can even unlock that"),
@@ -422,6 +388,21 @@ pub fn fill_interpreter(i: &mut Interpreter) {
                     }
                     _ => format!("that's all greek to me"),
                 }
+            }
+            2 => {
+                let room = rooms.get_mut(&loc)?;
+
+                let dir: MapDir = a[1].into();
+                let door = match room.doors().get_mut(&dir) {
+                    Some(d) => d,
+                    None => return message(u, "there's no door in that direction"),
+                };
+
+                let player = players
+                    .get_mut(&u)
+                    .ok_or(Fatal(format!("UNABLE TO FIND player {}", u)))?; // TODO: fix early exit
+
+                try_door_unlock(name, &mut other_msg, player, door)
             }
             _ => format!("that's pretty much gobbledygook to me"),
         };
@@ -508,4 +489,54 @@ pub fn fill_interpreter(i: &mut Interpreter) {
     i.insert("none", |_, u, _| message(u, random_insult()));
 
     i.insert("quit", |_, _, _| Err(Quit))
+}
+
+fn try_door_unlock(
+    name: String,
+    other_msg: &mut Option<String>,
+    player: &mut Arc<Mutex<Player>>,
+    door: &mut Door,
+) -> String {
+    let mut res = None;
+
+    for item in player.lock().unwrap().items_mut().iter_mut() {
+        if let Item::Key(k) = item {
+            use std::result::Result::*;
+            match door.unlock(DoorState::Closed, Some(k.as_ref())) {
+                Ok(()) => {
+                    *other_msg = Some(format!("{} unlocks a door", name));
+                    res = Some(());
+                    break;
+                }
+                Err(_) => continue,
+            }
+        }
+    }
+    match res {
+        Some(()) => format!("*click*"),
+        None => match door.state() {
+            DoorState::Locked => format!("you don't have the proper key"),
+            DoorState::Closed => format!("you've already unlocked it"),
+            DoorState::Open => format!("it's already open"),
+            DoorState::MagicallySealed => format!("it's sealed by some unfamiliar magic"),
+            DoorState::PermaLocked => format!("it ain't gonna budge"),
+            _ => format!("wtf"),
+        },
+    }
+}
+
+fn try_door_open(name: &String, other_msg: &mut Option<String>, door: &mut Door) -> String {
+    match door.unlock(DoorState::Open, std::option::Option::None) {
+        Ok(_) => {
+            *other_msg = Some(format!("{} opens a door", name));
+            format!("the door swings open")
+        }
+        Err(err) => match err {
+            DoorState::Locked => format!("that door is locked"),
+            DoorState::Open => format!("it's already open"),
+            DoorState::MagicallySealed => format!("it's sealed by some unfamiliar magic"),
+            DoorState::PermaLocked => format!("it ain't gonna budge"),
+            _ => format!("wtf"),
+        },
+    }
 }
