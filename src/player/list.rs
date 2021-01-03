@@ -3,7 +3,6 @@ use std::ops::{Deref, DerefMut};
 
 use serde::{Deserialize, Serialize};
 
-
 use crate::player::{Player, Uuid};
 use crate::text::message::Messenger;
 

@@ -8,13 +8,16 @@ use crate::error::{CmdErr, EnnuiError};
 use crate::map::door::{DoorState, Lock, ObstacleState};
 use crate::text::message::{Audience, Msg};
 
-
 use std::ops::DerefMut;
 
 pub fn fill_interpreter(i: &mut Interpreter) {
     i.insert("look", |g, u, args| {
+        println!("[{}]: made it to handler", Green("SUCCESS".to_owned()));
         let msg: Cow<'static, str> = match args.len() {
-            0 => g.describe_room(u)?.into(),
+            0 => {
+                println!("[{}]: made it to case", Green("SUCCESS".to_owned()));
+                g.describe_room(u)?.into()
+            }
             1 => {
                 let loc = g.loc_of(u)?;
                 if let Some(item) = g.describe_item(u, args[0]) {

@@ -134,11 +134,14 @@ impl Game {
     }
 
     fn describe_room<P: Uuid>(&mut self, p: P) -> Option<String> {
+        println!("[{}]: describe_room", Green("SUCCESS".to_owned()));
         let loc = self.loc_of(p.uuid())?;
+        println!("[{}]: got uuid", Green("SUCCESS".to_owned()));
 
         let players = &mut self.players;
         let rooms = &self.rooms;
         let r = rooms.get(&loc)?;
+        println!("[{}]: got room", Green("SUCCESS".to_owned()));
         let exits = rooms.exits(loc);
 
         Some(r.display(p.uuid(), players, &exits))

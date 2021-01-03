@@ -197,6 +197,7 @@ impl Room {
     }
 
     pub fn display(&self, p: u128, global_players: &PlayerList, exits: &[MapDir]) -> String {
+        println!("[{}]: room.display", Green("SUCCESS".to_owned()));
         let Room {
             info: Description {
                 name, description, ..
@@ -206,17 +207,20 @@ impl Room {
             ..
         } = self;
 
-        let player_list = players
+        let player_list = players.except(p).except(0);
+        let player_list: Vec<&u128> = player_list.iter().collect();
+
+        println!(
+            "[{}]: players: {:#?}",
+            Green("SUCCESS".to_owned()),
+            player_list
+        );
+
+        let player_list = player_list
             .iter()
-            .filter_map(|uuid| match global_players.get(uuid) {
-                Some(player)
-                    if player.lock().unwrap().uuid() != p && player.lock().unwrap().uuid() != 0 =>
-                {
-                    Some(player.lock().unwrap().name().to_owned())
-                }
-                _ => None,
-            })
+            .filter_map(|id| Some(global_players.get(id)?.lock().unwrap().name().to_owned()))
             .collect::<Vec<_>>();
+
         let player_list = Yellow(match player_list.len() {
             0 => "".to_owned(),
             1 => format!("\n{}", player_list[0]),

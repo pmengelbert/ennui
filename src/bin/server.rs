@@ -8,7 +8,7 @@ use ennui::error::EnnuiError;
 use ennui::game::{Game, GameResult};
 use ennui::player::{Player, Uuid};
 use ennui::text::message::Broadcast;
-use ennui::text::Color::Red;
+use ennui::text::Color::{Green, Red};
 
 use std::sync::mpsc::channel;
 
@@ -88,9 +88,12 @@ fn main() -> GameResult<()> {
 
 fn handle_client(p: u128, g: Arc<Mutex<Game>>) -> std::io::Result<()> {
     get_and_set_player_name(p, g.clone())?;
+
+    println!("[{}]: player named", Green("SUCCESS".to_owned()));
     loop {
         let s = get_player_command(p, g.clone())?;
 
+        println!("[{}]: Got player command", Green("SUCCESS".to_owned()));
         {
             let mut g = match g.lock() {
                 Ok(g) => g,
@@ -101,6 +104,7 @@ fn handle_client(p: u128, g: Arc<Mutex<Game>>) -> std::io::Result<()> {
             };
 
             let resp = g.interpret(p, &s);
+            println!("[{}]: Got response", Green("SUCCESS".to_owned()));
             match resp {
                 Ok((aud, msg)) => {
                     let results = g.send(&*aud, &*msg);
