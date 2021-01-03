@@ -76,7 +76,7 @@ impl Game {
     where
         U: AsRef<[u8]>,
     {
-        let mut res: usize = 0;
+        let mut res = 0_usize;
         for (_, p) in &mut *self.players {
             let mut s = String::from("\n\n");
             s.push_str(&String::from_utf8(buf.as_ref().to_owned()).unwrap());

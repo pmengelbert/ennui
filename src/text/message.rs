@@ -47,7 +47,7 @@ impl Uuid for Vec<u128> {
 }
 
 pub trait Broadcast {
-    fn send(&mut self, audience: &dyn Messenger, message: &dyn Message) -> Vec<WriteResult>;
+    fn send(&mut self, audience: &dyn Messenger, message: &dyn Message) -> Vec<(u128, WriteResult)>;
 }
 
 pub struct Audience<T, U>(pub T, pub U)

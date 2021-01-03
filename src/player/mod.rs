@@ -113,9 +113,16 @@ impl Attribute<Quality> for Player {
 
 impl Write for Player {
     fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
-        match self.stream {
+        let res = match self.stream {
             Some(ref mut s) => s.write(buf),
             None => Ok(0),
+        };
+        match res {
+            Err(e) if e.kind() == std::io::ErrorKind::BrokenPipe => {
+                self.stream = None;
+                Err(e)
+            }
+            o => o,
         }
     }
 
@@ -160,10 +167,14 @@ impl Player {
         }
     }
 
-    pub fn new_with_stream(name: &str, stream: TcpStream) -> Self {
+    pub fn new_with_stream(stream: TcpStream) -> Self {
         let mut p = Self::new(name);
         p.assign_stream(stream);
         p
+    }
+
+    pub fn set_name(&mut self, name: &str) {
+        self.info.name = name.to_owned();
     }
 
     pub fn hurt(&mut self, amt: usize) {

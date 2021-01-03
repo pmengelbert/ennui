@@ -128,3 +128,13 @@ impl Uuid for &PlayerList {
         self.keys().cloned().collect()
     }
 }
+
+impl PlayerList {
+    pub fn to_id_list(&self) -> PlayerIdList {
+        let mut pil = PlayerIdList::default();
+        for id in self.keys() {
+            pil.insert(*id);
+        }
+        pil
+    }
+}

@@ -1,5 +1,5 @@
-use std::io::{Read, Write};
-use std::net::TcpListener;
+use std::io::{Read, Write, Error};
+use std::net::{TcpListener, TcpStream};
 use std::sync::{Arc, Mutex};
 use std::thread::spawn;
 
@@ -9,6 +9,7 @@ use ennui::game::{Game, GameResult};
 use ennui::player::{Player, Uuid};
 use ennui::text::message::Broadcast;
 use ennui::text::Color::Red;
+use std::any::Any;
 
 macro_rules! arc_mutex(
     ($wrapped:expr) => {
@@ -26,8 +27,14 @@ where
 {
     fn read_line(&mut self) -> std::io::Result<String> {
         let mut buf = [0u8; 256];
-        let n = self.read(&mut buf)?;
-        Ok(String::from_utf8((&buf[..n - 1]).to_owned()).unwrap())
+        let n = match self.read(&mut buf) {
+            Ok(n) => n,
+            Err(e) => {
+                println!("{}", e);
+                0
+            }
+        };
+        Ok(String::from_utf8((&buf[..n.checked_sub(1).unwrap_or_default()]).to_owned()).unwrap_or_default())
     }
 }
 
@@ -42,10 +49,11 @@ fn main() -> GameResult<()> {
         let game_clone = shared_game.clone();
 
         let mut stream = stream?;
+
         write!(stream, "enter your name: ")?;
         let name = stream.read_line()?;
 
-        let p = Player::new_with_stream(&name, stream.try_clone().unwrap());
+        let p = Player::new_with_stream(stream.try_clone().unwrap());
         let uuid = p.uuid();
         {
             let mut game = match game_clone.lock() {
@@ -55,7 +63,10 @@ fn main() -> GameResult<()> {
                     continue;
                 }
             };
-            game.broadcast(format!("{} has joined the game.", name))?;
+            match game.broadcast(format!("{} has joined the game.", name)) {
+                Ok(_) => (),
+                Err(e) => println!("{:#?}", e),
+            };
             game.add_player(p);
         }
 
@@ -65,7 +76,12 @@ fn main() -> GameResult<()> {
     }
 
     for handle in join_handles {
-        handle.join().unwrap().unwrap_or_default();
+        match handle.join() {
+            Ok(_) => (),
+            Err(err) => {
+                println!("{:#?}", err);
+            },
+        }
     }
 
     Ok(())
@@ -92,7 +108,18 @@ fn handle_client<T: ReadLine + Write>(
             let resp = g.interpret(p, &s);
             match resp {
                 Ok((aud, msg)) => {
-                    g.send(&*aud, &*msg);
+                    let results = g.send(&*aud, &*msg);
+                    for (id, result) in results {
+                        match result {
+                            Err(e) if e.kind() == std::io::ErrorKind::BrokenPipe => {
+                                println!("ERROR: {:?}", e);
+                                g.remove_player(id);
+                            }
+                            Err(e) => println!("ERROR: {:?}", e),
+                            _ => (),
+
+                        }
+                    }
                 }
                 Err(e) => match e {
                     EnnuiError::Quit => {

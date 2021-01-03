@@ -10,6 +10,11 @@ macro_rules! arc_mutex(
 
 type WriteResult = std::io::Result<usize>;
 
+pub struct SendError {
+    pub result: std::io::Result<usize>,
+    pub pid: u128,
+}
+
 pub mod error;
 pub mod game;
 mod interpreter;
