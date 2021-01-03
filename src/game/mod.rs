@@ -94,6 +94,10 @@ impl Game {
         }
     }
 
+    pub fn players_mut(&mut self) -> &mut PlayerList {
+        &mut self.players
+    }
+
     fn describe_room<P: Uuid>(&mut self, p: P) -> Option<String> {
         let loc = self.loc_of(p.uuid())?;
 

@@ -141,7 +141,6 @@ fn conv_desc(d: &mut Description, q: Quality) -> Box<dyn Describe> {
 fn conv(list: &mut YamlItemList) -> ItemList {
     let mut ret = ItemList::new();
     for i in &mut **list {
-        println!("{:?}", i);
         let i = match i {
             Clothing(i) => Item::Clothing(conv_desc(i, Quality::Clothing)),
             Weapon(i) => Item::Weapon(conv_desc(i, Quality::Weapon)),

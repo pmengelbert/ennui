@@ -5,15 +5,19 @@ use crate::text::Wrap;
 use crate::WriteResult;
 use std::borrow::BorrowMut;
 use std::io::Write;
-use crate::player::Uuid;
 
 impl<T> Broadcast for T
 where
     T: BorrowMut<Game>,
 {
-    fn send(&mut self, audience: &dyn Messenger, message: &dyn Message) -> Vec<(u128, WriteResult)> {
+    fn send(
+        &mut self,
+        audience: &dyn Messenger,
+        message: &dyn Message,
+    ) -> Vec<(u128, WriteResult)> {
         let g = self.borrow_mut();
         let mut v = vec![];
+
         let self_id = audience.id().unwrap_or_default();
         let other_ids = audience.others();
 

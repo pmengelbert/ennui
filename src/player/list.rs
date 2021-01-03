@@ -64,7 +64,7 @@ impl PlayerIdList {
         Some(
             *self
                 .iter()
-                .find(|p| g.get(p).unwrap_or(&Player::new("")).name() == name)?,
+                .find(|p| g.get(p).unwrap_or(&Player::default()).name() == name)?,
         )
     }
 
@@ -131,6 +131,7 @@ impl Uuid for &PlayerList {
 
 impl PlayerList {
     pub fn to_id_list(&self) -> PlayerIdList {
+        println!("DEBUG: {:#?}", **self);
         let mut pil = PlayerIdList::default();
         for id in self.keys() {
             pil.insert(*id);

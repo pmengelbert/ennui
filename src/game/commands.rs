@@ -317,7 +317,6 @@ pub fn fill_interpreter(i: &mut Interpreter) {
                     use std::result::Result::*;
                     match door.unlock(DoorState::Open, std::option::Option::None) {
                         Ok(_) => {
-                            println!("doorstate: {}", door.state());
                             other_msg = Some(format!("{} opens a door", name));
                             format!("the door swings open")
                         }
@@ -382,7 +381,6 @@ pub fn fill_interpreter(i: &mut Interpreter) {
                                         use std::result::Result::*;
                                         match door.unlock(DoorState::Closed, Some(&**k)) {
                                             Ok(()) => {
-                                                println!("door state: {}", door.state());
                                                 other_msg =
                                                     Some(format!("{} unlocks a door", name));
                                                 res = Some(());

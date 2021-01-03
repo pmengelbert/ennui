@@ -230,14 +230,12 @@ impl Game {
 
             match self.loc_of(other_id) {
                 Some(other_loc) if &other_loc != loc => {
-                    println!("made it!");
                     return Err(Msg(format!(
                         "you don't see {} here !",
                         other.unwrap_or_default()
                     )));
                 }
                 None => {
-                    println!("made it!");
                     return Ok(());
                 }
                 _ => (),

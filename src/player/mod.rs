@@ -12,6 +12,7 @@ use crate::item::list::{Holder, ItemList, ListTrait};
 use crate::item::{Attribute, Describe, Description, Item, Quality};
 use crate::map::coord::Coord;
 use crate::map::Locate;
+use std::mem::take;
 
 pub mod list;
 mod meter;
@@ -119,7 +120,11 @@ impl Write for Player {
         };
         match res {
             Err(e) if e.kind() == std::io::ErrorKind::BrokenPipe => {
-                self.stream = None;
+                let x = take(&mut self.stream);
+                match x {
+                    None => (),
+                    Some(_) => (),
+                }
                 Err(e)
             }
             o => o,
@@ -141,7 +146,7 @@ impl Uuid for u128 {
 }
 
 impl Player {
-    pub fn new(name: &str) -> Self {
+    pub fn new() -> Self {
         use meter::Meter;
         use meter::MeterKind::*;
         let stats = vec![
@@ -154,8 +159,8 @@ impl Player {
             uuid: CrateUuid::new_v4().as_u128(),
             info: Description {
                 description: "".to_owned(),
-                name: name.to_owned(),
-                handle: Handle(vec![name.to_owned()]),
+                name: String::new(),
+                handle: Handle(vec![]),
                 display: "".to_owned(),
                 attributes: vec![],
             },
@@ -168,7 +173,7 @@ impl Player {
     }
 
     pub fn new_with_stream(stream: TcpStream) -> Self {
-        let mut p = Self::new(name);
+        let mut p = Self::new();
         p.assign_stream(stream);
         p
     }

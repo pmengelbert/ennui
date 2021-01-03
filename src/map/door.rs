@@ -155,18 +155,12 @@ impl Lock<GuardState> for RenaissanceGuard {
         key: Option<&dyn Key<Self::Lock>>,
     ) -> StateResult<GuardState> {
         if let GuardState::Open = new_state {
-            println!("checkpoint unlock");
             match key {
                 Some(k) if k.key() == self.lock => {
-                    println!("key: {}, lock: {}", k.key(), self.lock);
                     self.state = new_state;
-                    println!("guard state: {:?}", self.state());
                     Ok(())
                 }
-                Some(k) => {
-                    println!("key: {}, lock: {}", k.key(), self.lock);
-                    Err(self.state())
-                }
+                Some(_k) => Err(self.state()),
                 _ => Err(self.state()),
             }
         } else {

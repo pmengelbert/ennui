@@ -4,7 +4,7 @@ use std::io::Write;
 
 fn main() -> GameResult<()> {
     let mut g = Game::new()?;
-    let p = Player::new("peter");
+    let p = Player::new();
 
     let uuid = p.uuid();
     g.add_player(p);
