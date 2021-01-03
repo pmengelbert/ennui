@@ -23,6 +23,7 @@ use crate::text::article;
 use crate::text::message::{Audience, Broadcast, Message, Messenger, Msg};
 use crate::text::Color::*;
 use std::sync::{Arc, Mutex};
+use std::sync::mpsc::Sender;
 
 mod broadcast;
 mod commands;
@@ -35,6 +36,7 @@ pub struct Game {
     players: PlayerList,
     rooms: RoomList,
     interpreter: Interpreter,
+    sender: Option<Sender<(Audience<u128, Vec<u128>>, Msg<String, String>)>>,
 }
 
 impl Game {
@@ -50,7 +52,12 @@ impl Game {
             players: PlayerList(players),
             rooms,
             interpreter,
+            sender: None,
         })
+    }
+
+    pub fn set_sender(&mut self, sender: Sender<(Audience<u128, Vec<u128>>, Msg<String, String>)>) {
+        self.sender = Some(sender);
     }
 
     pub fn interpret(&mut self, p: u128, s: &str) -> Result<CommandMessage, EnnuiError> {
@@ -131,6 +138,10 @@ impl Game {
             .lock()
             .unwrap()
             .set_name(name))
+    }
+
+    pub fn clone_sender(&self) -> Option<Sender<(Audience<u128, Vec<u128>>, Msg<String, String>)>> {
+        Some(self.sender.as_ref()?.clone())
     }
 
     fn describe_room<P: Uuid>(&mut self, p: P) -> Option<String> {

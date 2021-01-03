@@ -7,10 +7,11 @@ use ennui::error::EnnuiError;
 
 use ennui::game::{Game, GameResult};
 use ennui::player::{Player, Uuid};
-use ennui::text::message::Broadcast;
+use ennui::text::message::{Broadcast, Audience, Msg};
 use ennui::text::Color::{Green, Red};
 
 use std::sync::mpsc::channel;
+use ennui::text::channel::{MessageReceiver, MessageHandler};
 
 macro_rules! arc_mutex(
     ($wrapped:expr) => {
@@ -59,6 +60,11 @@ fn main() -> GameResult<()> {
             }
         }
     });
+
+    let (fight_sender, fight_receiver) = channel::<(Audience<u128, Vec<u128>>, Msg<String, String>)>();
+    let rcv = MessageReceiver(fight_receiver);
+    rcv.start(shared_game.clone());
+    shared_game.lock().unwrap().set_sender(fight_sender);
 
     for stream in listener.incoming() {
         let game_clone = shared_game.clone();

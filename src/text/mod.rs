@@ -1,4 +1,5 @@
 pub mod message;
+pub mod channel;
 
 use std::fmt::{Debug, Display, Formatter};
 

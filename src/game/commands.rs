@@ -461,11 +461,14 @@ pub fn fill_interpreter(i: &mut Interpreter) {
                 .ok_or(EnnuiError::Fatal("hit: OTHER PLAYER NOT FOUND".into()))?
                 .clone();
 
-            let mut fight = arc_mutex!(BasicFight::new(FightInfo {
+            let sender = g.clone_sender()
+                .ok_or(EnnuiError::Fatal("hit: UNABLE TO CLONE SENDER".into()))?;
+            let mut fight = BasicFight::new(FightInfo {
                 player_a: p,
                 player_b: other_p,
                 delay: Duration::new(3, 0),
-            }));
+                sender
+            });
 
             match fight.begin() {
                 Ok(_) => {}
