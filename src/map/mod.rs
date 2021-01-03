@@ -179,7 +179,7 @@ impl Room {
                 display: "".to_owned(),
                 attributes: vec![],
             },
-            loc: loc,
+            loc,
             players: PlayerIdList(HashSet::new()),
             items: ItemList::new(),
             inner_items: None,

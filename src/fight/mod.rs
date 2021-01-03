@@ -7,7 +7,9 @@ use std::ops::DerefMut;
 use std::sync::mpsc::{channel, Sender};
 use std::sync::{Arc, Mutex};
 
+use crate::fight::Starter::{Aggressor, Defender};
 use crate::item::Describe;
+
 use crate::text::message::{Audience, MessageFormat, Msg};
 use std::error::Error as StdError;
 use std::thread;
@@ -61,13 +63,13 @@ impl BasicFight {
 impl Fight for Arc<Mutex<BasicFight>> {
     fn begin(&mut self) -> Result<FightStatus, Error> {
         let (sender, receiver) = channel::<JoinHandle<Result<(), String>>>();
-        let cl = self.clone();
+        let fight = self.clone();
         spawn(move || {
             for handle in receiver {
                 match handle.join() {
                     Ok(_r) => println!("fight concluded"),
                     Err(e) => {
-                        cl.clone().end();
+                        fight.clone().end();
                         println!("[{}]: {:?}", Red("ERROR".to_owned()), e)
                     }
                 }
@@ -87,76 +89,60 @@ impl Fight for Arc<Mutex<BasicFight>> {
         let bname = pb.lock().unwrap().name().to_owned();
 
         sender.send(spawn(move || {
-            let player_a = pa.clone();
-            let player_b = pb.clone();
+            let mut a_loc = pa.lock().unwrap().loc();
+            let mut b_loc = pb.lock().unwrap().loc();
             loop {
-                let a_loc = {
-                    let mut a = player_a.lock().unwrap();
-                    if !a.is_connected() {
-                        cl.end();
-                    }
+                let FightStatus { ended } = cl.status();
+                println!("status: {}", ended);
+                if ended {
+                    break;
+                }
 
-                    let FightStatus { ended } = cl.status();
-                    {
-                        println!("status: {}", ended);
-                        if ended {
-                            break;
-                        }
-                    }
+                if a_loc != b_loc {
+                    cl.end();
+                    break;
+                }
 
-                    a.hurt(5);
-                    fight_sender
-                        .send((
-                            Audience(aid, vec![bid]),
-                            Msg {
-                                s: format!("{}", Yellow(format!("you hit {}", bname)))
-                                    .custom_padded("\n\n", ""),
-                                o: Some(
-                                    format!("{}", Red(format!("{} hits you", aname)))
-                                        .custom_padded("\n\n", ""),
-                                ),
-                            },
-                        ))
-                        .map_err(|_| String::from("player a write error"))?;
-                    if a.hp() <= 0 {
-                        cl.end();
-                        break;
-                    }
-                    a.loc()
-                };
+                a_loc = pa.lock().unwrap().loc();
+                if a_loc != b_loc {
+                    cl.end();
+                    break;
+                }
 
-                let b_loc = {
-                    let mut b = player_b.lock().unwrap();
-                    if !b.is_connected() {
-                        cl.end();
-                    }
-                    let FightStatus { ended } = cl.status();
-                    {
-                        println!("status: {}", ended);
-                        if ended {
-                            break;
-                        }
-                    }
-                    b.hurt(5);
-                    fight_sender
-                        .send((
-                            Audience(bid, vec![aid]),
-                            Msg {
-                                s: format!("{}", Yellow(format!("you hit {}", aname)))
-                                    .custom_padded("\n", "\n\n > "),
-                                o: Some(
-                                    format!("{}", Red(format!("{} hits you", bname)))
-                                        .custom_padded("\n", "\n\n > "),
-                                ),
-                            },
-                        ))
-                        .map_err(|_| String::from("player b write error"))?;
-                    if b.hp() <= 0 {
-                        cl.end();
-                        break;
-                    }
-                    b.loc()
-                };
+                fight_logic(
+                    &mut cl,
+                    &fight_sender,
+                    aid,
+                    bid,
+                    &aname,
+                    &bname,
+                    pa.clone(),
+                    Aggressor,
+                )?;
+
+                let FightStatus { ended } = cl.status();
+                println!("status: {}", ended);
+                if ended {
+                    break;
+                }
+
+                b_loc = pb.lock().unwrap().loc();
+                if a_loc != b_loc {
+                    cl.end();
+                    break;
+                }
+
+                fight_logic(
+                    &mut cl,
+                    &fight_sender,
+                    bid,
+                    aid,
+                    &bname,
+                    &aname,
+                    pb.clone(),
+                    Defender,
+                )?;
+
                 if a_loc != b_loc {
                     cl.end();
                     break;
@@ -193,3 +179,51 @@ pub struct FightStatus {
 }
 
 pub struct FightMessage {}
+
+#[derive(Eq, PartialEq, Copy, Clone)]
+enum Starter {
+    Aggressor,
+    Defender,
+}
+
+fn fight_logic(
+    cl: &mut Arc<Mutex<BasicFight>>,
+    fight_sender: &Sender<(Audience<u128, Vec<u128>>, Msg<String, String>)>,
+    aid: u128,
+    bid: u128,
+    a_name: &str,
+    b_name: &str,
+    player: Player,
+    starter: Starter,
+) -> Result<(), String> {
+    let mut player = player.lock().unwrap();
+    if !player.is_connected() {
+        cl.end();
+    }
+
+    let ((a_before, a_after), (b_before, b_after)) = match starter {
+        Aggressor => (("\n\n", ""), ("\n\n", "")),
+        Defender => (("\n", "\n\n > "), ("\n", "\n\n > ")),
+    };
+
+    player.hurt(5);
+    fight_sender
+        .send((
+            Audience(aid, vec![bid]),
+            Msg {
+                s: format!("{}", Yellow(format!("you hit {}", b_name)))
+                    .custom_padded(a_before, a_after),
+                o: Some(
+                    format!("{}", Red(format!("{} hits you", a_name)))
+                        .custom_padded(b_before, b_after),
+                ),
+            },
+        ))
+        .map_err(|_| format!("player {} write error", aid))?;
+
+    if player.hp() <= 0 {
+        cl.end();
+    }
+
+    Ok(())
+}
