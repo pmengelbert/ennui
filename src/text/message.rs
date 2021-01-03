@@ -7,6 +7,7 @@ type WriteResult = io::Result<usize>;
 
 pub trait Message {
     fn to_self(&self) -> String;
+    fn to_object(&self) -> Option<String>;
     fn to_others(&self) -> Option<String>;
 }
 
@@ -17,6 +18,10 @@ where
 {
     fn to_self(&self) -> String {
         self.s.as_ref().to_owned()
+    }
+
+    fn to_object(&self) -> Option<String> {
+        None
     }
 
     fn to_others(&self) -> Option<String> {
@@ -92,6 +97,10 @@ impl Message for &str {
         self.to_string()
     }
 
+    fn to_object(&self) -> Option<String> {
+        Some(self.to_string())
+    }
+
     fn to_others(&self) -> Option<String> {
         Some(self.to_string())
     }
@@ -104,6 +113,12 @@ impl Message for Cow<'static, str> {
         s
     }
 
+    fn to_object(&self) -> Option<String> {
+        let mut s = String::new();
+        s.push_str(&self);
+        Some(s)
+    }
+
     fn to_others(&self) -> Option<String> {
         let mut s = String::new();
         s.push_str(&self);
@@ -114,6 +129,10 @@ impl Message for Cow<'static, str> {
 impl Message for String {
     fn to_self(&self) -> String {
         self.clone()
+    }
+
+    fn to_object(&self) -> Option<String> {
+        Some(self.clone())
     }
 
     fn to_others(&self) -> Option<String> {

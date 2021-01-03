@@ -16,7 +16,7 @@ pub struct SendError {
 }
 
 pub mod error;
-mod fight;
+pub mod fight;
 pub mod game;
 mod interpreter;
 mod item;

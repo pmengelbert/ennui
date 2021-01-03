@@ -10,11 +10,12 @@ use std::sync::{Arc, Mutex};
 use crate::fight::Starter::{Aggressor, Defender};
 use crate::item::Describe;
 
-use crate::text::message::{Audience, MessageFormat, Msg};
+use crate::text::message::{Audience, MessageFormat, Msg, Message};
 use std::error::Error as StdError;
 use std::thread;
 use std::thread::{spawn, JoinHandle};
 use std::time::Duration;
+use std::borrow::{Cow, Borrow};
 
 type Player = Arc<Mutex<BarePlayer>>;
 type Error = Box<dyn StdError>;
@@ -31,14 +32,14 @@ pub struct BasicFight {
     player_b: Player,
     delay: Duration,
     ended: Arc<Mutex<bool>>,
-    sender: Sender<(Audience<u128, Vec<u128>>, Msg<String, String>)>,
+    sender: Sender<(Audience<u128, Vec<u128>>, FightMessage)>,
 }
 
 pub struct FightInfo {
     pub player_a: Player,
     pub player_b: Player,
     pub delay: Duration,
-    pub sender: Sender<(Audience<u128, Vec<u128>>, Msg<String, String>)>,
+    pub sender: Sender<(Audience<u128, Vec<u128>>, FightMessage)>,
 }
 
 impl BasicFight {
@@ -178,7 +179,31 @@ pub struct FightStatus {
     pub ended: bool,
 }
 
-pub struct FightMessage {}
+pub struct FightMessage {
+    pub s: Cow<'static, str>,
+    pub obj: Option<Cow<'static, str>>,
+    pub oth: Option<Cow<'static, str>>,
+}
+
+impl Message for FightMessage {
+    fn to_self(&self) -> String {
+        let mut s = String::new();
+        s.push_str(self.s.borrow());
+        s
+    }
+
+    fn to_object(&self) -> Option<String> {
+        let mut s = String::new();
+        s.push_str(self.obj.as_ref()?.borrow());
+        Some(s)
+    }
+
+    fn to_others(&self) -> Option<String> {
+        let mut s = String::new();
+        s.push_str(self.oth.as_ref()?.borrow());
+        Some(s)
+    }
+}
 
 #[derive(Eq, PartialEq, Copy, Clone)]
 enum Starter {
@@ -188,7 +213,7 @@ enum Starter {
 
 fn fight_logic(
     cl: &mut Arc<Mutex<BasicFight>>,
-    fight_sender: &Sender<(Audience<u128, Vec<u128>>, Msg<String, String>)>,
+    fight_sender: &Sender<(Audience<u128, Vec<u128>>, FightMessage)>,
     aid: u128,
     bid: u128,
     a_name: &str,
@@ -210,13 +235,17 @@ fn fight_logic(
     fight_sender
         .send((
             Audience(aid, vec![bid]),
-            Msg {
+            FightMessage {
                 s: format!("{}", Yellow(format!("you hit {}", b_name)))
-                    .custom_padded(a_before, a_after),
-                o: Some(
+                    .custom_padded(a_before, a_after).into(),
+                obj: Some(
                     format!("{}", Red(format!("{} hits you", a_name)))
-                        .custom_padded(b_before, b_after),
+                        .custom_padded(b_before, b_after).into()
                 ),
+                oth: Some (
+                    format!("{}", Red(format!("{} hits {}", a_name, b_name)))
+                        .custom_padded(b_before, b_after).into()
+                )
             },
         ))
         .map_err(|_| format!("player {} write error", aid))?;

@@ -2,9 +2,10 @@ use crate::text::message::{Audience, Broadcast, Msg};
 use std::sync::mpsc::Receiver;
 use std::sync::{Arc, Mutex};
 use std::thread::{spawn, JoinHandle};
+use crate::fight::FightMessage;
 
 type Listener = Audience<u128, Vec<u128>>;
-type Content = Msg<String, String>;
+type Content = FightMessage;
 
 pub trait MessageHandler {
     fn start<T: Broadcast + Send + 'static>(self, caster: Arc<Mutex<T>>) -> JoinHandle<()>;

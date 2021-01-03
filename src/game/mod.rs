@@ -24,6 +24,7 @@ use crate::player::{Player, Uuid};
 use crate::text::article;
 use crate::text::message::{Audience, Broadcast, Message, MessageFormat, Messenger, Msg};
 use crate::text::Color::*;
+use crate::fight::FightMessage;
 
 mod broadcast;
 mod commands;
@@ -36,7 +37,7 @@ pub struct Game {
     players: PlayerList,
     rooms: RoomList,
     interpreter: Interpreter,
-    sender: Option<Sender<(Audience<u128, Vec<u128>>, Msg<String, String>)>>,
+    sender: Option<Sender<(Audience<u128, Vec<u128>>, FightMessage)>>,
 }
 
 impl Game {
@@ -56,7 +57,7 @@ impl Game {
         })
     }
 
-    pub fn set_sender(&mut self, sender: Sender<(Audience<u128, Vec<u128>>, Msg<String, String>)>) {
+    pub fn set_sender(&mut self, sender: Sender<(Audience<u128, Vec<u128>>, FightMessage)>) {
         self.sender = Some(sender);
     }
 
@@ -127,7 +128,7 @@ impl Game {
             .set_name(name))
     }
 
-    pub fn clone_sender(&self) -> Option<Sender<(Audience<u128, Vec<u128>>, Msg<String, String>)>> {
+    pub fn clone_sender(&self) -> Option<Sender<(Audience<u128, Vec<u128>>, FightMessage)>> {
         Some(self.sender.as_ref()?.clone())
     }
 

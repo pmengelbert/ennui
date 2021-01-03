@@ -12,6 +12,7 @@ use ennui::text::Color::{Green, Red};
 
 use ennui::text::channel::{MessageHandler, MessageReceiver};
 use std::sync::mpsc::channel;
+use ennui::fight::FightMessage;
 
 macro_rules! arc_mutex(
     ($wrapped:expr) => {
@@ -62,7 +63,7 @@ fn main() -> GameResult<()> {
     });
 
     let (fight_sender, fight_receiver) =
-        channel::<(Audience<u128, Vec<u128>>, Msg<String, String>)>();
+        channel::<(Audience<u128, Vec<u128>>, FightMessage)>();
     let rcv = MessageReceiver(fight_receiver);
     rcv.start(shared_game.clone());
     shared_game.lock().unwrap().set_sender(fight_sender);
