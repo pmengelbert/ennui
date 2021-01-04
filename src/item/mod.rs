@@ -70,6 +70,7 @@ pub enum Quality {
 
 pub trait Attribute<T: Copy + Eq> {
     fn attr(&self) -> &[T];
+    fn set_attr(&mut self, q: T);
 
     fn is(&self, a: T) -> bool {
         self.attr().contains(&a)
@@ -138,6 +139,16 @@ impl Attribute<Quality> for Item {
             Guard(_, i) => i.attr(),
         }
     }
+
+    fn set_attr(&mut self, q: Quality) {
+        use Item::*;
+        match self {
+            Clothing(i) | Weapon(i) | Scenery(i) | Edible(i) | Holdable(i) => i.set_attr(q),
+            Container(i) => i.set_attr(q),
+            Key(i) => i.set_attr(q),
+            Guard(_, i) => i.set_attr(q),
+        }
+    }
 }
 
 impl Default for YamlItem {
@@ -178,6 +189,10 @@ impl Attribute<Quality> for Description {
     fn attr(&self) -> &[Quality] {
         &self.attributes
     }
+
+    fn set_attr(&mut self, q: Quality) {
+        self.attributes.push(q);
+    }
 }
 
 impl Description {
@@ -211,6 +226,10 @@ pub struct YamlItemList {
 impl Attribute<Quality> for YamlItemList {
     fn attr(&self) -> &[Quality] {
         &self.info.attributes
+    }
+
+    fn set_attr(&mut self, q: Quality) {
+        self.info.set_attr(q)
     }
 }
 
@@ -294,6 +313,19 @@ impl YamlItem {
             YamlItem::Guard { info, .. } => &info,
         }
     }
+
+    fn safe_unwrap_mut(&mut self) -> &mut Description {
+        match self {
+            Key(_, item)
+            | Clothing(item)
+            | Weapon(item)
+            | Scenery(item)
+            | Holdable(item)
+            | Edible(item) => item,
+            Container(i) => &mut i.info,
+            YamlItem::Guard { info, .. } => info,
+        }
+    }
 }
 
 impl Describe for YamlItem {
@@ -317,6 +349,10 @@ impl Describe for YamlItem {
 impl Attribute<Quality> for YamlItem {
     fn attr(&self) -> &[Quality] {
         self.safe_unwrap().attr()
+    }
+
+    fn set_attr(&mut self, q: Quality) {
+        self.safe_unwrap_mut().set_attr(q)
     }
 }
 

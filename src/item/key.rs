@@ -44,6 +44,10 @@ impl Attribute<Quality> for KeyType {
     fn attr(&self) -> &[Quality] {
         &self.info.attributes
     }
+
+    fn set_attr(&mut self, q: Quality) {
+        self.info.attributes.push(q);
+    }
 }
 
 impl From<Description> for KeyType {

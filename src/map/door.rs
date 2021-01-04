@@ -126,6 +126,10 @@ impl Attribute<Quality> for RenaissanceGuard {
     fn attr(&self) -> &[Quality] {
         &self.info.attributes
     }
+
+    fn set_attr(&mut self, q: Quality) {
+        self.info.set_attr(q)
+    }
 }
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Deserialize, Serialize)]

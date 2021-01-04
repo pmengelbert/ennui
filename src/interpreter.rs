@@ -3,6 +3,8 @@ use std::ops::Deref;
 
 use crate::error::EnnuiError;
 use crate::game::{message, Game};
+use crate::interpreter::CommandQuality::{Awake, Motion};
+use crate::item::Attribute;
 use crate::text::message::{Message, Messenger};
 use std::sync::{Arc, Mutex};
 
@@ -37,12 +39,38 @@ pub enum CommandKind {
     Open,
     Unlock,
     Hit,
+    Sleep,
+    Wake,
     Quit,
     // not yet implemented
     #[allow(dead_code)]
     Whisper,
     #[allow(dead_code)]
     Blank,
+}
+
+#[derive(Copy, Clone, Eq, PartialEq)]
+pub enum CommandQuality {
+    Awake,
+    Motion,
+}
+
+const NORTH_QUALITIES: [CommandQuality; 2] = [Awake, Motion];
+const BLANK_QUALITIES: [CommandQuality; 0] = [];
+
+impl Attribute<CommandQuality> for CommandKind {
+    fn attr(&self) -> &[CommandQuality] {
+        use CommandKind::*;
+        
+        match self {
+            North => &NORTH_QUALITIES[..],
+            _ => &BLANK_QUALITIES[..],
+        }
+    }
+
+    fn set_attr(&mut self, _: CommandQuality) {
+        unimplemented!()
+    }
 }
 
 impl Deref for CommandFunc {
@@ -96,6 +124,8 @@ impl Interpreter {
             s if sw(s, "inventory") => Inventory,
             s if sw(s, "evaluate") => Eval,
             s if sw(s, "ouch") => Ouch,
+            s if sw(s, "sleep") => Sleep,
+            s if sw(s, "wake") => Wake,
             s if sw(s, "hit") => Hit,
             s if sw(s, "quit") => Quit,
             _ => NotFound,

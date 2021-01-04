@@ -10,7 +10,7 @@ use crate::item::list::{Holder, ItemList, ListTrait};
 use crate::item::{Attribute, Describe, Description, Item, Quality, YamlItemList};
 use crate::map::coord::Coord;
 use crate::map::door::DoorList;
-use crate::player::list::{PlayerIdList, PlayerList};
+use crate::player::list::{PlayerIdList};
 use crate::player::Uuid;
 use crate::text::Color::*;
 
@@ -83,6 +83,10 @@ impl Describe for Room {
 impl Attribute<Quality> for Room {
     fn attr(&self) -> &[Quality] {
         &self.info.attributes
+    }
+
+    fn set_attr(&mut self, q: Quality) {
+        self.info.set_attr(q)
     }
 }
 
@@ -196,36 +200,15 @@ impl Room {
         &self.doors
     }
 
-    pub fn display(&self, p: u128, global_players: &PlayerList, exits: &[MapDir]) -> String {
+    pub fn display(&self) -> String {
         println!("[{}]: room.display", Green("SUCCESS".to_owned()));
         let Room {
             info: Description {
                 name, description, ..
             },
-            players,
             items,
             ..
         } = self;
-
-        let player_list = players.except(p).except(0);
-        let player_list: Vec<&u128> = player_list.iter().collect();
-
-        println!(
-            "[{}]: players: {:#?}",
-            Green("SUCCESS".to_owned()),
-            player_list
-        );
-
-        let player_list = player_list
-            .iter()
-            .filter_map(|id| Some(global_players.get(id)?.lock().unwrap().name().to_owned()))
-            .collect::<Vec<_>>();
-
-        let player_list = Yellow(match player_list.len() {
-            0 => "".to_owned(),
-            1 => format!("\n{}", player_list[0]),
-            _ => format!("\n{}", player_list.join("\n")),
-        });
 
         let items_list = items
             .iter()
@@ -238,6 +221,16 @@ impl Room {
             _ => format!("\n{}", items_list.join("\n")),
         });
 
+        format!(
+            "{}\n    {}\
+            {}",
+            Cyan(name.to_owned()),
+            description,
+            items_list,
+        )
+    }
+
+    pub fn exit_display(exits: &[MapDir]) -> String {
         let mut exit_str = String::from("\n[");
         for (i, dir) in exits.iter().enumerate() {
             exit_str.push_str(&format!("{}", dir));
@@ -246,18 +239,7 @@ impl Room {
             }
         }
         exit_str.push(']');
-
-        format!(
-            "{}\n    {}\
-            {}\
-            {}\
-            {}",
-            Cyan(name.to_owned()),
-            description,
-            items_list,
-            player_list,
-            exit_str,
-        )
+        exit_str
     }
 
     pub fn players_mut(&mut self) -> &mut PlayerIdList {

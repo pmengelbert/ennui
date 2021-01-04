@@ -1,7 +1,8 @@
 use std::borrow::Cow;
 use std::io;
 
-use crate::player::Uuid;
+use crate::player::{Player, Uuid};
+use std::sync::{Arc, Mutex};
 
 type WriteResult = io::Result<usize>;
 
@@ -190,7 +191,7 @@ mod test_message {
         let mut g = Game::new().unwrap();
         let s = "poo butts poo".to_owned();
         let n = 8_u128;
-        let room = g.get_room(&Coord(0, 0)).unwrap();
+        let room = g.get_room(Coord(0, 0)).unwrap();
         let _audience = Audience(n, room.players().except(n));
         g.send(&n, &s);
     }
@@ -224,5 +225,11 @@ impl MessageFormat for String {
 impl MessageFormat for &str {
     fn un_padded(&self) -> String {
         (*self).to_owned()
+    }
+}
+
+impl Messenger for Arc<Mutex<Player>> {
+    fn id(&self) -> Option<u128> {
+        Some(self.lock().unwrap().uuid())
     }
 }

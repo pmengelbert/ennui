@@ -13,11 +13,12 @@ use crate::item::{Attribute, Describe, Description, Item, Quality};
 use crate::map::coord::Coord;
 use crate::map::Locate;
 
-use std::net::Shutdown::Both;
 use crate::fight::FightMod;
-use std::sync::mpsc::Sender;
-use std::sync::{Mutex, Arc};
 use crate::fight::FightMod::Leave;
+use std::net::Shutdown::Both;
+use std::sync::mpsc::Sender;
+use std::sync::{Arc, Mutex};
+use std::error::Error;
 
 pub mod list;
 mod meter;
@@ -35,8 +36,36 @@ pub struct Player {
     #[serde(skip_serializing, skip_deserializing)]
     stream: Option<TcpStream>,
     stats: Vec<MeterKind>,
+    status: Vec<PlayerStatus>,
     #[serde(skip_serializing, skip_deserializing)]
     fight_sender: Option<Arc<Mutex<Sender<FightMod>>>>,
+}
+
+#[derive(Copy, Clone, Eq, PartialEq, Deserialize, Serialize, Debug)]
+pub enum PlayerStatus {
+    Fighting,
+    Dead,
+    Asleep,
+}
+
+#[cfg(test)]
+mod test_playerstatus {
+    use super::*;
+
+    #[test]
+    fn test_player_status() {
+        eprintln!("{:#?}", PlayerStatus::Asleep as u64);
+    }
+}
+
+impl Attribute<PlayerStatus> for Player {
+    fn attr(&self) -> &[PlayerStatus] {
+        &self.status
+    }
+
+    fn set_attr(&mut self, q: PlayerStatus) {
+        self.status.push(q);
+    }
 }
 
 pub trait Uuid {
@@ -137,6 +166,10 @@ impl Attribute<Quality> for Player {
     fn attr(&self) -> &[Quality] {
         &self.info.attributes
     }
+
+    fn set_attr(&mut self, q: Quality) {
+        self.info.set_attr(q)
+    }
 }
 
 impl Write for Player {
@@ -186,6 +219,7 @@ impl Player {
             clothing: ItemList::new(),
             stream: None,
             fight_sender: None,
+            status: vec![],
             stats,
         }
     }
@@ -256,11 +290,12 @@ impl Player {
         self.fight_sender = Some(arc_mutex!(sender));
     }
 
-    pub fn leave_fight(&mut self) {
+    pub fn leave_fight(&mut self) -> Result<(), Box<dyn Error>>{
         if let Some(sender) = self.fight_sender.take() {
             let sender = sender.lock().unwrap();
-            sender.send(Leave(self.uuid));
+            return Ok(sender.send(Leave(self.uuid))?);
         }
+        Ok(())
     }
 
     fn assign_stream(&mut self, stream: TcpStream) {

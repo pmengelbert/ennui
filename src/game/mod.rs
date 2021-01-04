@@ -12,15 +12,18 @@ use crate::error::EnnuiError;
 use crate::error::EnnuiError::Fatal;
 use crate::fight::FightMessage;
 use crate::game::util::load_rooms;
-use crate::interpreter::{CommandMessage, Interpreter};
+use crate::interpreter::CommandQuality::Awake;
+use crate::interpreter::{CommandKind, CommandMessage, Interpreter};
 use crate::item::list::Holder;
 use crate::item::list::ListTrait;
-use crate::item::{Describe, Item};
+
+use crate::item::{Attribute, Describe, Item};
 use crate::map::direction::MapDir;
 use crate::map::door::{DoorState, GuardState, ObstacleState};
 use crate::map::list::{RoomList, RoomListTrait};
 use crate::map::{coord::Coord, Locate, Room, Space};
 use crate::player::list::{PlayerIdList, PlayerList};
+use crate::player::PlayerStatus::{Asleep, Dead};
 use crate::player::{Player, Uuid};
 use crate::text::article;
 use crate::text::message::{
@@ -70,6 +73,10 @@ impl Game {
         let mut other_commands = commands.lock().ok()?;
         let mut cmd_func = other_commands.get_mut(&cmd)?.lock().ok()?;
 
+        if let Some(msg) = self.verify_status(cmd, p)? {
+            return Ok(msg);
+        }
+
         (*cmd_func)(self, p, &args)
     }
 
@@ -99,7 +106,7 @@ impl Game {
 
     pub fn remove_player<T: Uuid>(&mut self, p: T) -> Option<Arc<Mutex<Player>>> {
         {
-            let player = self.players.get_mut(&p.uuid())?;
+            let player = self.get_player(p.uuid())?;
             let mut player = player.lock().unwrap();
             player.flush().ok()?;
             player.drop_stream();
@@ -119,33 +126,43 @@ impl Game {
     }
 
     pub fn set_player_name(&mut self, u: u128, name: &str) -> Result<(), EnnuiError> {
-        Ok(self
-            .players
-            .get_mut(&u)
-            .ok_or(EnnuiError::Fatal(
-                "CANNOT SET NAME: Player Not Found".to_owned(),
-            ))?
-            .lock()
-            .unwrap()
-            .set_name(name))
+        Ok(self.get_player(u)?.lock().unwrap().set_name(name))
     }
 
     pub fn clone_sender(&self) -> Option<Sender<(FightAudience, FightMessage)>> {
         Some(self.sender.as_ref()?.clone())
     }
 
-    fn describe_room<P: Uuid>(&mut self, p: P) -> Option<String> {
+    pub fn get_room(&self, loc: Coord) -> Result<&Room, EnnuiError> {
+        self.rooms
+            .get(&loc)
+            .ok_or(Fatal("UNABLE TO FIND ROOM".to_owned()))
+    }
+
+    pub fn get_room_mut(&mut self, loc: Coord) -> Result<&mut Room, EnnuiError> {
+        self.rooms
+            .get_mut(&loc)
+            .ok_or(Fatal("UNABLE TO FIND ROOM".to_owned()))
+    }
+
+    fn describe_room<P: Uuid>(&mut self, p: P) -> Result<String, EnnuiError> {
         println!("[{}]: describe_room", Green("SUCCESS".to_owned()));
         let loc = self.loc_of(p.uuid())?;
         println!("[{}]: got uuid", Green("SUCCESS".to_owned()));
 
-        let players = &mut self.players;
+        let player_list_string = self.players.display(loc);
         let rooms = &self.rooms;
         let r = rooms.get(&loc)?;
         println!("[{}]: got room", Green("SUCCESS".to_owned()));
-        let exits = rooms.exits(loc);
+        let exits = Room::exit_display(&rooms.exits(loc));
 
-        Some(r.display(p.uuid(), players, &exits))
+        let mut room_string = r.display();
+        if !player_list_string.is_empty() {
+            room_string.push('\n');
+            room_string.push_str(&player_list_string.join("\n"))
+        }
+        room_string.push_str(&exits);
+        Ok(room_string)
     }
 
     fn describe_item<U>(&self, pid: U, handle: &str) -> Option<String>
@@ -190,18 +207,46 @@ impl Game {
             .map(|(_, p)| p.lock().unwrap().uuid())
     }
 
-    fn loc_of<P>(&self, p: P) -> Option<Coord>
-    where
-        P: Uuid,
-    {
-        Some(self.players.get(&p.uuid())?.lock().unwrap().loc())
+    fn verify_status(
+        &self,
+        cmd: CommandKind,
+        u: u128,
+    ) -> Result<Option<CommandMessage>, EnnuiError> {
+        let p = self.get_player(u)?;
+        let p = p.lock().unwrap();
+        let cnv = |m: Result<CommandMessage, EnnuiError>| m.map(|m| Some(m));
+
+        if p.is(Dead) && cmd != CommandKind::Quit {
+            return cnv(message(u, "oh boy. you can't move. you're dead."));
+        }
+
+        if p.is(Asleep) && cmd.is(Awake) {
+            return cnv(message(u, "you're asleep. why not just sleep?"));
+        }
+
+        Ok(None)
     }
 
-    fn name_of<P>(&self, p: P) -> Option<String>
+    fn get_player(&self, p: u128) -> Result<Arc<Mutex<Player>>, EnnuiError> {
+        Ok(self
+            .players
+            .get(&p)
+            .ok_or(Fatal("PLAYER NOT FOUND".to_owned()))?
+            .clone())
+    }
+
+    fn loc_of<P>(&self, p: P) -> Result<Coord, EnnuiError>
     where
         P: Uuid,
     {
-        Some(self.players.get(&p.uuid())?.lock().unwrap().name().into())
+        Ok(self.get_player(p.uuid())?.lock().unwrap().loc())
+    }
+
+    fn name_of<P>(&self, p: P) -> Result<String, EnnuiError>
+    where
+        P: Uuid,
+    {
+        Ok(self.get_player(p.uuid())?.lock().unwrap().name().to_owned())
     }
 
     fn dir_func<U: Uuid>(
@@ -210,8 +255,8 @@ impl Game {
         dir: MapDir,
     ) -> Result<(Box<dyn Messenger>, Box<dyn Message>), EnnuiError> {
         let u = u.uuid();
-        let loc = self.loc_of(u).ok_or(Fatal(format!("player not found")))?;
-        let name = self.name_of(u).ok_or(Fatal(format!("player not found")))?;
+        let loc = self.loc_of(u)?;
+        let name = self.name_of(u)?;
 
         let mut other_msg = None;
 
@@ -357,16 +402,12 @@ impl Game {
             .players_mut()
             .insert(u);
 
-        let mut p =
-            players
-                .get_mut(&u)
-                .ok_or(DoorState::None)?
-                .lock()
-                .unwrap();
-        p
-            .set_loc(next_coord);
+        let mut p = players.get_mut(&u).ok_or(DoorState::None)?.lock().unwrap();
+        p.set_loc(next_coord);
 
-        p.leave_fight();
+        if let Err(e) = p.leave_fight() {
+            println!("ERROR: {:?}", e);
+        };
 
         Ok(())
     }
@@ -398,11 +439,6 @@ impl Game {
 
         Ok(())
     }
-
-    #[cfg(test)]
-    pub fn get_room(&self, loc: &Coord) -> Option<&Room> {
-        self.rooms.get(loc)
-    }
 }
 
 pub fn message<A: 'static, M: 'static>(
@@ -413,10 +449,14 @@ where
     A: Messenger,
     M: Message,
 {
-    let to_others = msg.to_others().map(|m| m.padded());
-    let msg = Msg {
-        s: msg.to_self().padded(),
-        o: to_others,
+    let obj = aud
+        .object()
+        .map(|_| msg.to_object().unwrap_or_default().padded().into());
+    let oth = msg.to_others().map(|m| m.padded().into());
+    let msg = FightMessage {
+        s: msg.to_self().padded().into(),
+        obj,
+        oth,
     };
 
     Ok((Box::new(aud), Box::new(msg)))

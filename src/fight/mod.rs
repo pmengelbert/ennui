@@ -4,17 +4,18 @@ use crate::text::Color::{Red, Yellow};
 
 use std::ops::DerefMut;
 
-use std::sync::mpsc::{channel, Sender, Receiver};
+use std::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::{Arc, Mutex};
 
 use crate::fight::Starter::{Aggressor, Defender};
-use crate::item::Describe;
+use crate::item::{Attribute, Describe};
 
 use crate::error::CmdErr::PlayerNotFound;
 use crate::error::EnnuiError;
 use crate::error::EnnuiError::Simple;
 use crate::player::list::PlayerIdList;
-use crate::text::message::{Audience, FightAudience, Message, MessageFormat, Msg};
+use crate::player::PlayerStatus::Dead;
+use crate::text::message::{FightAudience, Message, MessageFormat};
 use std::borrow::{Borrow, Cow};
 use std::error::Error as StdError;
 use std::thread;
@@ -44,7 +45,7 @@ pub struct BasicFight {
     ended: Arc<Mutex<bool>>,
     audience: PlayerIdList,
     sender: Sender<(FightAudience, FightMessage)>,
-    receiver: Option<Receiver<(FightMod)>>,
+    receiver: Option<Receiver<FightMod>>,
 }
 
 pub struct FightInfo {
@@ -53,7 +54,7 @@ pub struct FightInfo {
     pub delay: Duration,
     pub audience: PlayerIdList,
     pub sender: Sender<(FightAudience, FightMessage)>,
-    pub receiver: Receiver<(FightMod)>,
+    pub receiver: Receiver<FightMod>,
 }
 
 impl BasicFight {
@@ -95,12 +96,20 @@ impl Fight for Arc<Mutex<BasicFight>> {
             }
         });
 
-        let mod_receiver = self.lock().unwrap().receiver.take()
+        let mod_receiver = self
+            .lock()
+            .unwrap()
+            .receiver
+            .take()
             .ok_or("OH NO".to_owned())?;
         let mut fight = self.clone();
         spawn(move || {
             for modification in mod_receiver {
-                fight.send_message(modification);
+                let res = fight.send_message(modification);
+
+                if let Err(e) = res {
+                    println!("{:?}", e);
+                }
             }
         });
 
@@ -198,17 +207,18 @@ impl Fight for Arc<Mutex<BasicFight>> {
     }
 
     fn send_message(&mut self, m: FightMod) -> Result<(), EnnuiError> {
+        use FightMod::*;
         let cl = self.clone();
         let mut cl = cl.lock().unwrap();
 
-        if let FightMod::Leave(u) = m {
-            return match cl.audience.remove(&u) {
-                true => Ok(()),
-                false => Err(Simple(PlayerNotFound)),
-            };
+        match m {
+            Leave(u) => {
+                match cl.audience.remove(&u) {
+                    true => Ok(()),
+                    false => Err(Simple(PlayerNotFound)),
+                }
+            }
         }
-
-        Err(Simple(PlayerNotFound))
     }
 
     fn end(&mut self) {
@@ -277,7 +287,7 @@ fn fight_logic(
         Defender => ("\n", "\n\n > "),
     };
 
-    player.hurt(5);
+    player.hurt(25);
     fight_sender
         .send((
             FightAudience(aid, bid, audience.to_vec()),
@@ -300,6 +310,7 @@ fn fight_logic(
         .map_err(|_| format!("player {} write error", aid))?;
 
     if player.hp() <= 0 {
+        player.set_attr(Dead);
         cl.end();
     }
 

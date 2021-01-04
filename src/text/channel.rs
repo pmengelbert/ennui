@@ -1,6 +1,6 @@
 use crate::fight::FightMessage;
 use crate::game::Game;
-use crate::text::message::{Audience, Broadcast, FightAudience, Msg};
+use crate::text::message::{Broadcast, FightAudience};
 use std::sync::mpsc::Receiver;
 use std::sync::{Arc, Mutex};
 use std::thread::{spawn, JoinHandle};

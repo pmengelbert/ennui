@@ -246,13 +246,13 @@ impl Game {
             }
 
             match self.loc_of(other_id) {
-                Some(other_loc) if &other_loc != loc => {
+                Ok(other_loc) if &other_loc != loc => {
                     return Err(Msg(format!(
                         "you don't see {} here !",
                         other.unwrap_or_default()
                     )));
                 }
-                None => {
+                Err(_) => {
                     return Ok(());
                 }
                 _ => (),

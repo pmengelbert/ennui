@@ -6,6 +6,9 @@ use serde::{Deserialize, Serialize};
 use crate::player::{Player, Uuid};
 use crate::text::message::Messenger;
 
+use crate::item::Describe;
+use crate::map::coord::Coord;
+use crate::text::Color::Yellow;
 use std::sync::{Arc, Mutex};
 
 #[repr(transparent)]
@@ -115,5 +118,12 @@ impl PlayerList {
             pil.insert(*id);
         }
         pil
+    }
+
+    pub fn display(&self, loc: Coord) -> Vec<String> {
+        self.values()
+            .filter(|p| p.lock().unwrap().loc == loc)
+            .map(|p| format!("{}", Yellow(p.lock().unwrap().name().to_owned())))
+            .collect()
     }
 }

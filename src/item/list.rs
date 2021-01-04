@@ -83,6 +83,10 @@ impl Attribute<Quality> for ItemList {
     fn attr(&self) -> &[Quality] {
         self.info.attr()
     }
+
+    fn set_attr(&mut self, q: Quality) {
+        self.info.set_attr(q)
+    }
 }
 
 impl ListTrait for ItemList {

@@ -10,8 +10,8 @@ use crate::text::message::{Audience, Msg};
 
 use crate::fight::{BasicFight, Fight, FightInfo, FightMod};
 use std::ops::DerefMut;
-use std::time::Duration;
 use std::sync::mpsc::channel;
+use std::time::Duration;
 
 pub fn fill_interpreter(i: &mut Interpreter) {
     i.insert("look", |g, u, args| {
@@ -62,12 +62,9 @@ pub fn fill_interpreter(i: &mut Interpreter) {
                 }
             }
             2 => {
-                let rooms = &mut g.rooms;
-                let players = &mut g.players;
+                let player = g.get_player(u)?;
+                let room = g.get_room_mut(loc)?;
                 let (object, container) = (a[0], a[1]);
-                // find container
-                let room = rooms.get_mut(&loc)?;
-                let player = players.get_mut(&u)?;
 
                 match room.get_item_mut(container) {
                     Some(c) => {
@@ -418,9 +415,7 @@ pub fn fill_interpreter(i: &mut Interpreter) {
     });
 
     i.insert("hit", |g, u, a| {
-        let loc = g
-            .loc_of(u)
-            .ok_or(EnnuiError::Fatal("hit: PLAYER NOT FOUND".into()))?;
+        let loc = g.loc_of(u)?;
 
         if a.len() > 0 {
             let object = a[0];
@@ -434,7 +429,10 @@ pub fn fill_interpreter(i: &mut Interpreter) {
             };
 
             if other_id == u {
-                return message(u, "violence against the self is all too common. i am here to stop you.")
+                return message(
+                    u,
+                    "violence against the self is all too common. i am here to stop you.",
+                );
             }
 
             let sender = g
@@ -448,7 +446,6 @@ pub fn fill_interpreter(i: &mut Interpreter) {
                 .ok_or(EnnuiError::Fatal("hit: PLAYER NOT FOUND (2)".into()))?
                 .clone();
 
-
             let defender = players
                 .get(&other_id)
                 .ok_or(EnnuiError::Fatal("hit: OTHER PLAYER NOT FOUND".into()))?
@@ -457,14 +454,17 @@ pub fn fill_interpreter(i: &mut Interpreter) {
             let audience = rooms.player_ids(loc).except(u).except(other_id);
 
             let (mod_sender, receiver) = channel::<FightMod>();
-            for mut p in audience.iter().filter_map(|id| Some(players.get_mut(id)?.clone())) {
+            for p in audience
+                .iter()
+                .filter_map(|id| Some(players.get_mut(id)?.clone()))
+            {
                 p.lock().unwrap().assign_fight_sender(mod_sender.clone())
             }
 
             let mut fight = BasicFight::new(FightInfo {
                 player_a: p,
                 player_b: defender,
-                delay: Duration::new(3, 0),
+                delay: Duration::new(1, 0),
                 audience,
                 sender,
                 receiver,
@@ -480,6 +480,21 @@ pub fn fill_interpreter(i: &mut Interpreter) {
             };
         }
         message(u, "oh no")
+    });
+
+    i.insert("sleep", |g, u, _| {
+        let loc = g.loc_of(u)?;
+        let p = g.get_player(u)?;
+        let name = g.name_of(u)?;
+        p.lock().unwrap().set_attr(Asleep);
+
+        let others = g.rooms.player_ids(loc).except(u);
+        let aud = Audience(u, others);
+        let msg = Msg {
+            s: String::from("you lay down and fall asleep"),
+            o: Some(format!("{} goes to sleep", name)),
+        };
+        message(aud, msg)
     });
 
     i.insert("north", |g, u, _| g.dir_func(u, MapDir::North));

@@ -7,7 +7,7 @@ use ennui::error::EnnuiError;
 
 use ennui::game::{Game, GameResult};
 use ennui::player::{Player, Uuid};
-use ennui::text::message::{Audience, Broadcast, FightAudience, Msg};
+use ennui::text::message::{Broadcast, FightAudience};
 use ennui::text::Color::{Green, Red};
 
 use ennui::fight::FightMessage;
