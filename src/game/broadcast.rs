@@ -1,10 +1,10 @@
 use crate::game::Game;
-use crate::text::message::{Broadcast, Message, Messenger};
-use crate::text::Color::Green;
+use crate::text::message::{Broadcast, Message, Messenger, MessageFormat};
 use crate::text::Wrap;
 use crate::WriteResult;
 use std::borrow::BorrowMut;
 use std::io::Write;
+use crate::text::BareColor::Green;
 
 impl<T> Broadcast for T
 where
@@ -15,7 +15,7 @@ where
         audience: &dyn Messenger,
         message: &dyn Message,
     ) -> Vec<(u128, WriteResult)> {
-        println!("[{}]: made it to send func", Green("SUCCESS".to_owned()));
+        println!("[{}]: made it to send func", "SUCCESS".color(Green));
         let g = self.borrow_mut();
         let mut v = vec![];
 

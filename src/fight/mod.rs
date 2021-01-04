@@ -1,6 +1,5 @@
 use crate::map::Locate;
 use crate::player::{Player as BarePlayer, Uuid};
-use crate::text::Color::{Red, Yellow};
 
 use std::ops::DerefMut;
 
@@ -21,6 +20,7 @@ use std::error::Error as StdError;
 use std::thread;
 use std::thread::{spawn, JoinHandle};
 use std::time::Duration;
+use crate::text::BareColor::{Yellow, Red};
 
 type Player = Arc<Mutex<BarePlayer>>;
 type Error = Box<dyn StdError>;
@@ -90,7 +90,7 @@ impl Fight for Arc<Mutex<BasicFight>> {
                     Ok(_r) => println!("fight concluded"),
                     Err(e) => {
                         fight.clone().end();
-                        println!("[{}]: {:?}", Red("ERROR".to_owned()), e)
+                        println!("[{}]: {:?}", "ERROR".color(Red), e)
                     }
                 }
             }
@@ -292,11 +292,12 @@ fn fight_logic(
         .send((
             FightAudience(aid, bid, audience.to_vec()),
             FightMessage {
-                s: format!("{}", Yellow(format!("you hit {}", b_name)))
+                s: format!("you hit {}", b_name)
+                    .color(Yellow)
                     .custom_padded(before, after)
                     .into(),
                 obj: Some(
-                    format!("{}", Red(format!("{} hits you", a_name)))
+                    format!("{} hits you", a_name).color(Red)
                         .custom_padded(before, after)
                         .into(),
                 ),

@@ -29,7 +29,7 @@ use crate::text::article;
 use crate::text::message::{
     Audience, Broadcast, FightAudience, Message, MessageFormat, Messenger, Msg,
 };
-use crate::text::Color::*;
+use crate::text::BareColor::Green;
 
 mod broadcast;
 mod commands;
@@ -146,20 +146,19 @@ impl Game {
     }
 
     fn describe_room<P: Uuid>(&mut self, p: P) -> Result<String, EnnuiError> {
-        println!("[{}]: describe_room", Green("SUCCESS".to_owned()));
+        println!("[{}]: describe_room", "SUCCESS".color(Green));
         let loc = self.loc_of(p.uuid())?;
-        println!("[{}]: got uuid", Green("SUCCESS".to_owned()));
+        println!("[{}]: got uuid", "SUCCESS".color(Green));
 
-        let player_list_string = self.players.display(loc);
         let rooms = &self.rooms;
         let r = rooms.get(&loc)?;
-        println!("[{}]: got room", Green("SUCCESS".to_owned()));
+        let player_list_string = r.players().except(p.uuid()).display(&self.players);
+        println!("[{}]: got room", "SUCCESS".color(Green));
         let exits = Room::exit_display(&rooms.exits(loc));
 
         let mut room_string = r.display();
         if !player_list_string.is_empty() {
-            room_string.push('\n');
-            room_string.push_str(&player_list_string.join("\n"))
+            room_string.push_str(&player_list_string)
         }
         room_string.push_str(&exits);
         Ok(room_string)
@@ -180,13 +179,12 @@ impl Game {
                 s.push_str(&format!("\nthe {} is holding:\n", item.name()));
                 s.push_str(&format!(
                     "{}",
-                    Green(
                         lst.list()
                             .iter()
                             .map(|i| article(i.name()))
                             .collect::<Vec<_>>()
                             .join("\n")
-                    )
+                            .color(Green)
                 ));
             }
             s

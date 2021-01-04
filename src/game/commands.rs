@@ -12,13 +12,14 @@ use crate::fight::{BasicFight, Fight, FightInfo, FightMod};
 use std::ops::DerefMut;
 use std::sync::mpsc::channel;
 use std::time::Duration;
+use crate::text::BareColor::{Green, Red};
 
 pub fn fill_interpreter(i: &mut Interpreter) {
     i.insert("look", |g, u, args| {
-        println!("[{}]: made it to handler", Green("SUCCESS".to_owned()));
+        println!("[{}]: made it to handler", "SUCCESS".color(Green));
         let msg: Cow<'static, str> = match args.len() {
             0 => {
-                println!("[{}]: made it to case", Green("SUCCESS".to_owned()));
+                println!("[{}]: made it to case", "SUCCESS".color(Green));
                 g.describe_room(u)?.into()
             }
             1 => {
@@ -135,7 +136,7 @@ pub fn fill_interpreter(i: &mut Interpreter) {
                             format!("you're not holding {}", article(handle))
                         }
                         Fatal(e) => {
-                            return Err(Fatal(format!("[{}]: {}", Red("FATAL".into()), e)));
+                            return Err(Fatal(format!("[{}]: {}", "FATAL".color(Red), e)));
                         }
                         Msg(m) => m,
                         _ => todo!(),

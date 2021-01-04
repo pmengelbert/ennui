@@ -3,6 +3,7 @@ use std::io;
 
 use crate::player::{Player, Uuid};
 use std::sync::{Arc, Mutex};
+use crate::text::BareColor;
 
 type WriteResult = io::Result<usize>;
 
@@ -212,6 +213,15 @@ pub trait MessageFormat {
         s.push_str(before);
         s.push_str(&self.un_padded());
         s.push_str(after);
+        s
+    }
+
+    fn color(&self, color: BareColor) -> String {
+        let mut s = String::new();
+        s.push_str("\u{001b}");
+        s.push_str(color.to_code());
+        s.push_str(&self.un_padded());
+        s.push_str("\u{001b}[37m");
         s
     }
 }

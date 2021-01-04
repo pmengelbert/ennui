@@ -12,7 +12,8 @@ use crate::map::coord::Coord;
 use crate::map::door::DoorList;
 use crate::player::list::{PlayerIdList};
 use crate::player::Uuid;
-use crate::text::Color::*;
+use crate::text::BareColor::{Green, Cyan};
+use crate::text::message::MessageFormat;
 
 pub mod coord;
 pub mod direction;
@@ -201,7 +202,7 @@ impl Room {
     }
 
     pub fn display(&self) -> String {
-        println!("[{}]: room.display", Green("SUCCESS".to_owned()));
+        println!("[{}]: room.display", "SUCCESS".color(Green));
         let Room {
             info: Description {
                 name, description, ..
@@ -215,16 +216,16 @@ impl Room {
             .map(|i| i.display().to_owned())
             .collect::<Vec<String>>();
 
-        let items_list = Green(match items_list.len() {
+        let items_list = match items_list.len() {
             0 => "".to_owned(),
             1 => format!("\n{}", items_list[0]),
             _ => format!("\n{}", items_list.join("\n")),
-        });
+        }.color(Green);
 
         format!(
             "{}\n    {}\
             {}",
-            Cyan(name.to_owned()),
+            name.color(Cyan),
             description,
             items_list,
         )

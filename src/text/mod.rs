@@ -1,27 +1,27 @@
 pub mod channel;
 pub mod message;
 
-use std::fmt::{Debug, Display, Formatter};
 
-#[derive(Debug)]
-pub enum Color {
-    Red(String),
+
+pub enum BareColor {
+    Red,
     #[allow(dead_code)]
-    Green(String),
+    Green,
     #[allow(dead_code)]
-    Yellow(String),
+    Yellow,
     #[allow(dead_code)]
-    Blue(String),
+    Blue,
     #[allow(dead_code)]
-    Magenta(String),
+    Magenta,
     #[allow(dead_code)]
-    Cyan(String),
+    Cyan,
     #[allow(dead_code)]
-    White(String),
+    White,
 }
 
-use std::fmt;
-use Color::*;
+
+
+
 
 pub trait Wrap {
     fn wrap(&self, line_length: usize) -> String;
@@ -61,30 +61,16 @@ where
     }
 }
 
-impl Display for Color {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        let code = self.to_code();
-
-        write!(f, "\u{001b}{}{}\u{001b}[37m", code, self.safe_unwrap())
-    }
-}
-
-impl Color {
+impl BareColor {
     fn to_code(&self) -> &str {
         match self {
-            Red(_) => RED,
-            Green(_) => GREEN,
-            Yellow(_) => YELLOW,
-            Blue(_) => BLUE,
-            Magenta(_) => MAGENTA,
-            Cyan(_) => CYAN,
-            White(_) => WHITE,
-        }
-    }
-
-    fn safe_unwrap(&self) -> &str {
-        match self {
-            Red(s) | Green(s) | Yellow(s) | Blue(s) | Magenta(s) | Cyan(s) | White(s) => s,
+            BareColor::Red => RED,
+            BareColor::Green => GREEN,
+            BareColor::Yellow => YELLOW,
+            BareColor::Blue => BLUE,
+            BareColor::Magenta => MAGENTA,
+            BareColor::Cyan => CYAN,
+            BareColor::White => WHITE,
         }
     }
 }

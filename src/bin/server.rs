@@ -7,12 +7,12 @@ use ennui::error::EnnuiError;
 
 use ennui::game::{Game, GameResult};
 use ennui::player::{Player, Uuid};
-use ennui::text::message::{Broadcast, FightAudience};
-use ennui::text::Color::{Green, Red};
+use ennui::text::message::{Broadcast, FightAudience, MessageFormat};
 
 use ennui::fight::FightMessage;
 use ennui::text::channel::{MessageHandler, MessageReceiver};
 use std::sync::mpsc::channel;
+use ennui::text::BareColor::{Green, Red};
 
 macro_rules! arc_mutex(
     ($wrapped:expr) => {
@@ -56,7 +56,7 @@ fn main() -> GameResult<()> {
             match handle.join() {
                 Ok(_) => (),
                 Err(err) => {
-                    println!("[{}]: {:#?}", Red("ERROR".to_owned()), err);
+                    println!("[{}]: {:#?}", "ERROR".color(Red), err);
                 }
             }
         }
@@ -96,11 +96,11 @@ fn main() -> GameResult<()> {
 fn handle_client(p: u128, g: Arc<Mutex<Game>>) -> std::io::Result<()> {
     get_and_set_player_name(p, g.clone())?;
 
-    println!("[{}]: player named", Green("SUCCESS".to_owned()));
+    println!("[{}]: player named", "SUCCESS".color(Green));
     loop {
         let s = get_player_command(p, g.clone())?;
 
-        println!("[{}]: Got player command", Green("SUCCESS".to_owned()));
+        println!("[{}]: Got player command", "SUCCESS".color(Green));
         {
             let mut g = match g.lock() {
                 Ok(g) => g,
@@ -111,14 +111,14 @@ fn handle_client(p: u128, g: Arc<Mutex<Game>>) -> std::io::Result<()> {
             };
 
             let resp = g.interpret(p, &s);
-            println!("[{}]: Got response", Green("SUCCESS".to_owned()));
+            println!("[{}]: Got response", "SUCCESS".color(Green));
             match resp {
                 Ok((aud, msg)) => {
                     let results = g.send(&*aud, &*msg);
                     for (id, result) in results {
                         match result {
                             Err(e) => {
-                                println!("[{}]: {:?}", Red("ERROR".to_owned()), e);
+                                println!("[{}]: {:?}", "ERROR".color(Red), e);
                                 let p = g.remove_player(id).unwrap_or_default();
 
                                 std::mem::drop(p);
@@ -132,7 +132,7 @@ fn handle_client(p: u128, g: Arc<Mutex<Game>>) -> std::io::Result<()> {
                         g.remove_player(p);
                         break;
                     }
-                    e => println!("[{}]: {:?}", Red("FATAL".to_owned()), e),
+                    e => println!("[{}]: {:?}", "FATAL".color(Red), e),
                 },
             }
         }
