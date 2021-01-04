@@ -1,6 +1,6 @@
 use std::borrow::Cow;
 use std::collections::HashMap;
-use std::error::Error as StdError;
+use std::error::{Error as StdError, Error};
 
 use std::io::Write;
 use std::sync::mpsc::Sender;
@@ -9,7 +9,7 @@ use std::sync::{Arc, Mutex};
 use rand::Rng;
 
 use crate::error::EnnuiError;
-use crate::error::EnnuiError::Fatal;
+use crate::error::EnnuiError::{Fatal, Lesser};
 use crate::fight::FightMessage;
 use crate::game::util::load_rooms;
 use crate::interpreter::CommandQuality::{Awake, Motion};
@@ -29,7 +29,8 @@ use crate::text::article;
 use crate::text::message::{
     Audience, Broadcast, FightAudience, Message, MessageFormat, Messenger, Msg,
 };
-use crate::text::Color::Green;
+use crate::text::Color::{Green, Magenta};
+use std::fmt::Debug;
 use std::mem::take;
 
 mod broadcast;
@@ -43,7 +44,7 @@ pub struct Game {
     players: PlayerList,
     rooms: RoomList,
     interpreter: Interpreter,
-    sender: Option<Sender<(FightAudience, FightMessage)>>,
+    fight_sender: Option<Sender<(FightAudience, FightMessage)>>,
 }
 
 impl Game {
@@ -59,12 +60,12 @@ impl Game {
             players: PlayerList(players),
             rooms,
             interpreter,
-            sender: None,
+            fight_sender: None,
         })
     }
 
-    pub fn set_sender(&mut self, sender: Sender<(FightAudience, FightMessage)>) {
-        self.sender = Some(sender);
+    pub fn set_fight_sender(&mut self, sender: Sender<(FightAudience, FightMessage)>) {
+        self.fight_sender = Some(sender);
     }
 
     pub fn interpret(&mut self, p: u128, s: &str) -> Result<CommandMessage, EnnuiError> {
@@ -103,32 +104,34 @@ impl Game {
     pub fn remove_player<T: Uuid>(&mut self, p: T) -> Option<Arc<Mutex<Player>>> {
         let mut name = String::new();
         let mut messages = vec![];
-        let mut aud = None;
-        {
-            let player = self.get_player(p.uuid())?;
-            let mut player = player.lock().unwrap();
-            name.push_str(&player.name());
-            let mut room = self.get_room_mut(player.loc())?;
-            let mut items = take(player.items_mut());
+        let player = self.get_player(p.uuid())?;
+        let mut player = player.lock().unwrap();
+        name.push_str(&player.name());
+        let room = self.get_room_mut(player.loc())?;
+        let mut items = take(player.items_mut());
 
-            aud = Some(room.players().except(p.uuid()));
-            for item in items.iter_mut() {
-                let owned_item = take(item);
-                messages.push(format!("{} drops {}", name, article(&owned_item.name())));
-                room.insert_item(owned_item);
-            }
-
-
-            player.flush().ok()?;
-            player.drop_stream();
+        let aud = room.players().except(p.uuid());
+        for item in items.iter_mut() {
+            let owned_item = take(item);
+            messages.push(format!("{} drops {}", name, article(&owned_item.name())));
+            if let Err(_) = room.insert_item(owned_item) {
+                print_err(lesser("Unable to drop item for player"));
+            };
         }
+
+        player.flush().ok()?;
+        player.drop_stream();
+
         let res = self.players.remove(&p.uuid());
-        if let Some(aud) = aud {
-            for message in messages {
-                self.send(&aud, &message.custom_padded("\n", ""));
-            }
+
+        for message in messages {
+            self.send(&aud, &message.custom_padded("\n", ""));
         }
-        self.send(&self.players.to_id_list(), &format!("{} has left the game", name).padded());
+
+        self.send(
+            &self.players.to_id_list(),
+            &format!("{} has left the game", name).padded(),
+        );
         res
     }
 
@@ -147,9 +150,9 @@ impl Game {
         Ok(self.get_player(u)?.lock().unwrap().set_name(name))
     }
 
-    pub fn clone_sender(&self) -> Result<Sender<(FightAudience, FightMessage)>, EnnuiError> {
+    pub fn clone_fight_sender(&self) -> Result<Sender<(FightAudience, FightMessage)>, EnnuiError> {
         Ok(self
-            .sender
+            .fight_sender
             .as_ref()
             .ok_or(fatal("ERROR: UNABLE TO CLONE SENDER"))?
             .clone())
@@ -477,4 +480,12 @@ where
 
 fn fatal(s: &str) -> EnnuiError {
     Fatal(s.to_owned())
+}
+
+fn lesser(s: &str) -> EnnuiError {
+    Lesser(s.to_owned())
+}
+
+fn print_err<T: Error + Debug>(err: T) {
+    println!("[{}]: {:?}", "ERROR".color(Magenta), err)
 }

@@ -11,7 +11,7 @@ use ennui::text::message::{Broadcast, FightAudience, MessageFormat};
 
 use ennui::fight::FightMessage;
 use ennui::text::channel::{MessageHandler, MessageReceiver};
-use ennui::text::Color::{Green, Red};
+use ennui::text::Color::{Green, Magenta, Red};
 use std::sync::mpsc::channel;
 
 macro_rules! arc_mutex(
@@ -65,7 +65,7 @@ fn main() -> GameResult<()> {
     let (fight_sender, fight_receiver) = channel::<(FightAudience, FightMessage)>();
     let rcv = MessageReceiver(fight_receiver);
     rcv.start(shared_game.clone());
-    shared_game.lock().unwrap().set_sender(fight_sender);
+    shared_game.lock().unwrap().set_fight_sender(fight_sender);
 
     for stream in listener.incoming() {
         let game_clone = shared_game.clone();
@@ -132,7 +132,8 @@ fn handle_client(p: u128, g: Arc<Mutex<Game>>) -> std::io::Result<()> {
                         g.remove_player(p);
                         break;
                     }
-                    e => println!("[{}]: {:?}", "FATAL".color(Red), e),
+                    EnnuiError::Fatal(s) => println!("[{}]: {:?}", "FATAL".color(Red), s),
+                    e => println!("[{}]: {:?}", "ERROR".color(Magenta), e),
                 },
             }
         }
@@ -187,7 +188,9 @@ fn get_and_set_player_name(p: u128, g: Arc<Mutex<Game>>) -> std::io::Result<()> 
     let res = g
         .set_player_name(p, &name)
         .map_err(|_| std::io::Error::from(std::io::ErrorKind::NotFound));
+
     g.announce_player(p)
         .map_err(|_| std::io::Error::from(std::io::ErrorKind::NotFound))?;
+
     res
 }

@@ -8,9 +8,9 @@ use YamlItem::*;
 use crate::item::handle::Handle;
 use crate::item::key::Key;
 use crate::item::list::{ItemList, ListTrait};
+use crate::item::Item::NoItem;
 use crate::map::direction::MapDir;
 use crate::map::door::{Guard, GuardState};
-use crate::item::Item::NoItem;
 
 pub mod error;
 pub mod handle;

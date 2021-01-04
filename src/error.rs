@@ -16,6 +16,7 @@ pub enum CmdErr {
 pub enum EnnuiError {
     Unidentified,
     Fatal(String),
+    Lesser(String),
     Simple(CmdErr),
     Msg(String),
     NoneFound(std::option::NoneError),

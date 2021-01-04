@@ -429,7 +429,7 @@ pub fn fill_interpreter(i: &mut Interpreter) {
                 }
             };
 
-            let sender = g.clone_sender()?;
+            let sender = g.clone_fight_sender()?;
 
             let aggressor = g.get_player(u)?;
             let defender = g.get_player(other_id)?;

@@ -66,7 +66,8 @@ impl Attribute<CommandQuality> for CommandKind {
         match self {
             North => &NORTH_QUALITIES[..],
             _ => &BLANK_QUALITIES[..],
-        }.to_vec()
+        }
+        .to_vec()
     }
 
     fn set_attr(&mut self, _: CommandQuality) {
