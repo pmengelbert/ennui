@@ -82,119 +82,7 @@ impl BasicFight {
 
 impl Fight for Arc<Mutex<BasicFight>> {
     fn begin(&mut self) -> Result<FightStatus, Error> {
-        let (sender, receiver) = channel::<JoinHandle<Result<(), String>>>();
-        let fight = self.clone();
-        spawn(move || {
-            for handle in receiver {
-                match handle.join() {
-                    Ok(_r) => println!("fight concluded"),
-                    Err(e) => {
-                        fight.clone().end();
-                        println!("[{}]: {:?}", "ERROR".color(Red), e)
-                    }
-                }
-            }
-        });
-
-        let mod_receiver = self
-            .lock()
-            .unwrap()
-            .receiver
-            .take()
-            .ok_or("Fight: Unable to TAKE receiver".to_owned())?;
-        let mut fight = self.clone();
-        spawn(move || {
-            for modification in mod_receiver {
-                let res = fight.send_message(modification);
-
-                if let Err(e) = res {
-                    println!("{:?}", e);
-                }
-            }
-        });
-
-        let mut fight = self.clone();
-
-        let pa = self.lock().unwrap().player_a.clone();
-        let pb = self.lock().unwrap().player_b.clone();
-        let delay = self.lock().unwrap().delay.clone();
-        let fight_sender = self.lock().unwrap().sender.clone();
-        let aid = pa.lock().unwrap().uuid();
-        let bid = pb.lock().unwrap().uuid();
-
-        let aname = pa.lock().unwrap().name().to_owned();
-        let bname = pb.lock().unwrap().name().to_owned();
-
-        sender.send(spawn(move || {
-            let mut a_loc = pa.lock().unwrap().loc();
-            let mut b_loc = pb.lock().unwrap().loc();
-            loop {
-                let audience: Vec<u128> = fight.lock().unwrap().audience.iter().cloned().collect();
-
-                let FightStatus { ended } = fight.status();
-                println!("status: {}", ended);
-                if ended {
-                    break;
-                }
-
-                if a_loc != b_loc {
-                    fight.end();
-                    break;
-                }
-
-                a_loc = pa.lock().unwrap().loc();
-                if a_loc != b_loc {
-                    fight.end();
-                    break;
-                }
-
-                fight_logic(
-                    &mut fight,
-                    &fight_sender,
-                    aid,
-                    bid,
-                    &aname,
-                    &bname,
-                    pa.clone(),
-                    Aggressor,
-                    &audience,
-                )?;
-
-                let FightStatus { ended } = fight.status();
-                println!("status: {}", ended);
-                if ended {
-                    break;
-                }
-
-                b_loc = pb.lock().unwrap().loc();
-                if a_loc != b_loc {
-                    fight.end();
-                    break;
-                }
-
-                fight_logic(
-                    &mut fight,
-                    &fight_sender,
-                    bid,
-                    aid,
-                    &bname,
-                    &aname,
-                    pb.clone(),
-                    Defender,
-                    &audience,
-                )?;
-
-                if a_loc != b_loc {
-                    fight.end();
-                    break;
-                }
-                thread::sleep(delay);
-            }
-            fight.end();
-            Ok(())
-        }))?;
-        let ended = *self.lock().unwrap().ended.lock().unwrap();
-        Ok(FightStatus { ended })
+        begin_fight(self.clone())
     }
 
     fn status(&self) -> FightStatus {
@@ -264,6 +152,174 @@ enum Starter {
     Defender,
 }
 
+fn begin_fight(mut basic_fight: Arc<Mutex<BasicFight>>) -> Result<FightStatus, Error> {
+    let (sender, receiver) = channel::<JoinHandle<Result<(), String>>>();
+    let fight = basic_fight.clone();
+    spawn(move || handle_receiver(receiver, fight));
+
+    let mod_receiver = basic_fight
+        .lock()
+        .unwrap()
+        .receiver
+        .take()
+        .ok_or("Fight: Unable to TAKE receiver".to_owned())?;
+
+    let fight = basic_fight.clone();
+    spawn(move || handle_fight_messages(mod_receiver, fight));
+
+    let mut fight = basic_fight.clone();
+    let (delay, fight_sender) = {
+        let fight = fight.lock().unwrap();
+        (fight.delay.clone(), fight.sender.clone())
+    };
+
+    let (pa, aid, aname) = extract(&fight, AB::A);
+    let (pb, bid, bname) = extract(&fight, AB::B);
+
+    sender.send(spawn(move || {
+        handle_fight(
+            &mut fight,
+            delay,
+            &fight_sender,
+            pa,
+            aid,
+            &aname,
+            pb,
+            bid,
+            &bname,
+        )
+    }))?;
+
+    basic_fight.end();
+    Ok(FightStatus { ended: true })
+}
+
+fn handle_receiver(
+    receiver: Receiver<JoinHandle<Result<(), String>>>,
+    fight: Arc<Mutex<BasicFight>>,
+) {
+    for handle in receiver {
+        match handle.join() {
+            Ok(_r) => println!("fight concluded"),
+            Err(e) => {
+                fight.clone().end();
+                println!("[{}]: {:?}", "ERROR".color(Red), e)
+            }
+        }
+    }
+}
+
+fn handle_fight_messages(mod_receiver: Receiver<FightMod>, mut fight: Arc<Mutex<BasicFight>>) {
+    for modification in mod_receiver {
+        let res = fight.send_message(modification);
+
+        if let Err(e) = res {
+            println!("{:?}", e);
+        }
+    }
+}
+
+#[derive(Copy, Clone, Eq, PartialEq)]
+enum AB {
+    A,
+    B,
+}
+fn extract(fight: &Arc<Mutex<BasicFight>>, player: AB) -> (Player, u128, String) {
+    use AB::*;
+    let (pa, aid, aname) = {
+        let fight = fight.lock().unwrap();
+        let player_info = match player {
+            A => fight.player_a.clone(),
+            B => fight.player_b.clone(),
+        };
+        let (id, name) = {
+            let unlocked = player_info.lock().unwrap();
+            (unlocked.uuid(), unlocked.name())
+        };
+        (player_info, id, name)
+    };
+    (pa, aid, aname)
+}
+
+fn handle_fight(
+    mut fight: &mut Arc<Mutex<BasicFight>>,
+    delay: Duration,
+    fight_sender: &Sender<(FightAudience, FightMessage)>,
+    pa: Player,
+    aid: u128,
+    aname: &String,
+    pb: Player,
+    bid: u128,
+    bname: &String,
+) -> Result<(), String> {
+    let mut a_loc = pa.loc();
+    let mut b_loc = pb.loc();
+    loop {
+        let audience: Vec<u128> = fight.lock().unwrap().audience.iter().cloned().collect();
+
+        let FightStatus { ended } = fight.status();
+        println!("status: {}", ended);
+        if ended {
+            break;
+        }
+
+        if a_loc != b_loc {
+            fight.end();
+            break;
+        }
+
+        a_loc = pa.loc();
+        if a_loc != b_loc {
+            fight.end();
+            break;
+        }
+
+        fight_logic(
+            &mut fight,
+            &fight_sender,
+            aid,
+            bid,
+            &aname,
+            &bname,
+            pa.clone(),
+            Aggressor,
+            &audience,
+        )?;
+
+        let FightStatus { ended } = fight.status();
+        println!("status: {}", ended);
+        if ended {
+            break;
+        }
+
+        b_loc = pb.loc();
+        if a_loc != b_loc {
+            fight.end();
+            break;
+        }
+
+        fight_logic(
+            &mut fight,
+            &fight_sender,
+            bid,
+            aid,
+            &bname,
+            &aname,
+            pb.clone(),
+            Defender,
+            &audience,
+        )?;
+
+        if a_loc != b_loc {
+            fight.end();
+            break;
+        }
+        thread::sleep(delay);
+    }
+    fight.end();
+    Ok(())
+}
+
 fn fight_logic(
     cl: &mut Arc<Mutex<BasicFight>>,
     fight_sender: &Sender<(FightAudience, FightMessage)>,
@@ -316,3 +372,6 @@ fn fight_logic(
 
     Ok(())
 }
+
+
+
