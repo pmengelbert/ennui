@@ -9,10 +9,10 @@ use crate::map::door::{Door, DoorState, Lock, ObstacleState};
 use crate::text::message::{Audience, Msg};
 
 use crate::fight::{BasicFight, Fight, FightInfo, FightMod};
+use crate::text::Color::{Green, Red};
 use std::ops::DerefMut;
 use std::sync::mpsc::channel;
 use std::time::Duration;
-use crate::text::BareColor::{Green, Red};
 
 pub fn fill_interpreter(i: &mut Interpreter) {
     i.insert("look", |g, u, args| {

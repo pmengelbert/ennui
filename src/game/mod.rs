@@ -29,7 +29,7 @@ use crate::text::article;
 use crate::text::message::{
     Audience, Broadcast, FightAudience, Message, MessageFormat, Messenger, Msg,
 };
-use crate::text::BareColor::Green;
+use crate::text::Color::Green;
 
 mod broadcast;
 mod commands;
@@ -179,12 +179,12 @@ impl Game {
                 s.push_str(&format!("\nthe {} is holding:\n", item.name()));
                 s.push_str(&format!(
                     "{}",
-                        lst.list()
-                            .iter()
-                            .map(|i| article(i.name()))
-                            .collect::<Vec<_>>()
-                            .join("\n")
-                            .color(Green)
+                    lst.list()
+                        .iter()
+                        .map(|i| article(&i.name()))
+                        .collect::<Vec<_>>()
+                        .join("\n")
+                        .color(Green)
                 ));
             }
             s
@@ -237,14 +237,14 @@ impl Game {
     where
         P: Uuid,
     {
-        Ok(self.get_player(p.uuid())?.lock().unwrap().loc())
+        Ok(self.get_player(p.uuid())?.loc())
     }
 
     fn name_of<P>(&self, p: P) -> Result<String, EnnuiError>
     where
         P: Uuid,
     {
-        Ok(self.get_player(p.uuid())?.lock().unwrap().name().to_owned())
+        Ok(self.get_player(p.uuid())?.name())
     }
 
     fn dir_func<U: Uuid>(
@@ -332,7 +332,7 @@ impl Game {
                 .unwrap()
                 .items()
                 .iter()
-                .map(|i| format!("{}", article(i.name())))
+                .map(|i| article(&i.name()))
                 .collect::<Vec<_>>()
                 .join("\n")
                 .as_str(),
@@ -341,21 +341,16 @@ impl Game {
         Some(format!("{}{}", p.lock().unwrap().description(), item_list))
     }
 
-    fn list_inventory<T: Uuid>(&self, u: T) -> Option<String> {
-        let mut ret = String::new();
-        ret.push_str("you are holding:\n");
-        let player = self.players.get(&u.uuid())?.lock().unwrap();
-        let items = player.items();
-        ret.push_str(
-            items
-                .iter()
-                .map(|i| article(i.name()))
-                .collect::<Vec<_>>()
-                .join("\n")
-                .as_str(),
-        );
+    fn list_inventory<T: Uuid>(&self, u: T) -> Result<String, EnnuiError> {
+        let mut s = String::new();
+        s.push_str("you are holding:");
+        let player = self.get_player(u.uuid())?;
+        for item in player.lock().unwrap().items().iter() {
+            s.push('\n');
+            s.push_str(&article(&item.name()).color(Green))
+        }
 
-        Some(ret)
+        Ok(s)
     }
 
     fn id_of_in(&self, loc: Coord, name: &str) -> Option<u128> {
@@ -363,7 +358,7 @@ impl Game {
         let players = &self.players;
         rooms.player_ids(loc).iter().find_map(|i| {
             let p = players.get(i)?;
-            if p.lock().unwrap().name() == name {
+            if p.handle() == name {
                 Some(p.lock().unwrap().uuid())
             } else {
                 None

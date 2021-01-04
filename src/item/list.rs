@@ -6,6 +6,8 @@ use crate::item::key::KeyType;
 use crate::item::YamlItem::{Clothing, Container, Edible, Holdable, Key, Scenery, Weapon};
 use crate::item::{Attribute, Describe, Description, Item, Quality, YamlItem, YamlItemList};
 use crate::map::door::RenaissanceGuard;
+use crate::text::message::MessageFormat;
+use crate::text::Color::Green;
 use std::fmt::Debug;
 use std::mem::take;
 use std::ops::{Deref, DerefMut};
@@ -62,25 +64,25 @@ impl DerefMut for ItemList {
 }
 
 impl Describe for ItemList {
-    fn name(&self) -> &str {
+    fn name(&self) -> String {
         self.info.name()
     }
 
-    fn display(&self) -> &str {
+    fn display(&self) -> String {
         self.info.display()
     }
 
-    fn description(&self) -> &str {
+    fn description(&self) -> String {
         self.info.description()
     }
 
-    fn handle(&self) -> &Handle {
+    fn handle(&self) -> Handle {
         self.info.handle()
     }
 }
 
 impl Attribute<Quality> for ItemList {
-    fn attr(&self) -> &[Quality] {
+    fn attr(&self) -> Vec<Quality> {
         self.info.attr()
     }
 
@@ -127,6 +129,17 @@ impl ItemList {
             None => return Err(Simple(ItemNotFound)),
         };
         Ok(self.inner.remove(pos))
+    }
+
+    pub fn display(&self) -> String {
+        let mut s = String::new();
+
+        for item in self.iter() {
+            s.push('\n');
+            s.push_str(&item.display().color(Green));
+        }
+
+        s
     }
 }
 

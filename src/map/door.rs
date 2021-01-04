@@ -98,33 +98,33 @@ impl From<Description> for RenaissanceGuard {
 }
 
 impl Describe for RenaissanceGuard {
-    fn name(&self) -> &str {
-        &self.info.name()
+    fn name(&self) -> String {
+        self.info.name()
     }
 
-    fn display(&self) -> &str {
-        &self.info.display()
+    fn display(&self) -> String {
+        self.info.display()
     }
 
-    fn description(&self) -> &str {
+    fn description(&self) -> String {
         match self.state() {
             GuardState::Closed => {
-                &self.info.description()
+                self.info.description()
             }
             GuardState::Open => {
-                "He seems happy as a clam, and tells you over and over how grateful he is to have warm genitals."
+                "He seems happy as a clam, and tells you over and over how grateful he is to have warm genitals.".to_owned()
             }
         }
     }
 
-    fn handle(&self) -> &Handle {
-        &self.info.handle()
+    fn handle(&self) -> Handle {
+        self.info.handle()
     }
 }
 
 impl Attribute<Quality> for RenaissanceGuard {
-    fn attr(&self) -> &[Quality] {
-        &self.info.attributes
+    fn attr(&self) -> Vec<Quality> {
+        self.info.attributes.clone()
     }
 
     fn set_attr(&mut self, q: Quality) {

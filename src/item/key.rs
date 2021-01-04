@@ -23,26 +23,26 @@ impl KeyType {
 }
 
 impl Describe for KeyType {
-    fn name(&self) -> &str {
-        &self.info.name
+    fn name(&self) -> String {
+        self.info.name.clone()
     }
 
-    fn display(&self) -> &str {
-        &self.info.display
+    fn display(&self) -> String {
+        self.info.display.clone()
     }
 
-    fn description(&self) -> &str {
-        &self.info.description
+    fn description(&self) -> String {
+        self.info.description.clone()
     }
 
-    fn handle(&self) -> &Handle {
-        &self.info.handle
+    fn handle(&self) -> Handle {
+        self.info.handle.clone()
     }
 }
 
 impl Attribute<Quality> for KeyType {
-    fn attr(&self) -> &[Quality] {
-        &self.info.attributes
+    fn attr(&self) -> Vec<Quality> {
+        self.info.attributes.clone()
     }
 
     fn set_attr(&mut self, q: Quality) {

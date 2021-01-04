@@ -17,10 +17,10 @@ pub mod key;
 pub mod list;
 
 pub trait Describe: Send + Sync + Debug + Attribute<Quality> {
-    fn name(&self) -> &str;
-    fn display(&self) -> &str;
-    fn description(&self) -> &str;
-    fn handle(&self) -> &Handle;
+    fn name(&self) -> String;
+    fn display(&self) -> String;
+    fn description(&self) -> String;
+    fn handle(&self) -> Handle;
 }
 
 /// YamlItem is a no-frills representation of various objects, wrapped in a primary attribute.
@@ -69,7 +69,7 @@ pub enum Quality {
 }
 
 pub trait Attribute<T: Copy + Eq> {
-    fn attr(&self) -> &[T];
+    fn attr(&self) -> Vec<T>;
     fn set_attr(&mut self, q: T);
 
     fn is(&self, a: T) -> bool {
@@ -88,7 +88,7 @@ pub trait Attribute<T: Copy + Eq> {
 }
 
 impl Describe for Item {
-    fn name(&self) -> &str {
+    fn name(&self) -> String {
         use Item::*;
         match self {
             Clothing(i) | Weapon(i) | Scenery(i) | Edible(i) | Holdable(i) => i.name(),
@@ -98,7 +98,7 @@ impl Describe for Item {
         }
     }
 
-    fn display(&self) -> &str {
+    fn display(&self) -> String {
         use Item::*;
         match self {
             Clothing(i) | Weapon(i) | Scenery(i) | Edible(i) | Holdable(i) => i.display(),
@@ -108,7 +108,7 @@ impl Describe for Item {
         }
     }
 
-    fn description(&self) -> &str {
+    fn description(&self) -> String {
         use Item::*;
         match self {
             Clothing(i) | Weapon(i) | Scenery(i) | Edible(i) | Holdable(i) => i.description(),
@@ -118,7 +118,7 @@ impl Describe for Item {
         }
     }
 
-    fn handle(&self) -> &Handle {
+    fn handle(&self) -> Handle {
         use Item::*;
         match self {
             Clothing(i) | Weapon(i) | Scenery(i) | Edible(i) | Holdable(i) => i.handle(),
@@ -130,7 +130,7 @@ impl Describe for Item {
 }
 
 impl Attribute<Quality> for Item {
-    fn attr(&self) -> &[Quality] {
+    fn attr(&self) -> Vec<Quality> {
         use Item::*;
         match self {
             Clothing(i) | Weapon(i) | Scenery(i) | Edible(i) | Holdable(i) => i.attr(),
@@ -168,26 +168,26 @@ pub struct Description {
 }
 
 impl Describe for Description {
-    fn name(&self) -> &str {
-        &self.name
+    fn name(&self) -> String {
+        self.name.clone()
     }
 
-    fn display(&self) -> &str {
-        &self.display
+    fn display(&self) -> String {
+        self.display.clone()
     }
 
-    fn description(&self) -> &str {
-        &self.description
+    fn description(&self) -> String {
+        self.description.clone()
     }
 
-    fn handle(&self) -> &Handle {
-        &self.handle
+    fn handle(&self) -> Handle {
+        self.handle.clone()
     }
 }
 
 impl Attribute<Quality> for Description {
-    fn attr(&self) -> &[Quality] {
-        &self.attributes
+    fn attr(&self) -> Vec<Quality> {
+        self.attributes.clone()
     }
 
     fn set_attr(&mut self, q: Quality) {
@@ -210,10 +210,6 @@ impl Description {
             attributes,
         }
     }
-
-    pub fn handle(&self) -> &Handle {
-        &self.handle
-    }
 }
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
@@ -224,8 +220,8 @@ pub struct YamlItemList {
 }
 
 impl Attribute<Quality> for YamlItemList {
-    fn attr(&self) -> &[Quality] {
-        &self.info.attributes
+    fn attr(&self) -> Vec<Quality> {
+        self.info.attributes.clone()
     }
 
     fn set_attr(&mut self, q: Quality) {
@@ -260,20 +256,20 @@ impl AsMut<YamlItemList> for YamlItemList {
 }
 
 impl Describe for YamlItemList {
-    fn name(&self) -> &str {
-        &self.info.name()
+    fn name(&self) -> String {
+        self.info.name()
     }
 
-    fn display(&self) -> &str {
-        &self.info.display()
+    fn display(&self) -> String {
+        self.info.display()
     }
 
-    fn description(&self) -> &str {
-        &self.info.description()
+    fn description(&self) -> String {
+        self.info.description()
     }
 
-    fn handle(&self) -> &Handle {
-        &self.info.handle()
+    fn handle(&self) -> Handle {
+        self.info.handle()
     }
 }
 
@@ -329,25 +325,25 @@ impl YamlItem {
 }
 
 impl Describe for YamlItem {
-    fn name(&self) -> &str {
-        &self.safe_unwrap().name()
+    fn name(&self) -> String {
+        self.safe_unwrap().name()
     }
 
-    fn display(&self) -> &str {
-        &self.safe_unwrap().display()
+    fn display(&self) -> String {
+        self.safe_unwrap().display()
     }
 
-    fn description(&self) -> &str {
-        &self.safe_unwrap().description()
+    fn description(&self) -> String {
+        self.safe_unwrap().description()
     }
 
-    fn handle(&self) -> &Handle {
-        &self.safe_unwrap().handle()
+    fn handle(&self) -> Handle {
+        self.safe_unwrap().handle()
     }
 }
 
 impl Attribute<Quality> for YamlItem {
-    fn attr(&self) -> &[Quality] {
+    fn attr(&self) -> Vec<Quality> {
         self.safe_unwrap().attr()
     }
 

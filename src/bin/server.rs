@@ -11,8 +11,8 @@ use ennui::text::message::{Broadcast, FightAudience, MessageFormat};
 
 use ennui::fight::FightMessage;
 use ennui::text::channel::{MessageHandler, MessageReceiver};
+use ennui::text::Color::{Green, Red};
 use std::sync::mpsc::channel;
-use ennui::text::BareColor::{Green, Red};
 
 macro_rules! arc_mutex(
     ($wrapped:expr) => {

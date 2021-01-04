@@ -118,7 +118,7 @@ impl Game {
             p.lock().unwrap().items_mut().get_item_owned(handle)?
         };
 
-        let item_name = item.name().to_owned();
+        let item_name = item.name();
 
         let other_p = match players.get_mut(&other_id) {
             Some(p) => p,
@@ -131,7 +131,7 @@ impl Game {
                     Some(Item::Guard(_, guard)) => match guard.insert_item(item) {
                         Ok(()) => Err(Msg(format!(
                             "you see {} relax a little bit. maybe now they'll let you through",
-                            article(guard.name())
+                            article(&guard.name())
                         ))),
                         Err(given_back) => {
                             players
@@ -152,7 +152,7 @@ impl Game {
 
                             Err(Msg(format!(
                                 "I don't think {} can accept {}",
-                                article(guard.name()),
+                                article(&guard.name()),
                                 article(&item_name)
                             )))
                         }

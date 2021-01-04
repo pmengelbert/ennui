@@ -59,13 +59,14 @@ const NORTH_QUALITIES: [CommandQuality; 2] = [Awake, Motion];
 const BLANK_QUALITIES: [CommandQuality; 0] = [];
 
 impl Attribute<CommandQuality> for CommandKind {
-    fn attr(&self) -> &[CommandQuality] {
+    fn attr(&self) -> Vec<CommandQuality> {
         use CommandKind::*;
-        
+
         match self {
             North => &NORTH_QUALITIES[..],
             _ => &BLANK_QUALITIES[..],
         }
+        .to_vec()
     }
 
     fn set_attr(&mut self, _: CommandQuality) {

@@ -4,13 +4,13 @@ use std::ops::{Deref, DerefMut};
 use serde::{Deserialize, Serialize};
 
 use crate::player::{Player, Uuid};
-use crate::text::message::{Messenger, MessageFormat};
+use crate::text::message::{MessageFormat, Messenger};
 
 use crate::item::Describe;
 use crate::map::coord::Coord;
+use crate::text::Color;
+use crate::text::Color::Yellow;
 use std::sync::{Arc, Mutex};
-use crate::text::BareColor;
-use crate::text::BareColor::Yellow;
 
 #[repr(transparent)]
 #[derive(Debug, Default, Deserialize, Serialize, Clone)]
@@ -57,15 +57,23 @@ impl PlayerIdList {
         cl
     }
 
-    pub fn as_players(&self, players: &PlayerList)  -> Vec<Arc<Mutex<Player>>> {
+    pub fn as_players(&self, players: &PlayerList) -> Vec<Arc<Mutex<Player>>> {
         players.from_ids(self)
     }
 
     pub fn display(&self, players: &PlayerList) -> String {
-        use BareColor::*;
-        players.from_ids(self)
+        use Color::*;
+        players
+            .from_ids(self)
             .iter()
-            .map(|p| p.lock().unwrap().name().to_owned().color(Yellow).custom_padded("\n", ""))
+            .map(|p| {
+                p.lock()
+                    .unwrap()
+                    .name()
+                    .to_owned()
+                    .color(Yellow)
+                    .custom_padded("\n", "")
+            })
             .collect::<Vec<_>>()
             .join("")
     }
@@ -142,6 +150,8 @@ impl PlayerList {
     }
 
     pub fn from_ids(&self, ids: &PlayerIdList) -> Vec<Arc<Mutex<Player>>> {
-        ids.iter().filter_map(|id| Some(self.get(&id)?.clone())).collect()
+        ids.iter()
+            .filter_map(|id| Some(self.get(&id)?.clone()))
+            .collect()
     }
 }

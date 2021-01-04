@@ -15,10 +15,10 @@ use crate::map::Locate;
 
 use crate::fight::FightMod;
 use crate::fight::FightMod::Leave;
+use std::error::Error;
 use std::net::Shutdown::Both;
 use std::sync::mpsc::Sender;
 use std::sync::{Arc, Mutex};
-use std::error::Error;
 
 pub mod list;
 mod meter;
@@ -59,8 +59,8 @@ mod test_playerstatus {
 }
 
 impl Attribute<PlayerStatus> for Player {
-    fn attr(&self) -> &[PlayerStatus] {
-        &self.status
+    fn attr(&self) -> Vec<PlayerStatus> {
+        self.status.clone()
     }
 
     fn set_attr(&mut self, q: PlayerStatus) {
@@ -126,6 +126,12 @@ impl Locate for Player {
     }
 }
 
+impl Locate for Arc<Mutex<Player>> {
+    fn loc(&self) -> Coord {
+        self.lock().unwrap().loc
+    }
+}
+
 impl Uuid for Player {
     fn uuid(&self) -> u128 {
         self.uuid
@@ -145,26 +151,64 @@ impl Holder for Player {
 }
 
 impl Describe for Player {
-    fn name(&self) -> &str {
-        &self.info.name()
+    fn name(&self) -> String {
+        self.info.name()
     }
 
-    fn display(&self) -> &str {
-        &self.info.display()
+    fn display(&self) -> String {
+        self.info.display()
     }
 
-    fn description(&self) -> &str {
+    fn description(&self) -> String {
         self.info.description()
     }
 
-    fn handle(&self) -> &Handle {
+    fn handle(&self) -> Handle {
         self.info.handle()
     }
 }
 
+impl Describe for Arc<Mutex<Player>> {
+    fn name(&self) -> String {
+        self.lock().unwrap().name()
+    }
+
+    fn display(&self) -> String {
+        self.lock().unwrap().display()
+    }
+
+    fn description(&self) -> String {
+        self.lock().unwrap().description()
+    }
+
+    fn handle(&self) -> Handle {
+        self.lock().unwrap().handle()
+    }
+}
+
+impl Attribute<Quality> for Arc<Mutex<Player>> {
+    fn attr(&self) -> Vec<Quality> {
+        self.lock().unwrap().attr()
+    }
+
+    fn set_attr(&mut self, q: Quality) {
+        self.lock().unwrap().set_attr(q)
+    }
+}
+
+impl Attribute<PlayerStatus> for Arc<Mutex<Player>> {
+    fn attr(&self) -> Vec<PlayerStatus> {
+        self.lock().unwrap().status.clone()
+    }
+
+    fn set_attr(&mut self, q: PlayerStatus) {
+        self.lock().unwrap().set_attr(q);
+    }
+}
+
 impl Attribute<Quality> for Player {
-    fn attr(&self) -> &[Quality] {
-        &self.info.attributes
+    fn attr(&self) -> Vec<Quality> {
+        self.info.attributes.clone()
     }
 
     fn set_attr(&mut self, q: Quality) {
@@ -231,6 +275,7 @@ impl Player {
     }
 
     pub fn set_name(&mut self, name: &str) {
+        self.info.handle.push(name.to_owned());
         self.info.name = name.to_owned();
     }
 
@@ -290,7 +335,7 @@ impl Player {
         self.fight_sender = Some(arc_mutex!(sender));
     }
 
-    pub fn leave_fight(&mut self) -> Result<(), Box<dyn Error>>{
+    pub fn leave_fight(&mut self) -> Result<(), Box<dyn Error>> {
         if let Some(sender) = self.fight_sender.take() {
             let sender = sender.lock().unwrap();
             return Ok(sender.send(Leave(self.uuid))?);

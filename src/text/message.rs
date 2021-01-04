@@ -2,8 +2,8 @@ use std::borrow::Cow;
 use std::io;
 
 use crate::player::{Player, Uuid};
+use crate::text::Color;
 use std::sync::{Arc, Mutex};
-use crate::text::BareColor;
 
 type WriteResult = io::Result<usize>;
 
@@ -216,7 +216,7 @@ pub trait MessageFormat {
         s
     }
 
-    fn color(&self, color: BareColor) -> String {
+    fn color(&self, color: Color) -> String {
         let mut s = String::new();
         s.push_str("\u{001b}");
         s.push_str(color.to_code());

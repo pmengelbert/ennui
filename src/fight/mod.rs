@@ -15,12 +15,12 @@ use crate::error::EnnuiError::Simple;
 use crate::player::list::PlayerIdList;
 use crate::player::PlayerStatus::Dead;
 use crate::text::message::{FightAudience, Message, MessageFormat};
+use crate::text::Color::{Red, Yellow};
 use std::borrow::{Borrow, Cow};
 use std::error::Error as StdError;
 use std::thread;
 use std::thread::{spawn, JoinHandle};
 use std::time::Duration;
-use crate::text::BareColor::{Yellow, Red};
 
 type Player = Arc<Mutex<BarePlayer>>;
 type Error = Box<dyn StdError>;
@@ -212,12 +212,10 @@ impl Fight for Arc<Mutex<BasicFight>> {
         let mut cl = cl.lock().unwrap();
 
         match m {
-            Leave(u) => {
-                match cl.audience.remove(&u) {
-                    true => Ok(()),
-                    false => Err(Simple(PlayerNotFound)),
-                }
-            }
+            Leave(u) => match cl.audience.remove(&u) {
+                true => Ok(()),
+                false => Err(Simple(PlayerNotFound)),
+            },
         }
     }
 
@@ -297,7 +295,8 @@ fn fight_logic(
                     .custom_padded(before, after)
                     .into(),
                 obj: Some(
-                    format!("{} hits you", a_name).color(Red)
+                    format!("{} hits you", a_name)
+                        .color(Red)
                         .custom_padded(before, after)
                         .into(),
                 ),

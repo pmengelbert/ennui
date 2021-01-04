@@ -10,10 +10,10 @@ use crate::item::list::{Holder, ItemList, ListTrait};
 use crate::item::{Attribute, Describe, Description, Item, Quality, YamlItemList};
 use crate::map::coord::Coord;
 use crate::map::door::DoorList;
-use crate::player::list::{PlayerIdList};
+use crate::player::list::PlayerIdList;
 use crate::player::Uuid;
-use crate::text::BareColor::{Green, Cyan};
 use crate::text::message::MessageFormat;
+use crate::text::Color::{Cyan, Green};
 
 pub mod coord;
 pub mod direction;
@@ -64,26 +64,26 @@ impl Holder for Room {
 }
 
 impl Describe for Room {
-    fn name(&self) -> &str {
-        &self.info.name()
+    fn name(&self) -> String {
+        self.info.name()
     }
 
-    fn display(&self) -> &str {
-        &self.info.display()
+    fn display(&self) -> String {
+        self.info.display()
     }
 
-    fn description(&self) -> &str {
-        &self.info.description()
+    fn description(&self) -> String {
+        self.info.description()
     }
 
-    fn handle(&self) -> &Handle {
-        &self.info.handle()
+    fn handle(&self) -> Handle {
+        self.info.handle()
     }
 }
 
 impl Attribute<Quality> for Room {
-    fn attr(&self) -> &[Quality] {
-        &self.info.attributes
+    fn attr(&self) -> Vec<Quality> {
+        self.info.attributes.clone()
     }
 
     fn set_attr(&mut self, q: Quality) {
@@ -211,16 +211,7 @@ impl Room {
             ..
         } = self;
 
-        let items_list = items
-            .iter()
-            .map(|i| i.display().to_owned())
-            .collect::<Vec<String>>();
-
-        let items_list = match items_list.len() {
-            0 => "".to_owned(),
-            1 => format!("\n{}", items_list[0]),
-            _ => format!("\n{}", items_list.join("\n")),
-        }.color(Green);
+        let items_list = items.display();
 
         format!(
             "{}\n    {}\

@@ -1,9 +1,7 @@
 pub mod channel;
 pub mod message;
 
-
-
-pub enum BareColor {
+pub enum Color {
     Red,
     #[allow(dead_code)]
     Green,
@@ -18,10 +16,6 @@ pub enum BareColor {
     #[allow(dead_code)]
     White,
 }
-
-
-
-
 
 pub trait Wrap {
     fn wrap(&self, line_length: usize) -> String;
@@ -61,16 +55,16 @@ where
     }
 }
 
-impl BareColor {
+impl Color {
     fn to_code(&self) -> &str {
         match self {
-            BareColor::Red => RED,
-            BareColor::Green => GREEN,
-            BareColor::Yellow => YELLOW,
-            BareColor::Blue => BLUE,
-            BareColor::Magenta => MAGENTA,
-            BareColor::Cyan => CYAN,
-            BareColor::White => WHITE,
+            Color::Red => RED,
+            Color::Green => GREEN,
+            Color::Yellow => YELLOW,
+            Color::Blue => BLUE,
+            Color::Magenta => MAGENTA,
+            Color::Cyan => CYAN,
+            Color::White => WHITE,
         }
     }
 }

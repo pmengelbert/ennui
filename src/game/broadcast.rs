@@ -1,10 +1,10 @@
 use crate::game::Game;
-use crate::text::message::{Broadcast, Message, Messenger, MessageFormat};
+use crate::text::message::{Broadcast, Message, MessageFormat, Messenger};
+use crate::text::Color::Green;
 use crate::text::Wrap;
 use crate::WriteResult;
 use std::borrow::BorrowMut;
 use std::io::Write;
-use crate::text::BareColor::Green;
 
 impl<T> Broadcast for T
 where
