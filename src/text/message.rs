@@ -31,6 +31,11 @@ where
 
 pub trait Messenger {
     fn id(&self) -> Option<u128>;
+
+    fn object(&self) -> Option<u128> {
+        None
+    }
+
     fn others(&self) -> Vec<u128> {
         vec![]
     }
@@ -61,6 +66,22 @@ pub struct Audience<T, U>(pub T, pub U)
 where
     T: Uuid,
     U: Uuid;
+
+#[derive(Clone)]
+pub struct FightAudience(pub u128, pub u128, pub Vec<u128>);
+impl Messenger for FightAudience {
+    fn id(&self) -> Option<u128> {
+        Some(self.0)
+    }
+
+    fn object(&self) -> Option<u128> {
+        Some(self.1)
+    }
+
+    fn others(&self) -> Vec<u128> {
+        self.2.clone()
+    }
+}
 
 impl<T, U> Messenger for Audience<T, U>
 where

@@ -10,6 +10,7 @@ use rand::Rng;
 
 use crate::error::EnnuiError;
 use crate::error::EnnuiError::Fatal;
+use crate::fight::FightMessage;
 use crate::game::util::load_rooms;
 use crate::interpreter::{CommandMessage, Interpreter};
 use crate::item::list::Holder;
@@ -22,9 +23,10 @@ use crate::map::{coord::Coord, Locate, Room, Space};
 use crate::player::list::{PlayerIdList, PlayerList};
 use crate::player::{Player, Uuid};
 use crate::text::article;
-use crate::text::message::{Audience, Broadcast, Message, MessageFormat, Messenger, Msg};
+use crate::text::message::{
+    Audience, Broadcast, FightAudience, Message, MessageFormat, Messenger, Msg,
+};
 use crate::text::Color::*;
-use crate::fight::FightMessage;
 
 mod broadcast;
 mod commands;
@@ -37,7 +39,7 @@ pub struct Game {
     players: PlayerList,
     rooms: RoomList,
     interpreter: Interpreter,
-    sender: Option<Sender<(Audience<u128, Vec<u128>>, FightMessage)>>,
+    sender: Option<Sender<(FightAudience, FightMessage)>>,
 }
 
 impl Game {
@@ -57,7 +59,7 @@ impl Game {
         })
     }
 
-    pub fn set_sender(&mut self, sender: Sender<(Audience<u128, Vec<u128>>, FightMessage)>) {
+    pub fn set_sender(&mut self, sender: Sender<(FightAudience, FightMessage)>) {
         self.sender = Some(sender);
     }
 
@@ -128,7 +130,7 @@ impl Game {
             .set_name(name))
     }
 
-    pub fn clone_sender(&self) -> Option<Sender<(Audience<u128, Vec<u128>>, FightMessage)>> {
+    pub fn clone_sender(&self) -> Option<Sender<(FightAudience, FightMessage)>> {
         Some(self.sender.as_ref()?.clone())
     }
 
@@ -355,12 +357,16 @@ impl Game {
             .players_mut()
             .insert(u);
 
-        players
-            .get_mut(&u)
-            .ok_or(DoorState::None)?
-            .lock()
-            .unwrap()
+        let mut p =
+            players
+                .get_mut(&u)
+                .ok_or(DoorState::None)?
+                .lock()
+                .unwrap();
+        p
             .set_loc(next_coord);
+
+        p.leave_fight();
 
         Ok(())
     }

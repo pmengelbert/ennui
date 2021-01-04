@@ -8,9 +8,10 @@ use crate::error::{CmdErr, EnnuiError};
 use crate::map::door::{Door, DoorState, Lock, ObstacleState};
 use crate::text::message::{Audience, Msg};
 
-use crate::fight::{BasicFight, Fight, FightInfo};
+use crate::fight::{BasicFight, Fight, FightInfo, FightMod};
 use std::ops::DerefMut;
 use std::time::Duration;
+use std::sync::mpsc::channel;
 
 pub fn fill_interpreter(i: &mut Interpreter) {
     i.insert("look", |g, u, args| {
@@ -423,32 +424,50 @@ pub fn fill_interpreter(i: &mut Interpreter) {
 
         if a.len() > 0 {
             let object = a[0];
-            let _rooms = &g.rooms;
-            let players = &g.players;
+            let rooms = &g.rooms;
+
+            let other_id = {
+                match g.id_of_in(loc, object) {
+                    None => return message(u, format!("you don't see {} here", object)),
+                    Some(p) => p,
+                }
+            };
+
+            if other_id == u {
+                return message(u, "violence against the self is all too common. i am here to stop you.")
+            }
+
+            let sender = g
+                .clone_sender()
+                .ok_or(EnnuiError::Fatal("hit: UNABLE TO CLONE SENDER".into()))?;
+
+            let players = &mut g.players;
 
             let p = players
                 .get(&u)
                 .ok_or(EnnuiError::Fatal("hit: PLAYER NOT FOUND (2)".into()))?
                 .clone();
 
-            let other_p = match g.id_of_in(loc, object) {
-                None => return message(u, format!("you don't see {} here", object)),
-                Some(p) => p,
-            };
 
-            let other_p = players
-                .get(&other_p)
+            let defender = players
+                .get(&other_id)
                 .ok_or(EnnuiError::Fatal("hit: OTHER PLAYER NOT FOUND".into()))?
                 .clone();
 
-            let sender = g
-                .clone_sender()
-                .ok_or(EnnuiError::Fatal("hit: UNABLE TO CLONE SENDER".into()))?;
+            let audience = rooms.player_ids(loc).except(u).except(other_id);
+
+            let (mod_sender, receiver) = channel::<FightMod>();
+            for mut p in audience.iter().filter_map(|id| Some(players.get_mut(id)?.clone())) {
+                p.lock().unwrap().assign_fight_sender(mod_sender.clone())
+            }
+
             let mut fight = BasicFight::new(FightInfo {
                 player_a: p,
-                player_b: other_p,
+                player_b: defender,
                 delay: Duration::new(3, 0),
+                audience,
                 sender,
+                receiver,
             });
 
             match fight.begin() {

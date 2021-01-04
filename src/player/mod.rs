@@ -14,6 +14,10 @@ use crate::map::coord::Coord;
 use crate::map::Locate;
 
 use std::net::Shutdown::Both;
+use crate::fight::FightMod;
+use std::sync::mpsc::Sender;
+use std::sync::{Mutex, Arc};
+use crate::fight::FightMod::Leave;
 
 pub mod list;
 mod meter;
@@ -31,6 +35,8 @@ pub struct Player {
     #[serde(skip_serializing, skip_deserializing)]
     stream: Option<TcpStream>,
     stats: Vec<MeterKind>,
+    #[serde(skip_serializing, skip_deserializing)]
+    fight_sender: Option<Arc<Mutex<Sender<FightMod>>>>,
 }
 
 pub trait Uuid {
@@ -179,6 +185,7 @@ impl Player {
             items: ItemList::new(),
             clothing: ItemList::new(),
             stream: None,
+            fight_sender: None,
             stats,
         }
     }
@@ -243,6 +250,17 @@ impl Player {
 
     pub fn drop_stream(&mut self) {
         self.stream = None
+    }
+
+    pub fn assign_fight_sender(&mut self, sender: Sender<FightMod>) {
+        self.fight_sender = Some(arc_mutex!(sender));
+    }
+
+    pub fn leave_fight(&mut self) {
+        if let Some(sender) = self.fight_sender.take() {
+            let sender = sender.lock().unwrap();
+            sender.send(Leave(self.uuid));
+        }
     }
 
     fn assign_stream(&mut self, stream: TcpStream) {

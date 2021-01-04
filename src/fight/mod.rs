@@ -4,18 +4,22 @@ use crate::text::Color::{Red, Yellow};
 
 use std::ops::DerefMut;
 
-use std::sync::mpsc::{channel, Sender};
+use std::sync::mpsc::{channel, Sender, Receiver};
 use std::sync::{Arc, Mutex};
 
 use crate::fight::Starter::{Aggressor, Defender};
 use crate::item::Describe;
 
-use crate::text::message::{Audience, MessageFormat, Msg, Message};
+use crate::error::CmdErr::PlayerNotFound;
+use crate::error::EnnuiError;
+use crate::error::EnnuiError::Simple;
+use crate::player::list::PlayerIdList;
+use crate::text::message::{Audience, FightAudience, Message, MessageFormat, Msg};
+use std::borrow::{Borrow, Cow};
 use std::error::Error as StdError;
 use std::thread;
 use std::thread::{spawn, JoinHandle};
 use std::time::Duration;
-use std::borrow::{Cow, Borrow};
 
 type Player = Arc<Mutex<BarePlayer>>;
 type Error = Box<dyn StdError>;
@@ -24,7 +28,13 @@ pub trait Fight {
     fn begin(&mut self) -> Result<FightStatus, Error>;
     fn status(&self) -> FightStatus;
     fn sender(&self) -> Sender<FightMessage>;
+    fn send_message(&mut self, m: FightMod) -> Result<(), EnnuiError>;
     fn end(&mut self);
+}
+
+#[derive(Copy, Clone)]
+pub enum FightMod {
+    Leave(u128),
 }
 
 pub struct BasicFight {
@@ -32,14 +42,18 @@ pub struct BasicFight {
     player_b: Player,
     delay: Duration,
     ended: Arc<Mutex<bool>>,
-    sender: Sender<(Audience<u128, Vec<u128>>, FightMessage)>,
+    audience: PlayerIdList,
+    sender: Sender<(FightAudience, FightMessage)>,
+    receiver: Option<Receiver<(FightMod)>>,
 }
 
 pub struct FightInfo {
     pub player_a: Player,
     pub player_b: Player,
     pub delay: Duration,
-    pub sender: Sender<(Audience<u128, Vec<u128>>, FightMessage)>,
+    pub audience: PlayerIdList,
+    pub sender: Sender<(FightAudience, FightMessage)>,
+    pub receiver: Receiver<(FightMod)>,
 }
 
 impl BasicFight {
@@ -49,6 +63,8 @@ impl BasicFight {
             player_b,
             delay,
             sender,
+            audience,
+            receiver,
         } = info;
 
         arc_mutex!(Self {
@@ -56,6 +72,8 @@ impl BasicFight {
             player_b,
             delay,
             sender,
+            audience,
+            receiver: Some(receiver),
             ended: arc_mutex!(false),
         })
     }
@@ -77,7 +95,16 @@ impl Fight for Arc<Mutex<BasicFight>> {
             }
         });
 
-        let mut cl = self.clone();
+        let mod_receiver = self.lock().unwrap().receiver.take()
+            .ok_or("OH NO".to_owned())?;
+        let mut fight = self.clone();
+        spawn(move || {
+            for modification in mod_receiver {
+                fight.send_message(modification);
+            }
+        });
+
+        let mut fight = self.clone();
 
         let pa = self.lock().unwrap().player_a.clone();
         let pb = self.lock().unwrap().player_b.clone();
@@ -93,25 +120,27 @@ impl Fight for Arc<Mutex<BasicFight>> {
             let mut a_loc = pa.lock().unwrap().loc();
             let mut b_loc = pb.lock().unwrap().loc();
             loop {
-                let FightStatus { ended } = cl.status();
+                let audience: Vec<u128> = fight.lock().unwrap().audience.iter().cloned().collect();
+
+                let FightStatus { ended } = fight.status();
                 println!("status: {}", ended);
                 if ended {
                     break;
                 }
 
                 if a_loc != b_loc {
-                    cl.end();
+                    fight.end();
                     break;
                 }
 
                 a_loc = pa.lock().unwrap().loc();
                 if a_loc != b_loc {
-                    cl.end();
+                    fight.end();
                     break;
                 }
 
                 fight_logic(
-                    &mut cl,
+                    &mut fight,
                     &fight_sender,
                     aid,
                     bid,
@@ -119,9 +148,10 @@ impl Fight for Arc<Mutex<BasicFight>> {
                     &bname,
                     pa.clone(),
                     Aggressor,
+                    &audience,
                 )?;
 
-                let FightStatus { ended } = cl.status();
+                let FightStatus { ended } = fight.status();
                 println!("status: {}", ended);
                 if ended {
                     break;
@@ -129,12 +159,12 @@ impl Fight for Arc<Mutex<BasicFight>> {
 
                 b_loc = pb.lock().unwrap().loc();
                 if a_loc != b_loc {
-                    cl.end();
+                    fight.end();
                     break;
                 }
 
                 fight_logic(
-                    &mut cl,
+                    &mut fight,
                     &fight_sender,
                     bid,
                     aid,
@@ -142,15 +172,16 @@ impl Fight for Arc<Mutex<BasicFight>> {
                     &aname,
                     pb.clone(),
                     Defender,
+                    &audience,
                 )?;
 
                 if a_loc != b_loc {
-                    cl.end();
+                    fight.end();
                     break;
                 }
                 thread::sleep(delay);
             }
-            cl.end();
+            fight.end();
             Ok(())
         }))?;
         let ended = *self.lock().unwrap().ended.lock().unwrap();
@@ -164,6 +195,20 @@ impl Fight for Arc<Mutex<BasicFight>> {
 
     fn sender(&self) -> Sender<FightMessage> {
         unimplemented!()
+    }
+
+    fn send_message(&mut self, m: FightMod) -> Result<(), EnnuiError> {
+        let cl = self.clone();
+        let mut cl = cl.lock().unwrap();
+
+        if let FightMod::Leave(u) = m {
+            return match cl.audience.remove(&u) {
+                true => Ok(()),
+                false => Err(Simple(PlayerNotFound)),
+            };
+        }
+
+        Err(Simple(PlayerNotFound))
     }
 
     fn end(&mut self) {
@@ -213,39 +258,43 @@ enum Starter {
 
 fn fight_logic(
     cl: &mut Arc<Mutex<BasicFight>>,
-    fight_sender: &Sender<(Audience<u128, Vec<u128>>, FightMessage)>,
+    fight_sender: &Sender<(FightAudience, FightMessage)>,
     aid: u128,
     bid: u128,
     a_name: &str,
     b_name: &str,
     player: Player,
     starter: Starter,
+    audience: &[u128],
 ) -> Result<(), String> {
     let mut player = player.lock().unwrap();
     if !player.is_connected() {
         cl.end();
     }
 
-    let ((a_before, a_after), (b_before, b_after)) = match starter {
-        Aggressor => (("\n\n", ""), ("\n\n", "")),
-        Defender => (("\n", "\n\n > "), ("\n", "\n\n > ")),
+    let (before, after) = match starter {
+        Aggressor => ("\n\n", ""),
+        Defender => ("\n", "\n\n > "),
     };
 
     player.hurt(5);
     fight_sender
         .send((
-            Audience(aid, vec![bid]),
+            FightAudience(aid, bid, audience.to_vec()),
             FightMessage {
                 s: format!("{}", Yellow(format!("you hit {}", b_name)))
-                    .custom_padded(a_before, a_after).into(),
+                    .custom_padded(before, after)
+                    .into(),
                 obj: Some(
                     format!("{}", Red(format!("{} hits you", a_name)))
-                        .custom_padded(b_before, b_after).into()
+                        .custom_padded(before, after)
+                        .into(),
                 ),
-                oth: Some (
-                    format!("{}", Red(format!("{} hits {}", a_name, b_name)))
-                        .custom_padded(b_before, b_after).into()
-                )
+                oth: Some(
+                    format!("{} hits {}", a_name, b_name)
+                        .custom_padded(before, after)
+                        .into(),
+                ),
             },
         ))
         .map_err(|_| format!("player {} write error", aid))?;
