@@ -17,6 +17,7 @@ use std::time::Duration;
 pub fn fill_interpreter(i: &mut Interpreter) {
     i.insert("look", |g, u, args| {
         println!("[{}]: made it to handler", "SUCCESS".color(Green));
+        let args: Vec<_> = args.iter().filter(|&&a| a != "at").collect();
         let msg: Cow<'static, str> = match args.len() {
             0 => {
                 println!("[{}]: made it to case", "SUCCESS".color(Green));
@@ -39,6 +40,7 @@ pub fn fill_interpreter(i: &mut Interpreter) {
     });
 
     i.insert("take", |g, u, a| {
+        let a: Vec<_> = a.iter().filter(|&&a| a != "from").collect();
         let name = g.name_of(u)?;
         let loc = g.loc_of(u)?;
         let aud = Audience(u, g.rooms.player_ids(loc).except(u));

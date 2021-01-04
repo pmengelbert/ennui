@@ -30,6 +30,7 @@ use crate::text::message::{
     Audience, Broadcast, FightAudience, Message, MessageFormat, Messenger, Msg,
 };
 use crate::text::Color::Green;
+use std::mem::take;
 
 mod broadcast;
 mod commands;
@@ -100,13 +101,35 @@ impl Game {
     }
 
     pub fn remove_player<T: Uuid>(&mut self, p: T) -> Option<Arc<Mutex<Player>>> {
+        let mut name = String::new();
+        let mut messages = vec![];
+        let mut aud = None;
         {
             let player = self.get_player(p.uuid())?;
             let mut player = player.lock().unwrap();
+            name.push_str(&player.name());
+            let mut room = self.get_room_mut(player.loc())?;
+            let mut items = take(player.items_mut());
+
+            aud = Some(room.players().except(p.uuid()));
+            for item in items.iter_mut() {
+                let owned_item = take(item);
+                messages.push(format!("{} drops {}", name, article(&owned_item.name())));
+                room.insert_item(owned_item);
+            }
+
+
             player.flush().ok()?;
             player.drop_stream();
         }
-        self.players.remove(&p.uuid())
+        let res = self.players.remove(&p.uuid());
+        if let Some(aud) = aud {
+            for message in messages {
+                self.send(&aud, &message.custom_padded("\n", ""));
+            }
+        }
+        self.send(&self.players.to_id_list(), &format!("{} has left the game", name).padded());
+        res
     }
 
     pub fn players_in(&mut self, loc: Coord) -> Cow<PlayerIdList> {

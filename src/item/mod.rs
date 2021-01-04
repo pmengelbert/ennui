@@ -10,6 +10,7 @@ use crate::item::key::Key;
 use crate::item::list::{ItemList, ListTrait};
 use crate::map::direction::MapDir;
 use crate::map::door::{Guard, GuardState};
+use crate::item::Item::NoItem;
 
 pub mod error;
 pub mod handle;
@@ -53,6 +54,13 @@ pub enum Item {
     Container(Box<dyn ListTrait<Kind = ItemList>>),
     Guard(MapDir, Box<dyn Guard<Lock = u64, Kind = ItemList>>),
     Key(Box<dyn Key<u64>>),
+    NoItem,
+}
+
+impl Default for Item {
+    fn default() -> Self {
+        NoItem
+    }
 }
 
 /// `Quality` is used to describe extra attributes on players, items and rooms
@@ -96,6 +104,7 @@ impl Describe for Item {
             Container(i) => i.name(),
             Key(i) => i.name(),
             Guard(_, i) => i.name(),
+            NoItem => String::new(),
         }
     }
 
@@ -106,6 +115,7 @@ impl Describe for Item {
             Container(i) => i.display(),
             Key(i) => i.display(),
             Guard(_, i) => i.display(),
+            NoItem => String::new(),
         }
     }
 
@@ -116,6 +126,7 @@ impl Describe for Item {
             Container(i) => i.description(),
             Key(i) => i.description(),
             Guard(_, i) => i.description(),
+            NoItem => String::new(),
         }
     }
 
@@ -126,6 +137,7 @@ impl Describe for Item {
             Container(i) => i.handle(),
             Key(i) => i.handle(),
             Guard(_, i) => i.handle(),
+            NoItem => Handle::default(),
         }
     }
 }
@@ -138,6 +150,7 @@ impl Attribute<Quality> for Item {
             Container(i) => i.attr(),
             Key(i) => i.attr(),
             Guard(_, i) => i.attr(),
+            NoItem => vec![],
         }
     }
 
@@ -148,6 +161,7 @@ impl Attribute<Quality> for Item {
             Container(i) => i.set_attr(q),
             Key(i) => i.set_attr(q),
             Guard(_, i) => i.set_attr(q),
+            NoItem => (),
         }
     }
 
@@ -158,6 +172,7 @@ impl Attribute<Quality> for Item {
             Container(i) => i.unset_attr(q),
             Key(i) => i.unset_attr(q),
             Guard(_, i) => i.unset_attr(q),
+            NoItem => (),
         }
     }
 }
