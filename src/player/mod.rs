@@ -46,6 +46,7 @@ pub enum PlayerStatus {
     Fighting,
     Dead,
     Asleep,
+    Sitting,
 }
 
 #[cfg(test)]
@@ -65,6 +66,13 @@ impl Attribute<PlayerStatus> for Player {
 
     fn set_attr(&mut self, q: PlayerStatus) {
         self.status.push(q);
+    }
+
+    fn unset_attr(&mut self, q: PlayerStatus) {
+        let pos = self.status.iter().position(|u| *u == q);
+        if let Some(pos) = pos {
+            self.status.remove(pos);
+        }
     }
 }
 
@@ -194,6 +202,10 @@ impl Attribute<Quality> for Arc<Mutex<Player>> {
     fn set_attr(&mut self, q: Quality) {
         self.lock().unwrap().set_attr(q)
     }
+
+    fn unset_attr(&mut self, q: Quality) {
+        self.lock().unwrap().unset_attr(q)
+    }
 }
 
 impl Attribute<PlayerStatus> for Arc<Mutex<Player>> {
@@ -204,6 +216,10 @@ impl Attribute<PlayerStatus> for Arc<Mutex<Player>> {
     fn set_attr(&mut self, q: PlayerStatus) {
         self.lock().unwrap().set_attr(q);
     }
+
+    fn unset_attr(&mut self, q: PlayerStatus) {
+        self.lock().unwrap().unset_attr(q);
+    }
 }
 
 impl Attribute<Quality> for Player {
@@ -212,7 +228,11 @@ impl Attribute<Quality> for Player {
     }
 
     fn set_attr(&mut self, q: Quality) {
-        self.info.set_attr(q)
+        self.info.set_attr(q);
+    }
+
+    fn unset_attr(&mut self, q: Quality) {
+        self.info.unset_attr(q);
     }
 }
 

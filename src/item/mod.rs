@@ -71,6 +71,7 @@ pub enum Quality {
 pub trait Attribute<T: Copy + Eq> {
     fn attr(&self) -> Vec<T>;
     fn set_attr(&mut self, q: T);
+    fn unset_attr(&mut self, q: T);
 
     fn is(&self, a: T) -> bool {
         self.attr().contains(&a)
@@ -149,6 +150,16 @@ impl Attribute<Quality> for Item {
             Guard(_, i) => i.set_attr(q),
         }
     }
+
+    fn unset_attr(&mut self, q: Quality) {
+        use Item::*;
+        match self {
+            Clothing(i) | Weapon(i) | Scenery(i) | Edible(i) | Holdable(i) => i.unset_attr(q),
+            Container(i) => i.unset_attr(q),
+            Key(i) => i.unset_attr(q),
+            Guard(_, i) => i.unset_attr(q),
+        }
+    }
 }
 
 impl Default for YamlItem {
@@ -193,6 +204,13 @@ impl Attribute<Quality> for Description {
     fn set_attr(&mut self, q: Quality) {
         self.attributes.push(q);
     }
+
+    fn unset_attr(&mut self, q: Quality) {
+        let pos = self.attributes.iter().position(|u| *u == q);
+        if let Some(pos) = pos {
+            self.attributes.remove(pos);
+        }
+    }
 }
 
 impl Description {
@@ -226,6 +244,10 @@ impl Attribute<Quality> for YamlItemList {
 
     fn set_attr(&mut self, q: Quality) {
         self.info.set_attr(q)
+    }
+
+    fn unset_attr(&mut self, q: Quality) {
+        self.info.unset_attr(q);
     }
 }
 
@@ -349,6 +371,10 @@ impl Attribute<Quality> for YamlItem {
 
     fn set_attr(&mut self, q: Quality) {
         self.safe_unwrap_mut().set_attr(q)
+    }
+
+    fn unset_attr(&mut self, q: Quality) {
+        self.safe_unwrap_mut().unset_attr(q)
     }
 }
 

@@ -40,6 +40,7 @@ pub enum CommandKind {
     Unlock,
     Hit,
     Sleep,
+    Stand,
     Wake,
     Quit,
     // not yet implemented
@@ -65,11 +66,14 @@ impl Attribute<CommandQuality> for CommandKind {
         match self {
             North => &NORTH_QUALITIES[..],
             _ => &BLANK_QUALITIES[..],
-        }
-        .to_vec()
+        }.to_vec()
     }
 
     fn set_attr(&mut self, _: CommandQuality) {
+        unimplemented!()
+    }
+
+    fn unset_attr(&mut self, _: CommandQuality) {
         unimplemented!()
     }
 }
@@ -126,6 +130,7 @@ impl Interpreter {
             s if sw(s, "evaluate") => Eval,
             s if sw(s, "ouch") => Ouch,
             s if sw(s, "sleep") => Sleep,
+            s if sw(s, "stand") => Stand,
             s if sw(s, "wake") => Wake,
             s if sw(s, "hit") => Hit,
             s if sw(s, "quit") => Quit,

@@ -46,7 +46,12 @@ impl Attribute<Quality> for KeyType {
     }
 
     fn set_attr(&mut self, q: Quality) {
-        self.info.attributes.push(q);
+        self.info.set_attr(q);
+    }
+
+    fn unset_attr(&mut self, q: Quality) {
+        self.info.unset_attr(q);
+        todo!()
     }
 }
 

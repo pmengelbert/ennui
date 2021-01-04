@@ -336,6 +336,7 @@ pub fn fill_interpreter(i: &mut Interpreter) {
                     Some(d) => d,
                     None => return message(u, "there's no door in that direction"),
                 };
+
                 try_door_open(&name, &mut other_msg, door)
             }
             _ => format!("I'm not sure what you're getting at"),
@@ -354,20 +355,15 @@ pub fn fill_interpreter(i: &mut Interpreter) {
         let name = g.name_of(u)?;
 
         let mut other_msg = None;
-        let rooms = &mut g.rooms;
-        let players = &mut g.players;
+
         let self_msg = match a.len() {
             0 => format!("ok, what do you want to unlock?"),
             1 => {
                 let handle = a[0];
 
-                let room = rooms.get_mut(&loc).ok_or(Fatal(format!(
-                    "UNABLE TO FIND ROOM {:?} for player {}",
-                    loc, u
-                )))?; // TODO: fix early exit
-                let player = players
-                    .get_mut(&u)
-                    .ok_or(Fatal(format!("UNABLE TO FIND player {}", u)))?; // TODO: fix early exit
+                let player = g.get_player(u)?;
+
+                let room = g.get_room_mut(loc)?;
 
                 let num_doors = room.doors().len();
                 match num_doors {
@@ -389,17 +385,14 @@ pub fn fill_interpreter(i: &mut Interpreter) {
                 }
             }
             2 => {
-                let room = rooms.get_mut(&loc)?;
+                let player = g.get_player(u)?;
+                let room = g.get_room_mut(loc)?;
 
                 let dir: MapDir = a[1].into();
                 let door = match room.doors().get_mut(&dir) {
                     Some(d) => d,
                     None => return message(u, "there's no door in that direction"),
                 };
-
-                let player = players
-                    .get_mut(&u)
-                    .ok_or(Fatal(format!("UNABLE TO FIND player {}", u)))?; // TODO: fix early exit
 
                 try_door_unlock(name, &mut other_msg, player, door)
             }
@@ -478,6 +471,37 @@ pub fn fill_interpreter(i: &mut Interpreter) {
         message(aud, msg)
     });
 
+    i.insert("wake", |g, u, _| {
+        let loc = g.loc_of(u)?;
+        let mut p = g.get_player(u)?;
+        let name = g.name_of(u)?;
+        p.unset_attr(Asleep);
+        p.set_attr(Sitting);
+
+        let others = g.rooms.player_ids(loc).except(u);
+        let aud = Audience(u, others);
+        let msg = Msg {
+            s: String::from("you sit up"),
+            o: Some(format!("{} sits up", name)),
+        };
+        message(aud, msg)
+    });
+
+    i.insert("stand", |g, u, _| {
+        let loc = g.loc_of(u)?;
+        let mut p = g.get_player(u)?;
+        let name = g.name_of(u)?;
+        p.unset_attr(Sitting);
+
+        let others = g.rooms.player_ids(loc).except(u);
+        let aud = Audience(u, others);
+        let msg = Msg {
+            s: String::from("you stand up"),
+            o: Some(format!("{} stands up", name)),
+        };
+        message(aud, msg)
+    });
+
     i.insert("north", |g, u, _| g.dir_func(u, MapDir::North));
     i.insert("south", |g, u, _| g.dir_func(u, MapDir::South));
     i.insert("east", |g, u, _| g.dir_func(u, MapDir::East));
@@ -499,7 +523,7 @@ pub fn fill_interpreter(i: &mut Interpreter) {
 fn try_door_unlock(
     name: String,
     other_msg: &mut Option<String>,
-    player: &mut Arc<Mutex<Player>>,
+    player: Arc<Mutex<Player>>,
     door: &mut Door,
 ) -> String {
     let mut res = None;

@@ -12,7 +12,7 @@ use crate::error::EnnuiError;
 use crate::error::EnnuiError::Fatal;
 use crate::fight::FightMessage;
 use crate::game::util::load_rooms;
-use crate::interpreter::CommandQuality::Awake;
+use crate::interpreter::CommandQuality::{Awake, Motion};
 use crate::interpreter::{CommandKind, CommandMessage, Interpreter};
 use crate::item::list::Holder;
 use crate::item::list::ListTrait;
@@ -23,7 +23,7 @@ use crate::map::door::{DoorState, GuardState, ObstacleState};
 use crate::map::list::{RoomList, RoomListTrait};
 use crate::map::{coord::Coord, Locate, Room, Space};
 use crate::player::list::{PlayerIdList, PlayerList};
-use crate::player::PlayerStatus::{Asleep, Dead};
+use crate::player::PlayerStatus::{Asleep, Dead, Sitting};
 use crate::player::{Player, Uuid};
 use crate::text::article;
 use crate::text::message::{
@@ -210,6 +210,10 @@ impl Game {
 
         if p.is(Asleep) && cmd.is(Awake) {
             return cnv(message(u, "you're asleep. why not just sleep?"));
+        }
+
+        if p.is(Sitting) && cmd.is(Motion) {
+            return cnv(message(u, "why don't you try standing up first?"));
         }
 
         Ok(None)
