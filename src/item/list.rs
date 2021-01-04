@@ -35,7 +35,7 @@ pub trait ListTrait: Describe + Debug {
         let handle = handle.as_ref();
         let item = self.get_item_owned(handle)?;
 
-        let name = item.name().to_owned();
+        let name = item.name();
         if other.insert_item(item).is_err() {
             return Err(Fatal("COULD NOT TRANSFER ITEM".into()));
         };

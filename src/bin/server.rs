@@ -187,6 +187,7 @@ fn get_and_set_player_name(p: u128, g: Arc<Mutex<Game>>) -> std::io::Result<()> 
     let res = g
         .set_player_name(p, &name)
         .map_err(|_| std::io::Error::from(std::io::ErrorKind::NotFound));
-    g.announce_player(p);
+    g.announce_player(p)
+        .map_err(|_| std::io::Error::from(std::io::ErrorKind::NotFound))?;
     res
 }

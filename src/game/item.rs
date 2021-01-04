@@ -1,4 +1,4 @@
-use crate::game::Game;
+use crate::game::{fatal, Game};
 
 use crate::item::{Attribute, Describe, Item, Quality};
 use crate::map::coord::Coord;
@@ -136,17 +136,14 @@ impl Game {
                         Err(given_back) => {
                             players
                                 .get_mut(&uuid)
-                                .ok_or(Fatal(
-                                    "wasn't able to find the original player ...".to_owned(),
-                                ))?
+                                .ok_or(fatal( "wasn't able to find the original player ..."))?
                                 .lock()
                                 .unwrap()
                                 .insert_item(given_back)
                                 .map_err(|_| {
-                                    Fatal(
+                                    fatal(
                                         "wasn't able to return item to player after failed transfer \
                                         to guard type."
-                                            .to_owned(),
                                     )
                                 })?;
 

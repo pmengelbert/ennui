@@ -85,16 +85,10 @@ impl Game {
         self.players.insert(p.uuid(), arc_mutex!(p));
     }
 
-    pub fn announce_player(&mut self, u: u128) {
+    pub fn announce_player(&mut self, u: u128) -> Result<(), EnnuiError> {
         let (name, players) = {
             (
-                self.players
-                    .get(&u)
-                    .unwrap()
-                    .lock()
-                    .unwrap()
-                    .name()
-                    .to_owned(),
+                self.get_player(u)?.name(),
                 self.players.to_id_list().except(u),
             )
         };
@@ -102,6 +96,7 @@ impl Game {
             &players,
             &format!("{} has joined the game.", name).custom_padded("\n\n", "\n\n > "),
         );
+        Ok(())
     }
 
     pub fn remove_player<T: Uuid>(&mut self, p: T) -> Option<Arc<Mutex<Player>>> {
@@ -134,15 +129,11 @@ impl Game {
     }
 
     pub fn get_room(&self, loc: Coord) -> Result<&Room, EnnuiError> {
-        self.rooms
-            .get(&loc)
-            .ok_or(Fatal("UNABLE TO FIND ROOM".to_owned()))
+        self.rooms.get(&loc).ok_or(fatal("UNABLE TO FIND ROOM"))
     }
 
     pub fn get_room_mut(&mut self, loc: Coord) -> Result<&mut Room, EnnuiError> {
-        self.rooms
-            .get_mut(&loc)
-            .ok_or(Fatal("UNABLE TO FIND ROOM".to_owned()))
+        self.rooms.get_mut(&loc).ok_or(fatal("UNABLE TO FIND ROOM"))
     }
 
     fn describe_room<P: Uuid>(&mut self, p: P) -> Result<String, EnnuiError> {
@@ -174,7 +165,7 @@ impl Game {
         let room = self.rooms.get(loc)?;
 
         Some(if let Some(item) = room.get_item(handle) {
-            let mut s = item.description().to_owned();
+            let mut s = item.description();
             if let Item::Container(lst) = item {
                 s.push_str(&format!("\nthe {} is holding:\n", item.name()));
                 s.push_str(&format!(
@@ -189,12 +180,7 @@ impl Game {
             }
             s
         } else {
-            p.lock()
-                .unwrap()
-                .items()
-                .get_item(handle)?
-                .description()
-                .to_owned()
+            p.lock().unwrap().items().get_item(handle)?.description()
         })
     }
 
@@ -229,7 +215,7 @@ impl Game {
         Ok(self
             .players
             .get(&p)
-            .ok_or(Fatal("PLAYER NOT FOUND".to_owned()))?
+            .ok_or(fatal("PLAYER NOT FOUND"))?
             .clone())
     }
 
@@ -426,7 +412,7 @@ impl Game {
             }
         }) {
             if d == &dir && g.state() == GuardState::Closed {
-                return Err(DoorState::Guarded(g.name().to_owned()));
+                return Err(DoorState::Guarded(g.name()));
             }
         }
 
@@ -453,4 +439,8 @@ where
     };
 
     Ok((Box::new(aud), Box::new(msg)))
+}
+
+fn fatal(s: &str) -> EnnuiError {
+    Fatal(s.to_owned())
 }

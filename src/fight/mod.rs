@@ -101,7 +101,7 @@ impl Fight for Arc<Mutex<BasicFight>> {
             .unwrap()
             .receiver
             .take()
-            .ok_or("OH NO".to_owned())?;
+            .ok_or("Fight: Unable to TAKE receiver".to_owned())?;
         let mut fight = self.clone();
         spawn(move || {
             for modification in mod_receiver {

@@ -284,7 +284,7 @@ pub fn fill_interpreter(i: &mut Interpreter) {
 
     i.insert("chat", |g, u, a| {
         let statement = a.join(" ");
-        let name = g.name_of(u)?.to_owned();
+        let name = g.name_of(u)?;
         let aud = Audience(u, g.players.others());
 
         let msg = Msg {
@@ -473,11 +473,7 @@ pub fn fill_interpreter(i: &mut Interpreter) {
 
             match fight.begin() {
                 Ok(_) => {}
-                Err(_) => {
-                    return Err(EnnuiError::Fatal(
-                        "problem happened with the fight".to_owned(),
-                    ))
-                }
+                Err(_) => return Err(fatal("problem happened with the fight")),
             };
         }
         message(u, "oh no")

@@ -1,5 +1,3 @@
-use std::collections::{HashMap, HashSet};
-
 use serde::{Deserialize, Serialize};
 
 use direction::MapDir;
@@ -173,25 +171,6 @@ impl Space for Room {
 }
 
 impl Room {
-    pub fn new(name: &str, description: Option<&str>, loc: Coord) -> Self {
-        let name = name.to_owned();
-        let description = description.unwrap_or("").to_owned();
-        Self {
-            info: Description {
-                name: name.clone(),
-                description,
-                handle: Handle(vec![name.clone()]),
-                display: "".to_owned(),
-                attributes: vec![],
-            },
-            loc,
-            players: PlayerIdList(HashSet::new()),
-            items: ItemList::new(),
-            inner_items: None,
-            doors: DoorList(HashMap::new()),
-        }
-    }
-
     pub fn init(&mut self) {
         let inner = self.inner_items.take().unwrap_or_default();
         self.items = inner.into();
