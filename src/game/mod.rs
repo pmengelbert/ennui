@@ -124,8 +124,12 @@ impl Game {
         Ok(self.get_player(u)?.lock().unwrap().set_name(name))
     }
 
-    pub fn clone_sender(&self) -> Option<Sender<(FightAudience, FightMessage)>> {
-        Some(self.sender.as_ref()?.clone())
+    pub fn clone_sender(&self) -> Result<Sender<(FightAudience, FightMessage)>, EnnuiError> {
+        Ok(self
+            .sender
+            .as_ref()
+            .ok_or(fatal("ERROR: UNABLE TO CLONE SENDER"))?
+            .clone())
     }
 
     pub fn get_room(&self, loc: Coord) -> Result<&Room, EnnuiError> {
@@ -330,7 +334,9 @@ impl Game {
     fn list_inventory<T: Uuid>(&self, u: T) -> Result<String, EnnuiError> {
         let mut s = String::new();
         s.push_str("you are holding:");
+
         let player = self.get_player(u.uuid())?;
+
         for item in player.lock().unwrap().items().iter() {
             s.push('\n');
             s.push_str(&article(&item.name()).color(Green))
@@ -342,6 +348,7 @@ impl Game {
     fn id_of_in(&self, loc: Coord, name: &str) -> Option<u128> {
         let rooms = &self.rooms;
         let players = &self.players;
+
         rooms.player_ids(loc).iter().find_map(|i| {
             let p = players.get(i)?;
             if p.handle() == name {

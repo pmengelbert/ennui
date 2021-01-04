@@ -420,51 +420,35 @@ pub fn fill_interpreter(i: &mut Interpreter) {
 
         if a.len() > 0 {
             let object = a[0];
-            let rooms = &g.rooms;
 
             let other_id = {
                 match g.id_of_in(loc, object) {
-                    None => return message(u, format!("you don't see {} here", object)),
+                    Some(p) if p == u => {
+                        return message(
+                            u,
+                            "violence against the self is all too common. i am here to stop you.",
+                        );
+                    }
                     Some(p) => p,
+                    None => return message(u, format!("you don't see {} here", object)),
                 }
             };
 
-            if other_id == u {
-                return message(
-                    u,
-                    "violence against the self is all too common. i am here to stop you.",
-                );
-            }
+            let sender = g.clone_sender()?;
 
-            let sender = g
-                .clone_sender()
-                .ok_or(EnnuiError::Fatal("hit: UNABLE TO CLONE SENDER".into()))?;
+            let aggressor = g.get_player(u)?;
+            let defender = g.get_player(other_id)?;
 
-            let players = &mut g.players;
-
-            let p = players
-                .get(&u)
-                .ok_or(EnnuiError::Fatal("hit: PLAYER NOT FOUND (2)".into()))?
-                .clone();
-
-            let defender = players
-                .get(&other_id)
-                .ok_or(EnnuiError::Fatal("hit: OTHER PLAYER NOT FOUND".into()))?
-                .clone();
-
-            let audience = rooms.player_ids(loc).except(u).except(other_id);
-
+            let audience = g.rooms.player_ids(loc).except(u).except(other_id);
             let (mod_sender, receiver) = channel::<FightMod>();
-            for p in audience
-                .iter()
-                .filter_map(|id| Some(players.get_mut(id)?.clone()))
-            {
+
+            for p in audience.iter().filter_map(|&id| Some(g.get_player(id)?)) {
                 p.lock().unwrap().assign_fight_sender(mod_sender.clone())
             }
 
             let mut fight = BasicFight::new(FightInfo {
-                player_a: p,
-                player_b: defender,
+                aggressor,
+                defender,
                 delay: Duration::new(1, 0),
                 audience,
                 sender,
@@ -472,8 +456,8 @@ pub fn fill_interpreter(i: &mut Interpreter) {
             });
 
             match fight.begin() {
-                Ok(_) => {}
-                Err(_) => return Err(fatal("problem happened with the fight")),
+                Ok(_) => (),
+                Err(e) => return Err(fatal(&format!("problem happened with the fight: {:?}", e))),
             };
         }
         message(u, "oh no")
@@ -498,16 +482,6 @@ pub fn fill_interpreter(i: &mut Interpreter) {
     i.insert("south", |g, u, _| g.dir_func(u, MapDir::South));
     i.insert("east", |g, u, _| g.dir_func(u, MapDir::East));
     i.insert("west", |g, u, _| g.dir_func(u, MapDir::West));
-
-    // i.insert("ouch", |g, u, _| {
-    //     const PRICK: usize = 5;
-    //     g.players.entry(u).or_default().hurt(PRICK);
-
-    //     message(
-    //         u,
-    //         format!("{}", Red("that hurt a surprising amount".into())),
-    //     )
-    // });
 
     i.insert("inventory", |g, u, _a| {
         let aud = u;
@@ -544,16 +518,17 @@ fn try_door_unlock(
         }
     }
     match res {
-        Some(()) => format!("*click*"),
+        Some(()) => "*click*",
         None => match door.state() {
-            DoorState::Locked => format!("you don't have the proper key"),
-            DoorState::Closed => format!("you've already unlocked it"),
-            DoorState::Open => format!("it's already open"),
-            DoorState::MagicallySealed => format!("it's sealed by some unfamiliar magic"),
-            DoorState::PermaLocked => format!("it ain't gonna budge"),
-            _ => format!("wtf"),
+            DoorState::Locked => "you don't have the proper key",
+            DoorState::Closed => "you've already unlocked it",
+            DoorState::Open => "it's already open",
+            DoorState::MagicallySealed => "it's sealed by some unfamiliar magic",
+            DoorState::PermaLocked => "it ain't gonna budge",
+            _ => "wtf",
         },
     }
+    .to_owned()
 }
 
 fn try_door_open(name: &String, other_msg: &mut Option<String>, door: &mut Door) -> String {

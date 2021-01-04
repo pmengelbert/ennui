@@ -28,7 +28,7 @@ type Error = Box<dyn StdError>;
 pub trait Fight {
     fn begin(&mut self) -> Result<FightStatus, Error>;
     fn status(&self) -> FightStatus;
-    fn sender(&self) -> Sender<FightMessage>;
+    fn sender(&self) -> Sender<(FightAudience, FightMessage)>;
     fn send_message(&mut self, m: FightMod) -> Result<(), EnnuiError>;
     fn end(&mut self);
 }
@@ -39,8 +39,8 @@ pub enum FightMod {
 }
 
 pub struct BasicFight {
-    player_a: Player,
-    player_b: Player,
+    aggressor: Player,
+    defender: Player,
     delay: Duration,
     ended: Arc<Mutex<bool>>,
     audience: PlayerIdList,
@@ -49,8 +49,8 @@ pub struct BasicFight {
 }
 
 pub struct FightInfo {
-    pub player_a: Player,
-    pub player_b: Player,
+    pub aggressor: Player,
+    pub defender: Player,
     pub delay: Duration,
     pub audience: PlayerIdList,
     pub sender: Sender<(FightAudience, FightMessage)>,
@@ -60,8 +60,8 @@ pub struct FightInfo {
 impl BasicFight {
     pub fn new(info: FightInfo) -> Arc<Mutex<Self>> {
         let FightInfo {
-            player_a,
-            player_b,
+            aggressor,
+            defender,
             delay,
             sender,
             audience,
@@ -69,8 +69,8 @@ impl BasicFight {
         } = info;
 
         arc_mutex!(Self {
-            player_a,
-            player_b,
+            aggressor,
+            defender,
             delay,
             sender,
             audience,
@@ -90,8 +90,8 @@ impl Fight for Arc<Mutex<BasicFight>> {
         FightStatus { ended }
     }
 
-    fn sender(&self) -> Sender<FightMessage> {
-        unimplemented!()
+    fn sender(&self) -> Sender<(FightAudience, FightMessage)> {
+        self.lock().unwrap().sender.clone()
     }
 
     fn send_message(&mut self, m: FightMod) -> Result<(), EnnuiError> {
@@ -173,20 +173,20 @@ fn begin_fight(mut basic_fight: Arc<Mutex<BasicFight>>) -> Result<FightStatus, E
         (fight.delay.clone(), fight.sender.clone())
     };
 
-    let (pa, aid, aname) = extract(&fight, AB::A);
-    let (pb, bid, bname) = extract(&fight, AB::B);
+    let (player_a, a_id, a_name) = extract(&fight, Aggressor);
+    let (player_b, b_id, b_name) = extract(&fight, Defender);
 
     sender.send(spawn(move || {
         handle_fight(
             &mut fight,
             delay,
             &fight_sender,
-            pa,
-            aid,
-            &aname,
-            pb,
-            bid,
-            &bname,
+            player_a,
+            a_id,
+            a_name,
+            player_b,
+            b_id,
+            b_name,
         )
     }))?;
 
@@ -219,18 +219,13 @@ fn handle_fight_messages(mod_receiver: Receiver<FightMod>, mut fight: Arc<Mutex<
     }
 }
 
-#[derive(Copy, Clone, Eq, PartialEq)]
-enum AB {
-    A,
-    B,
-}
-fn extract(fight: &Arc<Mutex<BasicFight>>, player: AB) -> (Player, u128, String) {
-    use AB::*;
+fn extract(fight: &Arc<Mutex<BasicFight>>, player: Starter) -> (Player, u128, String) {
+    use Starter::*;
     let (pa, aid, aname) = {
         let fight = fight.lock().unwrap();
         let player_info = match player {
-            A => fight.player_a.clone(),
-            B => fight.player_b.clone(),
+            Aggressor => fight.aggressor.clone(),
+            Defender => fight.defender.clone(),
         };
         let (id, name) = {
             let unlocked = player_info.lock().unwrap();
@@ -247,10 +242,10 @@ fn handle_fight(
     fight_sender: &Sender<(FightAudience, FightMessage)>,
     pa: Player,
     aid: u128,
-    aname: &String,
+    aname: String,
     pb: Player,
     bid: u128,
-    bname: &String,
+    bname: String,
 ) -> Result<(), String> {
     let mut a_loc = pa.loc();
     let mut b_loc = pb.loc();
@@ -372,6 +367,3 @@ fn fight_logic(
 
     Ok(())
 }
-
-
-
