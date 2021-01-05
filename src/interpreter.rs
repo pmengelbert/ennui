@@ -9,8 +9,9 @@ use crate::text::message::{Message, Messenger};
 use std::sync::{Arc, Mutex};
 
 pub type CommandMessage = (Box<dyn Messenger>, Box<dyn Message>);
-type CommandFunction =
-    Arc<Mutex<dyn FnMut(&mut Game, u128, &[&str]) -> Result<CommandMessage, EnnuiError> + Send + Sync>>;
+type CommandFunction = Arc<
+    Mutex<dyn FnMut(&mut Game, u128, &[&str]) -> Result<CommandMessage, EnnuiError> + Send + Sync>,
+>;
 pub struct CommandFunc(CommandFunction);
 
 #[derive(Default)]
@@ -140,10 +141,12 @@ impl Interpreter {
     pub fn insert<F: 'static>(&mut self, c: &str, f: F)
     where
         F: FnMut(
-            &mut Game,
-            u128,
-            &[&str],
-        ) -> Result<(Box<dyn Messenger>, Box<dyn Message>), EnnuiError> + Send + Sync,
+                &mut Game,
+                u128,
+                &[&str],
+            ) -> Result<(Box<dyn Messenger>, Box<dyn Message>), EnnuiError>
+            + Send
+            + Sync,
     {
         self.commands
             .lock()
