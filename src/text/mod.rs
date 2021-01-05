@@ -35,7 +35,7 @@ where
         let mut ret = String::with_capacity(s.len() + s.len() / line_length);
 
         while x <= y && y < s.len() {
-            let mut range_end = (&s[x..y]).rfind(' ').unwrap_or(s[x..y].len());
+            let mut range_end = (&s[x..y]).rfind(' ').unwrap_or_else(|| s[x..y].len());
             let newline = (&s[x..y]).rfind('\n');
             if let Some(n) = newline {
                 range_end = n;

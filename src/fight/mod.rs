@@ -160,19 +160,19 @@ fn begin_fight(basic_fight: Arc<Mutex<BasicFight>>) -> Result<FightStatus, Error
         .unwrap()
         .receiver
         .take()
-        .ok_or("Fight: Unable to TAKE receiver".to_owned())?;
+        .ok_or_else(|| "Fight: Unable to TAKE receiver".to_owned())?;
 
     let fight = basic_fight.clone();
     spawn(move || handle_fight_messages(mod_receiver, fight));
 
-    let mut fight = basic_fight.clone();
+    let mut fight = basic_fight;
     let (delay, fight_sender) = {
         let fight = fight.lock().unwrap();
-        (fight.delay.clone(), fight.sender.clone())
+        (fight.delay, fight.sender.clone())
     };
 
-    let (player_a, a_id, a_name) = extract(&fight, Aggressor);
-    let (player_b, b_id, b_name) = extract(&fight, Defender);
+    let (player_a, a_id) = extract(&fight, Aggressor);
+    let (player_b, b_id) = extract(&fight, Defender);
 
     sender.send(spawn(move || {
         handle_fight(
@@ -181,10 +181,8 @@ fn begin_fight(basic_fight: Arc<Mutex<BasicFight>>) -> Result<FightStatus, Error
             &fight_sender,
             player_a,
             a_id,
-            a_name,
             player_b,
             b_id,
-            b_name,
         )
     }))?;
 
@@ -216,21 +214,15 @@ fn handle_fight_messages(mod_receiver: Receiver<FightMod>, mut fight: Arc<Mutex<
     }
 }
 
-fn extract(fight: &Arc<Mutex<BasicFight>>, player: Starter) -> (Player, u128, String) {
+fn extract(fight: &Arc<Mutex<BasicFight>>, player: Starter) -> (Player, u128) {
     use Starter::*;
-    let (pa, aid, aname) = {
-        let fight = fight.lock().unwrap();
-        let player_info = match player {
-            Aggressor => fight.aggressor.clone(),
-            Defender => fight.defender.clone(),
-        };
-        let (id, name) = {
-            let unlocked = player_info.lock().unwrap();
-            (unlocked.uuid(), unlocked.name())
-        };
-        (player_info, id, name)
+    let fight = fight.lock().unwrap();
+    let p = match player {
+        Aggressor => fight.aggressor.clone(),
+        Defender => fight.defender.clone(),
     };
-    (pa, aid, aname)
+    let id = p.lock().unwrap().uuid();
+    (p, id)
 }
 
 fn handle_fight(
@@ -239,15 +231,17 @@ fn handle_fight(
     fight_sender: &Sender<(FightAudience, FightMessage)>,
     pa: Player,
     aid: u128,
-    aname: String,
     pb: Player,
     bid: u128,
-    bname: String,
 ) -> Result<(), String> {
     let mut a_loc = pa.loc();
     let mut b_loc = pb.loc();
     loop {
-        let audience: Vec<u128> = fight.lock().unwrap().audience.iter().cloned().collect();
+        let fight_audience = FightAudience(
+            aid,
+            bid,
+            fight.lock().unwrap().audience.iter().cloned().collect(),
+        );
 
         let FightStatus { ended } = fight.status();
         println!("status: {}", ended);
@@ -269,13 +263,11 @@ fn handle_fight(
         fight_logic(
             &mut fight,
             &fight_sender,
-            aid,
-            bid,
-            &aname,
-            &bname,
+            fight_audience,
+            &pa.name(),
+            &pb.name(),
             pa.clone(),
             Aggressor,
-            &audience,
         )?;
 
         let FightStatus { ended } = fight.status();
@@ -290,16 +282,19 @@ fn handle_fight(
             break;
         }
 
+        let fight_audience = FightAudience(
+            bid,
+            aid,
+            fight.lock().unwrap().audience.iter().cloned().collect(),
+        );
         fight_logic(
             &mut fight,
             &fight_sender,
-            bid,
-            aid,
-            &bname,
-            &aname,
+            fight_audience,
+            &pb.name(),
+            &pa.name(),
             pb.clone(),
             Defender,
-            &audience,
         )?;
 
         if a_loc != b_loc {
@@ -315,13 +310,11 @@ fn handle_fight(
 fn fight_logic(
     cl: &mut Arc<Mutex<BasicFight>>,
     fight_sender: &Sender<(FightAudience, FightMessage)>,
-    aid: u128,
-    bid: u128,
+    fight_audience: FightAudience,
     a_name: &str,
     b_name: &str,
     player: Player,
     starter: Starter,
-    audience: &[u128],
 ) -> Result<(), String> {
     let mut player = player.lock().unwrap();
     if !player.is_connected() {
@@ -333,10 +326,12 @@ fn fight_logic(
         Defender => ("\n", "\n\n > "),
     };
 
+    let aid = fight_audience.1;
+
     player.hurt(25);
     fight_sender
         .send((
-            FightAudience(aid, bid, audience.to_vec()),
+            fight_audience,
             FightMessage {
                 s: format!("you hit {}", b_name)
                     .color(Yellow)

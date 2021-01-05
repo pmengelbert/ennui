@@ -100,8 +100,7 @@ where
     }
 
     fn others(&self) -> Vec<u128> {
-        let v: Vec<u128> = self.1.others().iter().cloned().collect();
-        v
+        self.1.others()
     }
 }
 
@@ -219,7 +218,7 @@ pub trait MessageFormat {
 
     fn color(&self, color: Color) -> String {
         let mut s = String::new();
-        s.push_str("\u{001b}");
+        s.push('\u{001b}');
         s.push_str(color.to_code());
         s.push_str(&self.un_padded());
         s.push_str("\u{001b}[37m");

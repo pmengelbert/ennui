@@ -52,8 +52,7 @@ pub fn fill_interpreter(i: &mut Interpreter) {
                 let handle = a[0];
                 match g.transfer(u, None, Direction::Take, handle) {
                     Ok(handle) => {
-                        other_msg =
-                            Some(format!("{} picks up a {}", name, article(&handle.clone())));
+                        other_msg = Some(format!("{} picks up a {}", name, article(&handle)));
                         format!("you take the {}", handle)
                     }
                     Err(err) => match err {
@@ -87,7 +86,7 @@ pub fn fill_interpreter(i: &mut Interpreter) {
                                         format!("you take the {}", handle)
                                     }
                                     Err(_) => {
-                                        format!("you somehow failed at the simplest of tasks")
+                                        "you somehow failed at the simplest of tasks".to_owned()
                                     }
                                 },
                                 None => format!(
@@ -170,9 +169,7 @@ pub fn fill_interpreter(i: &mut Interpreter) {
                     other_msg = Some(format!("{} takes off {}", name, article(&handle)));
                     format!("you take off the {}", handle)
                 }
-                Err(err) => match err {
-                    _ => format!("you're not wearing {}", article(&handle)),
-                },
+                Err(_) => format!("you're not wearing {}", article(&handle)),
             }
         } else {
             "be more specific. or less specific.".to_owned()
@@ -242,16 +239,16 @@ pub fn fill_interpreter(i: &mut Interpreter) {
                             article(handle)
                         ),
                         CmdErr::PlayerNotFound => {
-                            format!("you realize you don't see them here, and you begin to panic")
+                            "you realize you don't see them here, and you begin to panic".to_owned()
                         }
                         _ => {
-                            return Err(Fatal(format!("GIVE: SHOULD BE UNREACHABLE")));
+                            return Err(fatal("GIVE: SHOULD BE UNREACHABLE"));
                         }
                     },
                     EnnuiError::Fatal(e) => return Err(EnnuiError::Fatal(e)),
                     Msg(s) => s,
                     _ => {
-                        return Err(Fatal(format!("GIVE: SHOULD BE UNREACHABLE")));
+                        return Err(fatal("GIVE: SHOULD BE UNREACHABLE"));
                     }
                 },
             }
@@ -313,13 +310,13 @@ pub fn fill_interpreter(i: &mut Interpreter) {
         let name = g.name_of(u)?;
         let mut other_msg = None;
         let self_msg = match a.len() {
-            0 => format!("ok, what do you want to open?"),
+            0 => "ok, what do you want to open?".to_owned(),
             1 => {
                 let rooms = &mut g.rooms;
                 let room = rooms.get_mut(&loc)?;
 
                 if room.doors().len() > 1 {
-                    format!("which door do you want to open?")
+                    "which door do you want to open?".to_owned()
                 } else {
                     let door = match room.doors().iter_mut().next() {
                         Some((_, d)) => d,
@@ -341,7 +338,7 @@ pub fn fill_interpreter(i: &mut Interpreter) {
 
                 try_door_open(&name, &mut other_msg, door)
             }
-            _ => format!("I'm not sure what you're getting at"),
+            _ => "I'm not sure what you're getting at".to_owned(),
         };
 
         let aud = Audience(u, g.players_in(loc).except(u));
@@ -359,7 +356,7 @@ pub fn fill_interpreter(i: &mut Interpreter) {
         let mut other_msg = None;
 
         let self_msg = match a.len() {
-            0 => format!("ok, what do you want to unlock?"),
+            0 => "ok, what do you want to unlock?".to_owned(),
             1 => {
                 let handle = a[0];
 
@@ -369,7 +366,7 @@ pub fn fill_interpreter(i: &mut Interpreter) {
 
                 let num_doors = room.doors().len();
                 match num_doors {
-                    0 => format!("there's nothing to unlock here"),
+                    0 => "there's nothing to unlock here".to_owned(),
                     1 => {
                         match handle.to_lowercase().as_str() {
                             "door" => {
@@ -380,10 +377,10 @@ pub fn fill_interpreter(i: &mut Interpreter) {
                                 try_door_unlock(name, &mut other_msg, player, door)
                             }
                             // TODO: handle other unlockable items (such as chests) here
-                            _ => format!("I'm not sure that you can even unlock that"),
+                            _ => "I'm not sure that you can even unlock that".to_owned(),
                         }
                     }
-                    _ => format!("that's all greek to me"),
+                    _ => "that's all greek to me".to_owned(),
                 }
             }
             2 => {
@@ -398,7 +395,7 @@ pub fn fill_interpreter(i: &mut Interpreter) {
 
                 try_door_unlock(name, &mut other_msg, player, door)
             }
-            _ => format!("that's pretty much gobbledygook to me"),
+            _ => "that's pretty much gobbledygook to me".to_owned(),
         };
 
         let aud = Audience(u, g.rooms.player_ids(loc).except(u));
@@ -413,7 +410,7 @@ pub fn fill_interpreter(i: &mut Interpreter) {
     i.insert("hit", |g, u, a| {
         let loc = g.loc_of(u)?;
 
-        if a.len() > 0 {
+        if !a.is_empty() {
             let object = a[0];
 
             let other_id = {
@@ -557,18 +554,18 @@ fn try_door_unlock(
     .to_owned()
 }
 
-fn try_door_open(name: &String, other_msg: &mut Option<String>, door: &mut Door) -> String {
+fn try_door_open(name: &str, other_msg: &mut Option<String>, door: &mut Door) -> String {
     match door.unlock(DoorState::Open, std::option::Option::None) {
         Ok(_) => {
             *other_msg = Some(format!("{} opens a door", name));
-            format!("the door swings open")
+            "the door swings open".to_owned()
         }
         Err(err) => match err {
-            DoorState::Locked => format!("that door is locked"),
-            DoorState::Open => format!("it's already open"),
-            DoorState::MagicallySealed => format!("it's sealed by some unfamiliar magic"),
-            DoorState::PermaLocked => format!("it ain't gonna budge"),
-            _ => format!("wtf"),
+            DoorState::Locked => "that door is locked".to_owned(),
+            DoorState::Open => "it's already open".to_owned(),
+            DoorState::MagicallySealed => "it's sealed by some unfamiliar magic".to_owned(),
+            DoorState::PermaLocked => "it ain't gonna budge".to_owned(),
+            _ => "wtf".to_owned(),
         },
     }
 }

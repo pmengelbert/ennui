@@ -41,7 +41,7 @@ impl Game {
         let oid = self.id_of(other.unwrap_or_default());
         let other_id = oid.unwrap_or_default();
 
-        if let Err(_) = self.validate_other_player(other, loc, dir) {
+        if self.validate_other_player(other, loc, dir).is_err() {
             return Err(Msg(format!(
                 "You don't see {} in here. I'm beginning to question your sanity",
                 other.unwrap_or_default()
@@ -52,11 +52,11 @@ impl Game {
         let players = &mut self.players;
 
         match dir {
-            Take => Self::take(rooms, players, uuid, loc, handle).into(),
-            Drop => Self::drop(rooms, players, uuid, loc, handle).into(),
+            Take => Self::take(rooms, players, uuid, loc, handle),
+            Drop => Self::drop(rooms, players, uuid, loc, handle),
             Give => Self::give(players, rooms, loc, (uuid, other_id), other, handle),
-            Wear => Self::wear(players, uuid, handle).into(),
-            Remove => Self::remove(players, uuid, handle).into(),
+            Wear => Self::wear(players, uuid, handle),
+            Remove => Self::remove(players, uuid, handle),
         }
     }
 
@@ -77,11 +77,13 @@ impl Game {
             _ => (),
         }
 
-        let player = players.get_mut(&uuid).ok_or(Fatal(format!(
-            "Could not find primary player with uuid: {}",
-            uuid
-        )))?;
-        room.transfer(player.lock().unwrap().deref_mut(), handle.into())
+        let player = players.get_mut(&uuid).ok_or_else(|| {
+            fatal(&format!(
+                "Could not find primary player with uuid: {}",
+                uuid
+            ))
+        })?;
+        room.transfer(player.lock().unwrap().deref_mut(), handle)
     }
 
     fn drop(
@@ -91,13 +93,15 @@ impl Game {
         loc: &Coord,
         handle: &str,
     ) -> Result<String, EnnuiError> {
-        let room = rooms.get_mut(loc).ok_or(Fatal(format!(
-            "unable to find room for player {} at {:?}",
-            uuid, loc
-        )))?;
+        let room = rooms.get_mut(loc).ok_or_else(|| {
+            fatal(&format!(
+                "unable to find room for player {} at {:?}",
+                uuid, loc
+            ))
+        })?;
         let player = players
             .get_mut(&uuid)
-            .ok_or(Fatal(format!("unable to find player {}", uuid)))?;
+            .ok_or_else(|| fatal(&format!("unable to find player {}", uuid)))?;
         player.lock().unwrap().transfer(room, handle)
     }
 
@@ -113,7 +117,7 @@ impl Game {
         let item = {
             let p = players
                 .get_mut(&uuid)
-                .ok_or(Fatal(format!("unable to find player {}", uuid)))?;
+                .ok_or_else(|| Fatal(format!("unable to find player {}", uuid)))?;
 
             p.lock().unwrap().items_mut().get_item_owned(handle)?
         };
@@ -123,10 +127,12 @@ impl Game {
         let other_p = match players.get_mut(&other_id) {
             Some(p) => p,
             None => {
-                let room = rooms.get_mut(&loc).ok_or(Fatal(format!(
-                    "unable to find other player {:?} in room at {:?}",
-                    other_id, loc
-                )))?;
+                let room = rooms.get_mut(&loc).ok_or_else(|| {
+                    fatal(&format!(
+                        "unable to find other player {:?} in room at {:?}",
+                        other_id, loc
+                    ))
+                })?;
                 return match room.get_item_mut(other_name.unwrap_or_default()) {
                     Some(Item::Guard(_, guard)) => match guard.insert_item(item) {
                         Ok(()) => Err(Msg(format!(
@@ -136,7 +142,7 @@ impl Game {
                         Err(given_back) => {
                             players
                                 .get_mut(&uuid)
-                                .ok_or(fatal( "wasn't able to find the original player ..."))?
+                                .ok_or_else(|| fatal( "wasn't able to find the original player ..."))?
                                 .lock()
                                 .unwrap()
                                 .insert_item(given_back)
@@ -222,24 +228,13 @@ impl Game {
         let oid = self.id_of(other.unwrap_or_default());
         let other_id = oid.unwrap_or_default();
 
-        let rooms = &self.rooms;
-
         if let Give = dir {
-            match (other, oid) {
-                (Some(o), None) => {
-                    match rooms.get(loc) {
-                        Some(room) => match room.get_item(o) {
-                            Some(_) => {
-                                return Ok(());
-                            }
-                            None => (),
-                        },
-                        None => (),
-                    }
-
-                    return Err(Simple(PlayerNotFound));
-                }
-                _ => (),
+            if let (Some(o), None) = (other, oid) {
+                return if self.get_room(*loc)?.get_item(o).is_some() {
+                    Ok(())
+                } else {
+                    Err(Simple(PlayerNotFound))
+                };
             }
 
             match self.loc_of(other_id) {

@@ -57,10 +57,7 @@ impl Lock<DoorState> for Door {
     }
 
     fn is_locked(&self) -> bool {
-        match self.state() {
-            DoorState::Open | DoorState::Closed => false,
-            _ => true,
-        }
+        !matches!(self.state(), DoorState::Open | DoorState::Closed)
     }
 }
 
@@ -91,9 +88,10 @@ impl Clone for RenaissanceGuard {
 
 impl From<Description> for RenaissanceGuard {
     fn from(b: Description) -> Self {
-        let mut g = Self::default();
-        g.info = b;
-        g
+        Self {
+            info: b,
+            ..Self::default()
+        }
     }
 }
 

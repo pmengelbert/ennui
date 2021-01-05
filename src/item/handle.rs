@@ -6,7 +6,7 @@ pub struct Handle(pub Vec<String>);
 
 impl PartialEq<&str> for Handle {
     fn eq(&self, other: &&str) -> bool {
-        self.inner().iter().find(|&h| h == other).is_some()
+        self.inner().iter().any(|h| h == other)
     }
 }
 
@@ -18,7 +18,7 @@ impl PartialEq<Handle> for &str {
 
 impl PartialEq<&str> for &Handle {
     fn eq(&self, other: &&str) -> bool {
-        self.inner().iter().find(|&h| h == other).is_some()
+        self.inner().iter().any(|h| h == other)
     }
 }
 

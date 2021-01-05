@@ -238,11 +238,10 @@ impl Attribute<Quality> for Player {
 
 impl Write for Player {
     fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
-        let res = match self.stream {
+        match self.stream {
             Some(ref mut s) => s.write(buf),
             None => Ok(0),
-        };
-        res
+        }
     }
 
     fn flush(&mut self) -> std::io::Result<()> {
@@ -302,19 +301,14 @@ impl Player {
     pub fn hurt(&mut self, amt: usize) {
         use meter::MeterKind::*;
         let current = self.hp();
-        (*self
-            .stats
-            .iter_mut()
-            .find(|s| if let Hit(_) = s { true } else { false })
-            .unwrap())
-        .set(current - amt as i64);
+        (*self.stats.iter_mut().find(|s| matches!(s, Hit(_))).unwrap()).set(current - amt as i64);
     }
 
     pub fn hp(&self) -> i64 {
         use meter::MeterKind::*;
         self.stats
             .iter()
-            .find(|s| if let Hit(_) = s { true } else { false })
+            .find(|s| matches!(s, Hit(_)))
             .unwrap()
             .current()
     }

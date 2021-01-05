@@ -39,6 +39,7 @@ mod item;
 mod util;
 
 pub type GameResult<T> = Result<T, Box<dyn StdError>>;
+pub type GameOutput = (Box<dyn Messenger>, Box<dyn Message>);
 
 pub struct Game {
     players: PlayerList,
@@ -114,7 +115,7 @@ impl Game {
         for item in items.iter_mut() {
             let owned_item = take(item);
             messages.push(format!("{} drops {}", name, article(&owned_item.name())));
-            if let Err(_) = room.insert_item(owned_item) {
+            if room.insert_item(owned_item).is_err() {
                 print_err(lesser("Unable to drop item for player"));
             };
         }
@@ -147,23 +148,28 @@ impl Game {
     }
 
     pub fn set_player_name(&mut self, u: u128, name: &str) -> Result<(), EnnuiError> {
-        Ok(self.get_player(u)?.lock().unwrap().set_name(name))
+        self.get_player(u)?.lock().unwrap().set_name(name);
+        Ok(())
     }
 
     pub fn clone_fight_sender(&self) -> Result<Sender<(FightAudience, FightMessage)>, EnnuiError> {
         Ok(self
             .fight_sender
             .as_ref()
-            .ok_or(fatal("ERROR: UNABLE TO CLONE SENDER"))?
+            .ok_or_else(|| fatal("ERROR: UNABLE TO CLONE SENDER"))?
             .clone())
     }
 
     pub fn get_room(&self, loc: Coord) -> Result<&Room, EnnuiError> {
-        self.rooms.get(&loc).ok_or(fatal("UNABLE TO FIND ROOM"))
+        self.rooms
+            .get(&loc)
+            .ok_or_else(|| fatal("UNABLE TO FIND ROOM"))
     }
 
     pub fn get_room_mut(&mut self, loc: Coord) -> Result<&mut Room, EnnuiError> {
-        self.rooms.get_mut(&loc).ok_or(fatal("UNABLE TO FIND ROOM"))
+        self.rooms
+            .get_mut(&loc)
+            .ok_or_else(|| fatal("UNABLE TO FIND ROOM"))
     }
 
     fn describe_room<P: Uuid>(&mut self, p: P) -> Result<String, EnnuiError> {
@@ -198,15 +204,14 @@ impl Game {
             let mut s = item.description();
             if let Item::Container(lst) = item {
                 s.push_str(&format!("\nthe {} is holding:\n", item.name()));
-                s.push_str(&format!(
-                    "{}",
-                    lst.list()
+                s.push_str(
+                    &lst.list()
                         .iter()
                         .map(|i| article(&i.name()))
                         .collect::<Vec<_>>()
                         .join("\n")
-                        .color(Green)
-                ));
+                        .color(Green),
+                );
             }
             s
         } else {
@@ -228,7 +233,7 @@ impl Game {
     ) -> Result<Option<CommandMessage>, EnnuiError> {
         let p = self.get_player(u)?;
         let p = p.lock().unwrap();
-        let cnv = |m: Result<CommandMessage, EnnuiError>| m.map(|m| Some(m));
+        let cnv = |m: Result<CommandMessage, EnnuiError>| m.map(Some);
 
         if p.is(Dead) && cmd != CommandKind::Quit {
             return cnv(message(u, "oh boy. you can't move. you're dead."));
@@ -249,7 +254,7 @@ impl Game {
         Ok(self
             .players
             .get(&p)
-            .ok_or(fatal("PLAYER NOT FOUND"))?
+            .ok_or_else(|| fatal("PLAYER NOT FOUND"))?
             .clone())
     }
 
@@ -267,11 +272,7 @@ impl Game {
         Ok(self.get_player(p.uuid())?.name())
     }
 
-    fn dir_func<U: Uuid>(
-        &mut self,
-        u: U,
-        dir: MapDir,
-    ) -> Result<(Box<dyn Messenger>, Box<dyn Message>), EnnuiError> {
+    fn dir_func<U: Uuid>(&mut self, u: U, dir: MapDir) -> Result<GameOutput, EnnuiError> {
         let u = u.uuid();
         let loc = self.loc_of(u)?;
         let name = self.name_of(u)?;
@@ -457,10 +458,7 @@ impl Game {
     }
 }
 
-pub fn message<A: 'static, M: 'static>(
-    aud: A,
-    msg: M,
-) -> Result<(Box<dyn Messenger>, Box<dyn Message>), EnnuiError>
+pub fn message<A: 'static, M: 'static>(aud: A, msg: M) -> Result<GameOutput, EnnuiError>
 where
     A: Messenger,
     M: Message,

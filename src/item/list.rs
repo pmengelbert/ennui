@@ -33,7 +33,6 @@ pub trait ListTrait: Describe + Debug {
         other: &mut dyn ListTrait<Kind = Self::Kind>,
         handle: &str,
     ) -> Result<String, EnnuiError> {
-        let handle = handle.as_ref();
         let item = self.get_item_owned(handle)?;
 
         let name = item.name();
