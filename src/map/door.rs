@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::error::Error;
 use std::fmt::Debug;
-use std::ops::{Deref, DerefMut};
+
 use std::option::NoneError;
 
 pub trait Lock<T>: ObstacleState<T> {
@@ -267,20 +267,4 @@ impl ObstacleState<DoorState> for Door {
     }
 }
 
-#[repr(transparent)]
-#[derive(Debug, Default, Clone, Eq, PartialEq, Serialize, Deserialize)]
-pub struct DoorList(pub HashMap<MapDir, Door>);
-
-impl Deref for DoorList {
-    type Target = HashMap<MapDir, Door>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl DerefMut for DoorList {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
-    }
-}
+pub type DoorList = HashMap<MapDir, Door>;
