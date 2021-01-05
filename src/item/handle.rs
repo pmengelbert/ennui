@@ -1,27 +1,12 @@
 use serde::{Deserialize, Serialize};
-use std::ops::{Deref, DerefMut};
 
 #[repr(transparent)]
 #[derive(Debug, Serialize, Deserialize, Default, Clone)]
 pub struct Handle(pub Vec<String>);
 
-impl Deref for Handle {
-    type Target = Vec<String>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl DerefMut for Handle {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
-    }
-}
-
 impl PartialEq<&str> for Handle {
     fn eq(&self, other: &&str) -> bool {
-        self.iter().find(|h| h == other).is_some()
+        self.inner().iter().find(|&h| h == other).is_some()
     }
 }
 
@@ -33,7 +18,7 @@ impl PartialEq<Handle> for &str {
 
 impl PartialEq<&str> for &Handle {
     fn eq(&self, other: &&str) -> bool {
-        self.iter().find(|h| h == other).is_some()
+        self.inner().iter().find(|&h| h == other).is_some()
     }
 }
 
@@ -41,6 +26,17 @@ impl PartialEq<&Handle> for &str {
     fn eq(&self, other: &&Handle) -> bool {
         other.eq(self)
     }
+}
+
+impl Handle {
+    pub fn push(&mut self, s: String) {
+        self.0.push(s);
+    }
+
+    fn inner(&self) -> &Vec<String> {
+        &self.0
+    }
+
 }
 
 #[macro_export]
