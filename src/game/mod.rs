@@ -22,7 +22,7 @@ use crate::map::direction::MapDir;
 use crate::map::door::{DoorState, GuardState, ObstacleState};
 use crate::map::list::{RoomList, RoomListTrait};
 use crate::map::{coord::Coord, Locate, Room, Space};
-use crate::player::list::{PlayerIdList, PlayerList};
+use crate::player::list::{PlayerIdList, PlayerIdListTrait, PlayerList, PlayerListTrait};
 use crate::player::PlayerStatus::{Asleep, Dead, Sitting};
 use crate::player::{Player, Uuid};
 use crate::text::article;
@@ -57,7 +57,7 @@ impl Game {
         commands::fill_interpreter(&mut interpreter);
 
         Ok(Self {
-            players: PlayerList(players),
+            players,
             rooms,
             interpreter,
             fight_sender: None,

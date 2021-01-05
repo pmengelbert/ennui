@@ -170,6 +170,7 @@ mod test_message {
     use crate::map::Space;
 
     use super::*;
+    use crate::player::list::PlayerIdListTrait;
 
     #[test]
     fn test_message_1() {

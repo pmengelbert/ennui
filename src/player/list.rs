@@ -1,7 +1,4 @@
 use std::collections::{HashMap, HashSet};
-use std::ops::{Deref, DerefMut};
-
-use serde::{Deserialize, Serialize};
 
 use crate::player::{Player, Uuid};
 use crate::text::message::{MessageFormat, Messenger};
@@ -12,23 +9,7 @@ use crate::text::Color;
 use crate::text::Color::Yellow;
 use std::sync::{Arc, Mutex};
 
-#[repr(transparent)]
-#[derive(Debug, Default, Deserialize, Serialize, Clone)]
-pub struct PlayerIdList(pub HashSet<u128>);
-
-impl Deref for PlayerIdList {
-    type Target = HashSet<u128>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl DerefMut for PlayerIdList {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
-    }
-}
+pub type PlayerIdList = HashSet<u128>;
 
 impl Uuid for PlayerIdList {
     fn uuid(&self) -> u128 {
@@ -50,18 +31,24 @@ impl Messenger for PlayerIdList {
     }
 }
 
-impl PlayerIdList {
-    pub fn except(&self, id: u128) -> PlayerIdList {
+pub trait PlayerIdListTrait {
+    fn except(&self, id: u128) -> PlayerIdList;
+    fn as_players(&self, players: &PlayerList) -> Vec<Arc<Mutex<Player>>>;
+    fn display(&self, players: &PlayerList) -> String;
+}
+
+impl PlayerIdListTrait for PlayerIdList {
+    fn except(&self, id: u128) -> PlayerIdList {
         let mut cl = self.clone();
         cl.remove(&id);
         cl
     }
 
-    pub fn as_players(&self, players: &PlayerList) -> Vec<Arc<Mutex<Player>>> {
+    fn as_players(&self, players: &PlayerList) -> Vec<Arc<Mutex<Player>>> {
         players.from_ids(self)
     }
 
-    pub fn display(&self, players: &PlayerList) -> String {
+    fn display(&self, players: &PlayerList) -> String {
         use Color::*;
         players
             .from_ids(self)
@@ -72,29 +59,7 @@ impl PlayerIdList {
     }
 }
 
-#[derive(Default)]
-#[repr(transparent)]
-pub struct PlayerList(pub HashMap<u128, Arc<Mutex<Player>>>);
-
-impl Deref for PlayerList {
-    type Target = HashMap<u128, Arc<Mutex<Player>>>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl DerefMut for PlayerList {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
-    }
-}
-
-impl PlayerList {
-    pub fn new() -> Self {
-        PlayerList(HashMap::new())
-    }
-}
+pub type PlayerList = HashMap<u128, Arc<Mutex<Player>>>;
 
 impl Uuid for PlayerList {
     fn uuid(&self) -> u128 {
@@ -126,8 +91,14 @@ impl Uuid for &PlayerList {
     }
 }
 
-impl PlayerList {
-    pub fn to_id_list(&self) -> PlayerIdList {
+pub trait PlayerListTrait {
+    fn to_id_list(&self) -> PlayerIdList;
+    fn display(&self, loc: Coord) -> Vec<String>;
+    fn from_ids(&self, ids: &PlayerIdList) -> Vec<Arc<Mutex<Player>>>;
+}
+
+impl PlayerListTrait for PlayerList {
+    fn to_id_list(&self) -> PlayerIdList {
         let mut pil = PlayerIdList::default();
         for id in self.keys() {
             pil.insert(*id);
@@ -135,14 +106,14 @@ impl PlayerList {
         pil
     }
 
-    pub fn display(&self, loc: Coord) -> Vec<String> {
+    fn display(&self, loc: Coord) -> Vec<String> {
         self.values()
             .filter(|p| p.lock().unwrap().loc == loc)
             .map(|p| p.lock().unwrap().name().color(Yellow))
             .collect()
     }
 
-    pub fn from_ids(&self, ids: &PlayerIdList) -> Vec<Arc<Mutex<Player>>> {
+    fn from_ids(&self, ids: &PlayerIdList) -> Vec<Arc<Mutex<Player>>> {
         ids.iter()
             .filter_map(|id| Some(self.get(&id)?.clone()))
             .collect()
