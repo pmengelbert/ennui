@@ -1,5 +1,4 @@
 use std::collections::{HashMap, HashSet};
-use std::ops::{Deref, DerefMut};
 
 use crate::player::{Player, Uuid};
 use crate::text::message::{MessageFormat, Messenger};
@@ -60,29 +59,7 @@ impl PlayerIdListTrait for PlayerIdList {
     }
 }
 
-#[derive(Default)]
-#[repr(transparent)]
-pub struct PlayerList(pub HashMap<u128, Arc<Mutex<Player>>>);
-
-impl Deref for PlayerList {
-    type Target = HashMap<u128, Arc<Mutex<Player>>>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl DerefMut for PlayerList {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
-    }
-}
-
-impl PlayerList {
-    pub fn new() -> Self {
-        PlayerList(HashMap::new())
-    }
-}
+pub type PlayerList = HashMap<u128, Arc<Mutex<Player>>>;
 
 impl Uuid for PlayerList {
     fn uuid(&self) -> u128 {
@@ -114,8 +91,14 @@ impl Uuid for &PlayerList {
     }
 }
 
-impl PlayerList {
-    pub fn to_id_list(&self) -> PlayerIdList {
+pub trait PlayerListTrait {
+    fn to_id_list(&self) -> PlayerIdList;
+    fn display(&self, loc: Coord) -> Vec<String>;
+    fn from_ids(&self, ids: &PlayerIdList) -> Vec<Arc<Mutex<Player>>>;
+}
+
+impl PlayerListTrait for PlayerList {
+    fn to_id_list(&self) -> PlayerIdList {
         let mut pil = PlayerIdList::default();
         for id in self.keys() {
             pil.insert(*id);
@@ -123,14 +106,14 @@ impl PlayerList {
         pil
     }
 
-    pub fn display(&self, loc: Coord) -> Vec<String> {
+    fn display(&self, loc: Coord) -> Vec<String> {
         self.values()
             .filter(|p| p.lock().unwrap().loc == loc)
             .map(|p| p.lock().unwrap().name().color(Yellow))
             .collect()
     }
 
-    pub fn from_ids(&self, ids: &PlayerIdList) -> Vec<Arc<Mutex<Player>>> {
+    fn from_ids(&self, ids: &PlayerIdList) -> Vec<Arc<Mutex<Player>>> {
         ids.iter()
             .filter_map(|id| Some(self.get(&id)?.clone()))
             .collect()
