@@ -8,7 +8,7 @@ use meter::MeterKind;
 
 use crate::error::EnnuiError;
 use crate::item::handle::Handle;
-use crate::item::list::{Holder, ItemList, ListTrait};
+use crate::item::list::{Holder, ItemList, ItemListTrout, ListTrait};
 use crate::item::{Attribute, Describe, Description, Item, Quality};
 use crate::map::coord::Coord;
 use crate::map::Locate;

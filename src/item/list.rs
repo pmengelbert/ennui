@@ -10,7 +10,8 @@ use crate::text::message::MessageFormat;
 use crate::text::Color::Green;
 use std::fmt::Debug;
 use std::mem::take;
-use std::ops::{Deref, DerefMut};
+
+use std::slice::{Iter, IterMut};
 
 pub trait Holder: Describe {
     type Kind;
@@ -47,20 +48,6 @@ pub trait ListTrait: Describe + Debug {
 pub struct ItemList {
     inner: Vec<Item>,
     info: YamlItem,
-}
-
-impl Deref for ItemList {
-    type Target = Vec<Item>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.inner
-    }
-}
-
-impl DerefMut for ItemList {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.inner
-    }
 }
 
 impl Describe for ItemList {
@@ -119,6 +106,15 @@ impl ListTrait for ItemList {
     }
 }
 
+pub trait ItemListTrout {
+    fn get_owned(&mut self, handle: &str) -> Result<Item, EnnuiError>;
+    fn display_items(&self) -> String;
+    fn iter(&self) -> Iter<Item>;
+    fn iter_mut(&mut self) -> IterMut<Item>;
+    fn len(&self) -> usize;
+    fn push(&mut self, i: Item);
+}
+
 impl ItemList {
     pub fn new() -> Self {
         Self {
@@ -126,8 +122,10 @@ impl ItemList {
             info: Default::default(),
         }
     }
+}
 
-    pub fn get_owned(&mut self, handle: &str) -> Result<Item, EnnuiError> {
+impl ItemListTrout for ItemList {
+    fn get_owned(&mut self, handle: &str) -> Result<Item, EnnuiError> {
         let pos = match self.iter().position(|i| i.handle() == handle) {
             Some(i) => i,
             None => return Err(Simple(ItemNotFound)),
@@ -135,7 +133,7 @@ impl ItemList {
         Ok(self.inner.remove(pos))
     }
 
-    pub fn display(&self) -> String {
+    fn display_items(&self) -> String {
         let mut s = String::new();
 
         for item in self.iter() {
@@ -144,6 +142,22 @@ impl ItemList {
         }
 
         s
+    }
+
+    fn iter(&self) -> Iter<Item> {
+        self.inner.iter()
+    }
+
+    fn iter_mut(&mut self) -> IterMut<Item> {
+        self.inner.iter_mut()
+    }
+
+    fn len(&self) -> usize {
+        self.inner.len()
+    }
+
+    fn push(&mut self, i: Item) {
+        self.inner.push(i);
     }
 }
 

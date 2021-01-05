@@ -14,8 +14,8 @@ use crate::fight::FightMessage;
 use crate::game::util::load_rooms;
 use crate::interpreter::CommandQuality::{Awake, Motion};
 use crate::interpreter::{CommandKind, CommandMessage, Interpreter};
-use crate::item::list::Holder;
 use crate::item::list::ListTrait;
+use crate::item::list::{Holder, ItemListTrout};
 
 use crate::item::{Attribute, Describe, Item};
 use crate::map::direction::MapDir;

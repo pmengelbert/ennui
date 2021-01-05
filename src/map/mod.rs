@@ -4,7 +4,7 @@ use direction::MapDir;
 
 use crate::error::EnnuiError;
 use crate::item::handle::Handle;
-use crate::item::list::{Holder, ItemList, ListTrait};
+use crate::item::list::{Holder, ItemList, ItemListTrout, ListTrait};
 use crate::item::{Attribute, Describe, Description, Item, Quality, YamlItemList};
 use crate::map::coord::Coord;
 use crate::map::door::DoorList;
@@ -176,7 +176,7 @@ impl Room {
             ..
         } = self;
 
-        let items_list = items.display();
+        let items_list = items.display_items();
 
         format!(
             "{}\n    {}\
