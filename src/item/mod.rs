@@ -1,5 +1,3 @@
-use std::ops::{Deref, DerefMut};
-
 use serde::export::fmt::Debug;
 use serde::{Deserialize, Serialize};
 
@@ -266,20 +264,6 @@ impl Attribute<Quality> for YamlItemList {
     }
 }
 
-impl Deref for YamlItemList {
-    type Target = Vec<YamlItem>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.inner
-    }
-}
-
-impl DerefMut for YamlItemList {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.inner
-    }
-}
-
 impl Describe for YamlItemList {
     fn name(&self) -> String {
         self.info.name()
@@ -312,12 +296,15 @@ impl YamlItemList {
         }
     }
     pub fn get(&self, handle: &str) -> Option<&YamlItem> {
-        self.iter().find(|i| i.handle() == handle)
+        self.inner.iter().find(|i| i.handle() == handle)
     }
 
     pub fn get_owned<T: AsRef<str>>(&mut self, handle: T) -> Option<YamlItem> {
-        let pos = self.iter().position(|i| i.handle() == handle.as_ref())?;
-        Some(self.remove(pos))
+        let pos = self
+            .inner
+            .iter()
+            .position(|i| i.handle() == handle.as_ref())?;
+        Some(self.inner.remove(pos))
     }
 }
 
@@ -378,14 +365,5 @@ impl Attribute<Quality> for YamlItem {
 
     fn unset_attr(&mut self, q: Quality) {
         self.safe_unwrap_mut().unset_attr(q)
-    }
-}
-
-#[cfg(test)]
-mod item_trait_test {
-
-    #[test]
-    fn item_trait_test_1() {
-        // let x: Vec<Box<ItemListTrait>> = Vec::new();
     }
 }
