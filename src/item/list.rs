@@ -190,15 +190,3 @@ fn conv(list: &mut YamlItemList) -> ItemList {
     ret.info = Clothing(list.info.clone());
     ret
 }
-
-impl AsRef<ItemList> for ItemList {
-    fn as_ref(&self) -> &ItemList {
-        self
-    }
-}
-
-impl AsMut<ItemList> for ItemList {
-    fn as_mut(&mut self) -> &mut ItemList {
-        self
-    }
-}

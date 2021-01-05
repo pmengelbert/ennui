@@ -280,18 +280,6 @@ impl DerefMut for YamlItemList {
     }
 }
 
-impl AsRef<YamlItemList> for YamlItemList {
-    fn as_ref(&self) -> &YamlItemList {
-        self
-    }
-}
-
-impl AsMut<YamlItemList> for YamlItemList {
-    fn as_mut(&mut self) -> &mut YamlItemList {
-        self
-    }
-}
-
 impl Describe for YamlItemList {
     fn name(&self) -> String {
         self.info.name()

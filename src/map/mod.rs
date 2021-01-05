@@ -146,24 +146,6 @@ pub trait Locate {
     fn loc(&self) -> Coord;
 }
 
-impl AsMut<ItemList> for Room {
-    fn as_mut(&mut self) -> &mut ItemList {
-        self.items_mut()
-    }
-}
-
-impl AsRef<ItemList> for Room {
-    fn as_ref(&self) -> &ItemList {
-        self.items()
-    }
-}
-
-impl AsRef<Coord> for Room {
-    fn as_ref(&self) -> &Coord {
-        &self.loc
-    }
-}
-
 impl Space for Room {
     fn players(&self) -> &PlayerIdList {
         &self.players

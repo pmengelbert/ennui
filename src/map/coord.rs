@@ -11,11 +11,6 @@ impl Uuid for Coord {
 
 #[derive(Eq, PartialEq, Debug, Deserialize, Serialize, Hash, Default, Clone, Copy)]
 pub struct Coord(pub i64, pub i64);
-impl AsRef<Coord> for Coord {
-    fn as_ref(&self) -> &Coord {
-        self
-    }
-}
 
 impl Coord {
     pub fn north(&self) -> Self {
