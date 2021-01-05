@@ -5,9 +5,11 @@ OUTFILE = data/map.cbor
 target/release/ennui: data/map.cbor
 	cargo build --release --target $(TARGET)
 
-.PHONY ennui: target/release/ennui
+.PHONY: ennui
+ennui: target/$(TARGET)/release/ennui
 
-.PHONY clean:
+.PHONY: clean
+clean:
 	rm target/release/convert || true
 	rm target/release/ennui || true
 	rm target/release/server || true
@@ -17,20 +19,24 @@ target/release/convert: datafile
 	cargo build --release --bin convert
 
 data/map.cbor: convert
-	target/release/convert $(MAPFILE) $(OUTFILE)
+	target/$(TARGET)/release/convert $(MAPFILE) $(OUTFILE)
 
 data:
 	mkdir data || true
 
-.PHONY datafile: data
+.PHONY: datafile
+datafile: data
 	touch data/map.cbor
 
-target/release/server:
+target/release/server: data/map.cbor
 	cargo build --release --bin server
 
-.PHONY convert: target/release/convert
+.PHONY: convert
+convert: target/$(TARGET)/release/convert
 
-.PHONY server: target/release/server
+.PHONY: server
+server: target/$(TARGET)/release/server
 
-.PHONY pi: data/map.cbor
+.PHONY: pi
+pi: data/map.cbor
 	cargo build --release --target armv7-unknown-linux-gnueabihf

@@ -152,7 +152,7 @@ enum Starter {
     Defender,
 }
 
-fn begin_fight(mut basic_fight: Arc<Mutex<BasicFight>>) -> Result<FightStatus, Error> {
+fn begin_fight(basic_fight: Arc<Mutex<BasicFight>>) -> Result<FightStatus, Error> {
     let (sender, receiver) = channel::<JoinHandle<Result<(), String>>>();
     let fight = basic_fight.clone();
     spawn(move || handle_receiver(receiver, fight));
@@ -190,7 +190,6 @@ fn begin_fight(mut basic_fight: Arc<Mutex<BasicFight>>) -> Result<FightStatus, E
         )
     }))?;
 
-    basic_fight.end();
     Ok(FightStatus { ended: true })
 }
 
