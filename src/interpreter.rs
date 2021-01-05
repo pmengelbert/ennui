@@ -1,18 +1,16 @@
 use std::collections::HashMap;
-use std::ops::Deref;
 
 use crate::error::EnnuiError;
-use crate::game::{message, Game};
+use crate::game::Game;
 use crate::interpreter::CommandQuality::{Awake, Motion};
 use crate::item::Attribute;
 use crate::text::message::{Message, Messenger};
 use std::sync::{Arc, Mutex};
 
 pub type CommandMessage = (Box<dyn Messenger>, Box<dyn Message>);
-type CommandFunction = Arc<
+pub type CommandFunc = Arc<
     Mutex<dyn FnMut(&mut Game, u128, &[&str]) -> Result<CommandMessage, EnnuiError> + Send + Sync>,
 >;
-pub struct CommandFunc(CommandFunction);
 
 #[derive(Default)]
 pub struct Interpreter {
@@ -77,20 +75,6 @@ impl Attribute<CommandQuality> for CommandKind {
 
     fn unset_attr(&mut self, _: CommandQuality) {
         unimplemented!()
-    }
-}
-
-impl Deref for CommandFunc {
-    type Target = CommandFunction;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl Default for CommandFunc {
-    fn default() -> Self {
-        b(|_, _, _| message(0, ""))
     }
 }
 
@@ -171,5 +155,5 @@ fn b<F: 'static>(cf: F) -> CommandFunc
 where
     F: FnMut(&mut Game, u128, &[&str]) -> Result<CommandMessage, EnnuiError> + Send + Sync,
 {
-    CommandFunc(Arc::new(Mutex::new(cf)))
+    Arc::new(Mutex::new(cf))
 }
