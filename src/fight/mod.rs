@@ -1,8 +1,6 @@
 use crate::map::Locate;
 use crate::player::{Player as BarePlayer, Uuid};
 
-use std::ops::DerefMut;
-
 use std::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::{Arc, Mutex};
 
@@ -18,6 +16,7 @@ use crate::text::message::{FightAudience, Message, MessageFormat};
 use crate::text::Color::{Red, Yellow};
 use std::borrow::{Borrow, Cow};
 use std::error::Error as StdError;
+use std::sync::atomic::AtomicBool;
 use std::thread;
 use std::thread::{spawn, JoinHandle};
 use std::time::Duration;
@@ -42,7 +41,7 @@ pub struct BasicFight {
     aggressor: Player,
     defender: Player,
     delay: Duration,
-    ended: Arc<Mutex<bool>>,
+    ended: AtomicBool,
     audience: PlayerIdList,
     sender: Sender<(FightAudience, FightMessage)>,
     receiver: Option<Receiver<FightMod>>,
@@ -75,7 +74,7 @@ impl BasicFight {
             sender,
             audience,
             receiver: Some(receiver),
-            ended: arc_mutex!(false),
+            ended: AtomicBool::new(false),
         })
     }
 }
@@ -86,7 +85,7 @@ impl Fight for Arc<Mutex<BasicFight>> {
     }
 
     fn status(&self) -> FightStatus {
-        let ended = *self.lock().unwrap().ended.lock().unwrap();
+        let ended = *self.lock().unwrap().ended.get_mut();
         FightStatus { ended }
     }
 
@@ -109,9 +108,8 @@ impl Fight for Arc<Mutex<BasicFight>> {
 
     fn end(&mut self) {
         let cl = self.clone();
-        let cl = cl.lock().unwrap();
-        let mut x = cl.ended.lock().unwrap();
-        let x = x.deref_mut();
+        let mut cl = cl.lock().unwrap();
+        let x = cl.ended.get_mut();
         *x = true;
     }
 }

@@ -69,13 +69,13 @@ impl Color {
     }
 }
 
-const RED: &'static str = "[31m";
-const GREEN: &'static str = "[32m";
-const YELLOW: &'static str = "[33m";
-const BLUE: &'static str = "[34m";
-const MAGENTA: &'static str = "[35m";
-const CYAN: &'static str = "[36m";
-const WHITE: &'static str = "[37m";
+const RED: &str = "[31m";
+const GREEN: &str = "[32m";
+const YELLOW: &str = "[33m";
+const BLUE: &str = "[34m";
+const MAGENTA: &str = "[35m";
+const CYAN: &str = "[36m";
+const WHITE: &str = "[37m";
 
 #[cfg(test)]
 mod text_test {

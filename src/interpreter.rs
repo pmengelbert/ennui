@@ -125,10 +125,10 @@ impl Interpreter {
     pub fn insert<F: 'static>(&mut self, c: &str, f: F)
     where
         F: FnMut(
-                &mut Game,
-                u128,
-                &[&str],
-            ) -> Result<(Box<dyn Messenger>, Box<dyn Message>), EnnuiError>
+            &mut Game,
+            u128,
+            &[&str],
+        ) -> Result<(Box<dyn Messenger>, Box<dyn Message>), EnnuiError>
             + Send
             + Sync,
     {

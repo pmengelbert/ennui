@@ -180,9 +180,9 @@ fn get_and_set_player_name(p: u128, g: Arc<Mutex<Game>>) -> std::io::Result<()> 
         .map_err(|_| std::io::ErrorKind::AddrNotAvailable)?
         .map_err(|_| std::io::ErrorKind::AddrNotAvailable)?;
 
-    stream.write(b"enter your name: ")?;
+    stream.write_all(b"enter your name: ")?;
     let name = stream.read_line()?;
-    stream.write(b" > ")?;
+    stream.write_all(b" > ")?;
 
     let mut g = g.lock().unwrap();
     let res = g
