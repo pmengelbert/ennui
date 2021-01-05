@@ -7,7 +7,7 @@ use std::sync::{Arc, Mutex};
 
 type WriteResult = io::Result<usize>;
 
-pub trait Message {
+pub trait Message: Send + Sync {
     fn to_self(&self) -> String;
     fn to_object(&self) -> Option<String>;
     fn to_others(&self) -> Option<String>;
@@ -15,8 +15,8 @@ pub trait Message {
 
 impl<T, U> Message for Msg<T, U>
 where
-    T: AsRef<str>,
-    U: AsRef<str>,
+    T: AsRef<str> + Send + Sync,
+    U: AsRef<str> + Send + Sync,
 {
     fn to_self(&self) -> String {
         self.s.as_ref().to_owned()
@@ -31,7 +31,7 @@ where
     }
 }
 
-pub trait Messenger {
+pub trait Messenger: Send + Sync {
     fn id(&self) -> Option<u128>;
 
     fn object(&self) -> Option<u128> {
@@ -66,8 +66,8 @@ pub trait Broadcast {
 
 pub struct Audience<T, U>(pub T, pub U)
 where
-    T: Uuid,
-    U: Uuid;
+    T: Uuid + Send + Sync,
+    U: Uuid + Send + Sync;
 
 #[derive(Clone)]
 pub struct FightAudience(pub u128, pub u128, pub Vec<u128>);
@@ -87,8 +87,8 @@ impl Messenger for FightAudience {
 
 impl<T, U> Messenger for Audience<T, U>
 where
-    T: Uuid,
-    U: Uuid,
+    T: Uuid + Send + Sync,
+    U: Uuid + Send + Sync,
 {
     fn id(&self) -> Option<u128> {
         let u = self.0.uuid();
@@ -108,8 +108,8 @@ where
 #[derive(Eq, PartialEq)]
 pub struct Msg<T, U>
 where
-    T: AsRef<str>,
-    U: AsRef<str>,
+    T: AsRef<str> + Send + Sync,
+    U: AsRef<str> + Send + Sync,
 {
     pub s: T,
     pub o: Option<U>,
@@ -170,7 +170,6 @@ mod test_message {
     use crate::map::Space;
 
     use super::*;
-    use crate::player::list::PlayerIdListTrait;
 
     #[test]
     fn test_message_1() {

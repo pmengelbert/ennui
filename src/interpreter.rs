@@ -10,7 +10,7 @@ use std::sync::{Arc, Mutex};
 
 pub type CommandMessage = (Box<dyn Messenger>, Box<dyn Message>);
 type CommandFunction =
-    Arc<Mutex<dyn FnMut(&mut Game, u128, &[&str]) -> Result<CommandMessage, EnnuiError>>>;
+    Arc<Mutex<dyn FnMut(&mut Game, u128, &[&str]) -> Result<CommandMessage, EnnuiError> + Send + Sync>>;
 pub struct CommandFunc(CommandFunction);
 
 #[derive(Default)]
@@ -87,8 +87,6 @@ impl Deref for CommandFunc {
     }
 }
 
-unsafe impl Send for CommandFunc {}
-
 impl Default for CommandFunc {
     fn default() -> Self {
         b(|_, _, _| message(0, ""))
@@ -145,7 +143,7 @@ impl Interpreter {
             &mut Game,
             u128,
             &[&str],
-        ) -> Result<(Box<dyn Messenger>, Box<dyn Message>), EnnuiError>,
+        ) -> Result<(Box<dyn Messenger>, Box<dyn Message>), EnnuiError> + Send + Sync,
     {
         self.commands
             .lock()
@@ -168,7 +166,7 @@ impl Interpreter {
 
 fn b<F: 'static>(cf: F) -> CommandFunc
 where
-    F: FnMut(&mut Game, u128, &[&str]) -> Result<CommandMessage, EnnuiError>,
+    F: FnMut(&mut Game, u128, &[&str]) -> Result<CommandMessage, EnnuiError> + Send + Sync,
 {
     CommandFunc(Arc::new(Mutex::new(cf)))
 }

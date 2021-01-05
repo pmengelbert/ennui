@@ -10,14 +10,7 @@ use crate::text::message::MessageFormat;
 use crate::text::Color::Green;
 use std::fmt::Debug;
 use std::mem::take;
-
-use std::slice::{Iter, IterMut};
-
-#[derive(Default, Debug)]
-pub struct ItemList {
-    inner: Vec<Item>,
-    info: YamlItem,
-}
+use std::ops::{Deref, DerefMut};
 
 pub trait Holder: Describe {
     type Kind;
@@ -47,6 +40,26 @@ pub trait ListTrait: Describe + Debug {
             return Err(Fatal("COULD NOT TRANSFER ITEM".into()));
         };
         Ok(name)
+    }
+}
+
+#[derive(Default, Debug)]
+pub struct ItemList {
+    inner: Vec<Item>,
+    info: YamlItem,
+}
+
+impl Deref for ItemList {
+    type Target = Vec<Item>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.inner
+    }
+}
+
+impl DerefMut for ItemList {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.inner
     }
 }
 
@@ -85,21 +98,15 @@ impl Attribute<Quality> for ItemList {
 impl ListTrait for ItemList {
     type Kind = ItemList;
     fn get_item(&self, handle: &str) -> Option<&Item> {
-        self.inner.iter().find(|i| i.handle() == handle)
+        self.iter().find(|i| i.handle() == handle)
     }
 
     fn get_item_mut(&mut self, handle: &str) -> Option<&mut Item> {
-        self.inner.iter_mut().find(|i| i.handle() == handle)
+        self.iter_mut().find(|i| i.handle() == handle)
     }
 
     fn get_item_owned(&mut self, handle: &str) -> Result<Item, EnnuiError> {
-        let pos = self
-            .inner
-            .iter()
-            .position(|i| i.name() == handle)
-            .ok_or(Simple(ItemNotFound))?;
-
-        Ok(self.inner.remove(pos))
+        self.get_owned(handle)
     }
 
     fn insert_item(&mut self, item: Item) -> Result<(), Item> {
@@ -137,22 +144,6 @@ impl ItemList {
         }
 
         s
-    }
-
-    pub fn iter(&self) -> Iter<Item> {
-        self.inner.iter()
-    }
-
-    pub fn iter_mut(&mut self) -> IterMut<Item> {
-        self.inner.iter_mut()
-    }
-
-    pub fn len(&self) -> usize {
-        self.inner.len()
-    }
-
-    pub fn push(&mut self, item: Item) {
-        self.inner.push(item);
     }
 }
 
