@@ -307,16 +307,15 @@ impl Game {
 
         let rooms = &self.rooms;
         let others = rooms.player_ids(loc).except(u);
-        let aud = Audience(u, &others);
-        let msg = String::from(msg).padded();
-        let msg = Msg {
-            s: msg,
-            o: other_msg.clone().map(|s| s.padded()),
+        let aud = Audience(u, others);
+        let msg = String::from(msg);
+        let msg = FightMessage {
+            s: msg.into(),
+            obj: None,
+            oth: other_msg.clone().map(|s| s.padded().into()),
         };
-        self.send(&aud, &msg);
-        if other_msg.is_none() {
-            return message(0, "");
-        }
+
+        let return_msg = message(aud, msg);
 
         let next_room_aud = {
             let next_room = self.rooms.get(&loc.add(dir)?)?;
@@ -333,7 +332,7 @@ impl Game {
             },
         );
 
-        message(0, "")
+        return_msg
     }
 
     fn describe_player<T>(&self, loc: Coord, _pid: T, other: &str) -> Option<String>

@@ -14,11 +14,13 @@ use crate::map::Locate;
 
 use crate::fight::FightMod;
 use crate::fight::FightMod::Leave;
+
+#[cfg(not(target_arch = "wasm32"))]
+use rand::{thread_rng, Rng};
 use std::error::Error;
 use std::net::Shutdown::Both;
 use std::sync::mpsc::Sender;
 use std::sync::{Arc, Mutex};
-use rand::Rng;
 
 pub mod list;
 mod meter;
@@ -55,7 +57,7 @@ mod test_playerstatus {
 
     #[test]
     fn test_player_status() {
-        eeprintln!("{:#?}", PlayerStatus::Asleep as u64);
+        eprintln!("{:#?}", PlayerStatus::Asleep as u64);
     }
 }
 
@@ -268,8 +270,10 @@ impl Player {
             Mana(Meter(100, 100)),
         ];
 
+        let uuid = new_player_id();
+
         Self {
-            uuid: 10,
+            uuid,
             info: Description {
                 description: String::new(),
                 name: String::new(),
@@ -361,3 +365,12 @@ impl Player {
         self.stream = Some(stream);
     }
 }
+
+#[cfg(not(target_arch = "wasm32"))]
+fn new_player_id() -> u128 {
+    thread_rng().gen_range(0, u128::MAX)
+}
+
+#[cfg(target_arch = "wasm32")]
+use super::wasm::new_player_id;
+

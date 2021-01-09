@@ -2,26 +2,41 @@
 <html>
   <head>
     <script type="text/javascript" src="index.js"></script>
-
     <script type="text/javascript">
+      const maxLines = 30;
       function fd(event) {
         event.preventDefault();
         let x = document.getElementById("command").value;
-        poo(x);
+        runCommand(x);
         document.getElementById("command").value = "";
       }
 
       window.onload = function () {
-        poo("look");
+        runCommand("look");
         let form = document.getElementById("form");
         form.addEventListener('submit', fd);
       };
 
-      async function poo(s) {
-        let x = await EntryPoint.run(s);
-        let c = await EntryPoint.color(x);
-        document.getElementById("result").innerHTML = c;
-        console.log(x);
+      function processOutput(current, rawOutput) {
+        let currentArray = current.split("\n");
+        let outputArray = rawOutput.split("\n");
+        let totalOutput = currentArray.concat(outputArray);
+        const maxLines = 25;
+
+        if (totalOutput.length > maxLines) {
+          totalOutput = totalOutput.slice(totalOutput.length - maxLines, totalOutput.length);
+        }
+        let coloredOutput = EntryPoint.color(totalOutput.join("\n"));
+        return coloredOutput
+      }
+
+      async function runCommand(s) {
+        let current = document.getElementById("result").innerHTML;
+        let rawOutput = await EntryPoint.run(s);
+
+        let coloredOutput = processOutput(current, rawOutput);
+
+        document.getElementById("result").innerHTML = coloredOutput;
       }
 
     </script>
@@ -32,9 +47,8 @@
   <div id="result" style="padding-left:1em;margin-bottom: 1em;white-space:pre;background-color: black;height:30em;color: white">
 
   </div>
-  <div></div>
   <form id="form" autocomplete="off" onsubmit=fd>
-    <label for="command">enter your wish. it shall be my command</label><br>
+    <label for="command">enter thy wish. it shall be my command.</label><br>
     <input type="text" id="command" name="command" style="width: 75%;" autocomplete="off"><br>
   </form>
   </body>

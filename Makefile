@@ -40,3 +40,8 @@ server: target/$(TARGET)/release/server
 .PHONY: pi
 pi: data/map.cbor
 	cargo build --release --target armv7-unknown-linux-gnueabihf
+
+.PHONY: wasmserver
+wasmserver:
+	npm run build
+	cp index.html dist/index.html

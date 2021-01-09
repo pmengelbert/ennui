@@ -1,9 +1,12 @@
 use super::*;
-use rand::{SeedableRng, random};
+
+
+fn random_num(x: u8, y: u8) -> u8 {
+    rand::thread_rng().gen_range(x, y)
+}
 
 pub fn random_insult() -> String {
-    let mut n = rand::rngs::mock::StepRng::new(48, 32895);
-    let n: usize = n.gen::<usize>() % 5;
+    let n = random_num(0, 5);
     match n {
         0 => "dude wtf",
         1 => "i think you should leave",
