@@ -1,11 +1,14 @@
 use super::*;
+use rand::{SeedableRng, random};
 
 pub fn random_insult() -> String {
-    match rand::thread_rng().gen_range(1, 6) {
-        1 => "dude wtf",
-        2 => "i think you should leave",
-        3 => "i'll have to ask my lawyer about that",
-        4 => "that's ... uncommon",
+    let mut n = rand::rngs::mock::StepRng::new(48, 32895);
+    let n: usize = n.gen::<usize>() % 5;
+    match n {
+        0 => "dude wtf",
+        1 => "i think you should leave",
+        2 => "i'll have to ask my lawyer about that",
+        3 => "that's ... uncommon",
         _ => "that's an interesting theory... but will it hold up in the laboratory?",
     }
     .to_owned()

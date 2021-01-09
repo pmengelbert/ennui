@@ -37,6 +37,7 @@ use wasm_bindgen::prelude::*;
 use crate::player::{Player, Uuid};
 use crate::error::EnnuiError;
 use crate::text::message::{Message, Messenger};
+use crate::text::Wrap;
 
 #[wasm_bindgen]
 pub fn interpret(s: &str) -> String {
@@ -46,7 +47,7 @@ pub fn interpret(s: &str) -> String {
     let x = g.interpret(10, s);
     let ret = match x {
         Ok(s) => {
-            s.1.to_self()
+            s.1.to_self().wrap(80)
         }
         Err(e) => {
             format!("{:?}", e)

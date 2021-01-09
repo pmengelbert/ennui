@@ -12,10 +12,6 @@
       }
 
       window.onload = function () {
-        async function poo(s) {
-          let x = await EntryPoint.run(s);
-          console.log(x);
-        }
         poo("look");
         let form = document.getElementById("form");
         form.addEventListener('submit', fd);
@@ -23,6 +19,8 @@
 
       async function poo(s) {
         let x = await EntryPoint.run(s);
+        let c = await EntryPoint.color(x);
+        document.getElementById("result").innerHTML = c;
         console.log(x);
       }
 
@@ -31,10 +29,13 @@
     <title>Webpack App</title>
   </head>
   <body>
-  <form id="form" autocomplete="off">
-    <label for="command">Command</label><br>
+  <div id="result" style="padding-left:1em;margin-bottom: 1em;white-space:pre;background-color: black;height:30em;color: white">
+
+  </div>
+  <div></div>
+  <form id="form" autocomplete="off" onsubmit=fd>
+    <label for="command">enter your wish. it shall be my command</label><br>
     <input type="text" id="command" name="command" style="width: 75%;" autocomplete="off"><br>
-    <input type="submit" onclick=fd>
   </form>
   </body>
 </html>

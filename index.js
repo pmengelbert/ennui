@@ -6,6 +6,12 @@ module.exports = {
       );
       let y = await x;
       return y;
+   },
+   color: function (s) {
+      var Convert = require('ansi-to-html');
+      var convert = new Convert();
+
+      return convert.toHtml(s);
    }
 };
 
