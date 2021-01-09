@@ -85,7 +85,7 @@ impl Game {
 
     pub fn add_player(&mut self, p: Player) {
         self.rooms.entry(p.loc()).or_default().add_player(&p);
-        self.players.insert(p.uuid(), arc_mutex!(p));
+        self.players.insert(p.uuid(), Arc::new(Mutex::new(p)));
     }
 
     pub fn announce_player(&mut self, u: u128) -> Result<(), EnnuiError> {

@@ -5,11 +5,16 @@ authors = ["Peter Engelbert <pmengelbert@gmail.com>"]
 edition = "2018"
 default-run = "ennui"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-uuid = { version = "*", features = ["v4", "stdweb"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_yaml = "0.8.14"
 serde_cbor = "0.11.1"
 rand = "0.7.3"
+wasm-bindgen = "0.2.69"
+lazy_static = "1.4.0"
+mut_static = "5.0.0"
+stdweb = { path = "../stdweb" }

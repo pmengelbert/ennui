@@ -67,7 +67,7 @@ impl BasicFight {
             receiver,
         } = info;
 
-        arc_mutex!(Self {
+        Arc::new(Mutex::new(Self {
             aggressor,
             defender,
             delay,
@@ -75,7 +75,7 @@ impl BasicFight {
             audience,
             receiver: Some(receiver),
             ended: AtomicBool::new(false),
-        })
+        }))
     }
 }
 

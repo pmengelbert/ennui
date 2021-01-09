@@ -2,7 +2,6 @@ use std::io::{Read, Write};
 use std::net::TcpStream;
 
 use serde::{Deserialize, Serialize};
-use uuid::Uuid as CrateUuid;
 
 use meter::MeterKind;
 
@@ -19,6 +18,7 @@ use std::error::Error;
 use std::net::Shutdown::Both;
 use std::sync::mpsc::Sender;
 use std::sync::{Arc, Mutex};
+use rand::Rng;
 
 pub mod list;
 mod meter;
@@ -269,7 +269,7 @@ impl Player {
         ];
 
         Self {
-            uuid: CrateUuid::new_v4().as_u128(),
+            uuid: 10,
             info: Description {
                 description: String::new(),
                 name: String::new(),
@@ -346,7 +346,7 @@ impl Player {
     }
 
     pub fn assign_fight_sender(&mut self, sender: Sender<FightMod>) {
-        self.fight_sender = Some(arc_mutex!(sender));
+        self.fight_sender = Some(Arc::new(Mutex::new(sender)));
     }
 
     pub fn leave_fight(&mut self) -> Result<(), Box<dyn Error>> {

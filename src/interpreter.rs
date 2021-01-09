@@ -80,7 +80,7 @@ impl Attribute<CommandQuality> for CommandKind {
 
 impl Interpreter {
     pub fn new() -> Self {
-        let commands = arc_mutex!(HashMap::new());
+        let commands = Arc::new(Mutex::new(HashMap::new()));
         Self { commands }
     }
 
