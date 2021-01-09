@@ -25,7 +25,11 @@ macro_rules! arc_mutex(
 
 lazy_static! {
     pub static ref GAME: MutStatic<Arc<Mutex<game::Game>>> = {
-        MutStatic::from(Arc::new(Mutex::new(game::Game::new().unwrap())))
+        let mut g = game::Game::new().unwrap();
+        let mut p = Player::new();
+        p.set_name("peter");
+        g.add_player(p);
+        MutStatic::from(Arc::new(Mutex::new(g)))
     };
 }
 
@@ -34,27 +38,12 @@ use crate::player::{Player, Uuid};
 use crate::error::EnnuiError;
 use crate::text::message::{Message, Messenger};
 
-
-#[wasm_bindgen]
-pub fn poo() -> String {
-    "lol".into()
-}
-
 #[wasm_bindgen]
 pub fn interpret(s: &str) -> String {
     let g = GAME.read().unwrap();
     let mut g = g.lock().unwrap();
-    let mut id = 0_u128;
-    let len = g.players_mut().len();
-    if len == 0 {
-        let mut p = Player::new();
-        //return "here".into();
-        id = p.uuid();
-        p.set_name("peter");
-        g.add_player(p);
-    }
 
-    let x = g.interpret(id, s);
+    let x = g.interpret(10, s);
     let ret = match x {
         Ok(s) => {
             s.1.to_self()

@@ -4,3 +4,4 @@ src/mapdata.rs
 target/
 data/
 node_modules/
+dist/

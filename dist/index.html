@@ -1,15 +1,40 @@
 <!DOCTYPE html>
 <html>
   <head>
+    <script type="text/javascript" src="index.js"></script>
+
+    <script type="text/javascript">
+      function fd(event) {
+        event.preventDefault();
+        let x = document.getElementById("command").value;
+        poo(x);
+        document.getElementById("command").value = "";
+      }
+
+      window.onload = function () {
+        async function poo(s) {
+          let x = await EntryPoint.run(s);
+          console.log(x);
+        }
+        poo("look");
+        let form = document.getElementById("form");
+        form.addEventListener('submit', fd);
+      };
+
+      async function poo(s) {
+        let x = await EntryPoint.run(s);
+        console.log(x);
+      }
+
+    </script>
     <meta charset="UTF-8">
     <title>Webpack App</title>
-    <script></script>
   </head>
   <body>
-  <script type="text/javascript" src="index.js"></script></body>
-  <script type="module">
-    import { interpret } from "../pkg";
-    let x = interpret("look");
-    console.log(x);
-  </script></body>
+  <form id="form" autocomplete="off">
+    <label for="command">Command</label><br>
+    <input type="text" id="command" name="command" style="width: 75%;" autocomplete="off"><br>
+    <input type="submit" onclick=fd>
+  </form>
+  </body>
 </html>

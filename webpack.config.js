@@ -8,6 +8,8 @@ module.exports = {
     output: {
         path: path.resolve(__dirname, 'dist'),
         filename: 'index.js',
+        libraryTarget: 'var',
+        library: 'EntryPoint'
     },
     plugins: [
         new HtmlWebpackPlugin(),
