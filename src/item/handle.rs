@@ -56,7 +56,7 @@ mod handle_test {
     #[test]
     fn handle_test() {
         let h = handle![sword, rusty];
-        println!("{:#?}", h);
+        eprintln!("{:#?}", h);
         assert_eq!("sword", h);
         assert_eq!("rusty", h);
     }

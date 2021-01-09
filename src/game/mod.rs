@@ -173,14 +173,14 @@ impl Game {
     }
 
     fn describe_room<P: Uuid>(&mut self, p: P) -> Result<String, EnnuiError> {
-        println!("[{}]: describe_room", "SUCCESS".color(Green));
+        eprintln!("[{}]: describe_room", "SUCCESS".color(Green));
         let loc = self.loc_of(p.uuid())?;
-        println!("[{}]: got uuid", "SUCCESS".color(Green));
+        eprintln!("[{}]: got uuid", "SUCCESS".color(Green));
 
         let rooms = &self.rooms;
         let r = rooms.get(&loc)?;
         let player_list_string = r.players().except(p.uuid()).display(&self.players);
-        println!("[{}]: got room", "SUCCESS".color(Green));
+        eprintln!("[{}]: got room", "SUCCESS".color(Green));
         let exits = Room::exit_display(&rooms.exits(loc));
 
         let mut room_string = r.display();
@@ -423,7 +423,7 @@ impl Game {
         p.set_loc(next_coord);
 
         if let Err(e) = p.leave_fight() {
-            println!("ERROR: {:?}", e);
+            eprintln!("ERROR: {:?}", e);
         };
 
         Ok(())
@@ -485,5 +485,5 @@ fn lesser(s: &str) -> EnnuiError {
 }
 
 fn print_err<T: Error + Debug>(err: T) {
-    println!("[{}]: {:?}", "ERROR".color(Magenta), err)
+    eprintln!("[{}]: {:?}", "ERROR".color(Magenta), err)
 }

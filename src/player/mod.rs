@@ -55,7 +55,7 @@ mod test_playerstatus {
 
     #[test]
     fn test_player_status() {
-        eprintln!("{:#?}", PlayerStatus::Asleep as u64);
+        eeprintln!("{:#?}", PlayerStatus::Asleep as u64);
     }
 }
 

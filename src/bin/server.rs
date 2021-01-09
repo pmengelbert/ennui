@@ -33,7 +33,7 @@ where
         let n = match self.read(&mut buf) {
             Ok(n) => n,
             Err(e) => {
-                println!("{}", e);
+                eprintln!("{}", e);
                 0
             }
         };
@@ -56,7 +56,7 @@ fn main() -> GameResult<()> {
             match handle.join() {
                 Ok(_) => (),
                 Err(err) => {
-                    println!("[{}]: {:#?}", "ERROR".color(Red), err);
+                    eprintln!("[{}]: {:#?}", "ERROR".color(Red), err);
                 }
             }
         }
@@ -78,7 +78,7 @@ fn main() -> GameResult<()> {
             let mut game = match game_clone.lock() {
                 Ok(g) => g,
                 Err(err) => {
-                    println!("error: {}", err);
+                    eprintln!("error: {}", err);
                     continue;
                 }
             };
@@ -96,28 +96,28 @@ fn main() -> GameResult<()> {
 fn handle_client(p: u128, g: Arc<Mutex<Game>>) -> std::io::Result<()> {
     get_and_set_player_name(p, g.clone())?;
 
-    println!("[{}]: player named", "SUCCESS".color(Green));
+    eprintln!("[{}]: player named", "SUCCESS".color(Green));
     loop {
         let s = get_player_command(p, g.clone())?;
 
-        println!("[{}]: Got player command", "SUCCESS".color(Green));
+        eprintln!("[{}]: Got player command", "SUCCESS".color(Green));
         {
             let mut g = match g.lock() {
                 Ok(g) => g,
                 Err(err) => {
-                    println!("error: {}", err);
+                    eprintln!("error: {}", err);
                     break;
                 }
             };
 
             let resp = g.interpret(p, &s);
-            println!("[{}]: Got response", "SUCCESS".color(Green));
+            eprintln!("[{}]: Got response", "SUCCESS".color(Green));
             match resp {
                 Ok((aud, msg)) => {
                     let results = g.send(&*aud, &*msg);
                     for (id, result) in results {
                         if let Err(e) = result {
-                            println!("[{}]: {:?}", "ERROR".color(Red), e);
+                            eprintln!("[{}]: {:?}", "ERROR".color(Red), e);
                             let p = g.remove_player(id).unwrap_or_default();
 
                             std::mem::drop(p);
@@ -129,8 +129,8 @@ fn handle_client(p: u128, g: Arc<Mutex<Game>>) -> std::io::Result<()> {
                         g.remove_player(p);
                         break;
                     }
-                    EnnuiError::Fatal(s) => println!("[{}]: {:?}", "FATAL".color(Red), s),
-                    e => println!("[{}]: {:?}", "ERROR".color(Magenta), e),
+                    EnnuiError::Fatal(s) => eprintln!("[{}]: {:?}", "FATAL".color(Red), s),
+                    e => eprintln!("[{}]: {:?}", "ERROR".color(Magenta), e),
                 },
             }
         }

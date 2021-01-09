@@ -167,7 +167,7 @@ impl Room {
     }
 
     pub fn display(&self) -> String {
-        println!("[{}]: room.display", "SUCCESS".color(Green));
+        eprintln!("[{}]: room.display", "SUCCESS".color(Green));
         let Room {
             info: Description {
                 name, description, ..

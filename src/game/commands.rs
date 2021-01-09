@@ -16,11 +16,11 @@ use std::time::Duration;
 
 pub fn fill_interpreter(i: &mut Interpreter) {
     i.insert("look", |g, u, args| {
-        println!("[{}]: made it to handler", "SUCCESS".color(Green));
+        eprintln!("[{}]: made it to handler", "SUCCESS".color(Green));
         let args: Vec<_> = args.iter().filter(|&&a| a != "at").collect();
         let msg: Cow<'static, str> = match args.len() {
             0 => {
-                println!("[{}]: made it to case", "SUCCESS".color(Green));
+                eprintln!("[{}]: made it to case", "SUCCESS".color(Green));
                 g.describe_room(u)?.into()
             }
             1 => {

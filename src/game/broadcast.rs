@@ -15,7 +15,7 @@ where
         audience: &dyn Messenger,
         message: &dyn Message,
     ) -> Vec<(u128, WriteResult)> {
-        println!("[{}]: made it to send func", "SUCCESS".color(Green));
+        eprintln!("[{}]: made it to send func", "SUCCESS".color(Green));
         let g = self.borrow_mut();
         let mut v = vec![];
 

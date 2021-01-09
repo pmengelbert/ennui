@@ -195,10 +195,10 @@ fn handle_receiver(
 ) {
     for handle in receiver {
         match handle.join() {
-            Ok(_r) => println!("fight concluded"),
+            Ok(_r) => eprintln!("fight concluded"),
             Err(e) => {
                 fight.clone().end();
-                println!("[{}]: {:?}", "ERROR".color(Red), e)
+                eprintln!("[{}]: {:?}", "ERROR".color(Red), e)
             }
         }
     }
@@ -209,7 +209,7 @@ fn handle_fight_messages(mod_receiver: Receiver<FightMod>, mut fight: Arc<Mutex<
         let res = fight.send_message(modification);
 
         if let Err(e) = res {
-            println!("{:?}", e);
+            eprintln!("{:?}", e);
         }
     }
 }
@@ -244,7 +244,7 @@ fn handle_fight(
         );
 
         let FightStatus { ended } = fight.status();
-        println!("status: {}", ended);
+        eprintln!("status: {}", ended);
         if ended {
             break;
         }
@@ -271,7 +271,7 @@ fn handle_fight(
         )?;
 
         let FightStatus { ended } = fight.status();
-        println!("status: {}", ended);
+        eprintln!("status: {}", ended);
         if ended {
             break;
         }
