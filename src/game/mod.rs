@@ -318,8 +318,12 @@ impl Game {
         let return_msg = message(aud, msg);
 
         let next_room_aud = {
-            let next_room = self.rooms.get(&loc.add(dir)?)?;
-            Audience(0, next_room.players_except(u))
+            if let Some(next_room) = self.rooms.get(&loc.add(dir)?) {
+                Audience(0, next_room.players_except(u))
+            } else {
+                return return_msg;
+            }
+
         };
 
         let for_others = format!("{} enters the room", name);
