@@ -3,6 +3,8 @@ use {
     mut_static::MutStatic, std::sync::Arc, std::sync::Mutex, wasm_bindgen::prelude::*,
 };
 
+const PLAYER_ID: u128 = 10; // completely arbitrary, as long as it's not zero
+
 lazy_static! {
     pub static ref GAME: MutStatic<Arc<Mutex<game::Game>>> = {
         let mut g = game::Game::new().unwrap();
@@ -18,7 +20,7 @@ pub fn interpret(s: &str) -> String {
     let g = GAME.read().unwrap();
     let mut g = g.lock().unwrap();
 
-    let x = g.interpret(10, s);
+    let x = g.interpret(PLAYER_ID, s);
     let ret = match x {
         Ok(s) => s.1.to_self().wrap(80),
         Err(e) => {
@@ -29,5 +31,5 @@ pub fn interpret(s: &str) -> String {
 }
 
 pub fn new_player_id() -> u128 {
-    10
+    PLAYER_ID
 }
