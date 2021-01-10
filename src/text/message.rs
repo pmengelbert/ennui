@@ -230,11 +230,21 @@ impl MessageFormat for String {
     fn un_padded(&self) -> String {
         self.clone()
     }
+
+    #[cfg(target_arch = "wasm32")]
+    fn padded(&self) -> String {
+        wasm_padded(self)
+    }
 }
 
 impl MessageFormat for &str {
     fn un_padded(&self) -> String {
         (*self).to_owned()
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    fn padded(&self) -> String {
+        wasm_padded(self)
     }
 }
 
@@ -242,4 +252,13 @@ impl Messenger for Arc<Mutex<Player>> {
     fn id(&self) -> Option<u128> {
         Some(self.lock().unwrap().uuid())
     }
+}
+
+#[cfg(target_arch = "wasm32")]
+fn wasm_padded(s: &str) -> String {
+    let mut b = String::new();
+    b.push('\n');
+    b.push_str(&s.un_padded());
+    b.push_str("\n");
+    b
 }
