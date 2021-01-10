@@ -220,7 +220,7 @@ pub fn fill_interpreter(i: &mut Interpreter) {
         let mut other_msg = None;
 
         let p_msg = if a.len() == 2 {
-            let (other, handle) = (a[0], a[1]);
+            let (handle, other) = (a[0], a[1]);
 
             match g.transfer(u, Some(other), Direction::Give, handle) {
                 Ok(h) => {
@@ -239,7 +239,7 @@ pub fn fill_interpreter(i: &mut Interpreter) {
                             article(handle)
                         ),
                         CmdErr::PlayerNotFound => {
-                            "you realize you don't see them here, and you begin to panic".to_owned()
+                            "there's no-one by that name here".to_owned()
                         }
                         _ => {
                             return Err(fatal("GIVE: SHOULD BE UNREACHABLE"));
