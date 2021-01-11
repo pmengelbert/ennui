@@ -371,6 +371,12 @@ fn new_player_id() -> u128 {
     thread_rng().gen_range(0, u128::MAX)
 }
 
+
 #[cfg(target_arch = "wasm32")]
-use super::wasm::new_player_id;
+pub const PLAYER_ID: u128 = 10;
+
+#[cfg(target_arch = "wasm32")]
+fn new_player_id() -> u128 {
+    PLAYER_ID
+}
 
