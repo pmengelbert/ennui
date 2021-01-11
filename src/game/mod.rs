@@ -323,7 +323,6 @@ impl Game {
             } else {
                 return return_msg;
             }
-
         };
 
         let for_others = format!("{} enters the room", name);
@@ -345,24 +344,18 @@ impl Game {
     {
         let other_id = self.id_of_in(loc, other)?;
         let p = self.players.get(&other_id)?;
+        let p = p.lock().unwrap();
 
-        let mut item_list = format!("{} is holding:", p.lock().unwrap().name());
-        if p.lock().unwrap().items().len() > 0 {
+        let description = p.description();
+
+        let mut item_list_title = format!("\n{} is holding:", p.name());
+        let mut item_list = String::new();
+        for item in p.items().iter() {
             item_list.push('\n');
+            item_list.push_str(&article(&item.name()));
         }
 
-        item_list.push_str(
-            p.lock()
-                .unwrap()
-                .items()
-                .iter()
-                .map(|i| article(&i.name()))
-                .collect::<Vec<_>>()
-                .join("\n")
-                .as_str(),
-        );
-
-        Some(format!("{}{}", p.lock().unwrap().description(), item_list))
+        Some(format!("{}{}{}", description, item_list_title, item_list.color(Green)))
     }
 
     fn list_inventory<T: Uuid>(&self, u: T) -> Result<String, EnnuiError> {
