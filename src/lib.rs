@@ -10,9 +10,6 @@ pub mod map;
 pub mod player;
 pub mod text;
 
-#[cfg(target_arch = "wasm32")]
-mod wasm;
-
 //type EnnuiResult = Result<String, EnnuiError>;
 #[macro_export]
 macro_rules! arc_mutex(

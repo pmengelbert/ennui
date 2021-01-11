@@ -33,9 +33,13 @@ pi: data/map.cbor
 	cargo build --release --target armv7-unknown-linux-gnueabihf
 
 .PHONY: wasmserver
-wasmserver: node_modules data/map.cbor
-	npm run build
-	cp index.html dist/index.html
+wasmserver: web/node_modules data/map.cbor
+	cd web && npm run build
+	cd web && cp index.html dist/index.html
 
-node_modules:
+.PHONY: serve
+serve: wasmserver
+	python3 -m http.server --directory web/dist --bind 100.106.254.52 8000
+
+web/node_modules:
 	npm install
