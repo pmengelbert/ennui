@@ -6,7 +6,6 @@ const Convert = require('ansi-to-html');
 
 const convert = new Convert();
 
-
 function color(s) {
     return convert.toHtml(s);
 }
