@@ -18,11 +18,6 @@ macro_rules! arc_mutex(
     };
 );
 
-
-
-
-
-
 type WriteResult = std::io::Result<usize>;
 
 pub struct SendError {

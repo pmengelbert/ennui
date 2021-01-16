@@ -9,7 +9,7 @@ use std::sync::{Arc, Mutex};
 
 pub type CommandMessage = (Box<dyn Messenger>, Box<dyn Message>);
 pub type CommandFunc = Arc<
-    Mutex<dyn FnMut(&mut Game, u128, &[&str]) -> Result<CommandMessage, EnnuiError> + Send + Sync>,
+    Mutex<dyn Fn(&mut Game, u128, &[&str]) -> Result<CommandMessage, EnnuiError> + Send + Sync>,
 >;
 
 #[derive(Default)]
@@ -124,7 +124,7 @@ impl Interpreter {
 
     pub fn insert<F: 'static>(&mut self, c: &str, f: F)
     where
-        F: FnMut(
+        F: Fn(
             &mut Game,
             u128,
             &[&str],
@@ -153,7 +153,7 @@ impl Interpreter {
 
 fn b<F: 'static>(cf: F) -> CommandFunc
 where
-    F: FnMut(&mut Game, u128, &[&str]) -> Result<CommandMessage, EnnuiError> + Send + Sync,
+    F: Fn(&mut Game, u128, &[&str]) -> Result<CommandMessage, EnnuiError> + Send + Sync,
 {
     Arc::new(Mutex::new(cf))
 }

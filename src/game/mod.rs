@@ -74,13 +74,17 @@ impl Game {
 
         let commands = self.interpreter.commands();
         let mut other_commands = commands.lock().ok()?;
-        let mut cmd_func = other_commands.get_mut(&cmd)?.lock().ok()?;
+        let mut cmd_func = other_commands.get(&cmd)?.lock().ok()?;
 
         if let Some(msg) = self.verify_status(cmd, p)? {
             return Ok(msg);
         }
 
         (*cmd_func)(self, p, &args)
+    }
+
+    pub fn interpreter(&mut self) -> &mut Interpreter {
+        &mut self.interpreter
     }
 
     pub fn add_player(&mut self, p: Player) {
@@ -355,7 +359,12 @@ impl Game {
             item_list.push_str(&article(&item.name()));
         }
 
-        Some(format!("{}{}{}", description, item_list_title, item_list.color(Green)))
+        Some(format!(
+            "{}{}{}",
+            description,
+            item_list_title,
+            item_list.color(Green)
+        ))
     }
 
     fn list_inventory<T: Uuid>(&self, u: T) -> Result<String, EnnuiError> {

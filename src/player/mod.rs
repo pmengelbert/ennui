@@ -24,7 +24,27 @@ use std::sync::{Arc, Mutex};
 
 pub mod list;
 mod meter;
+mod npc;
 mod player_test;
+use npc::YamlPlayer;
+
+pub enum PlayerType {
+    Human(Player),
+    Npc(npc::Npc),
+}
+
+impl From<YamlPlayer> for PlayerType {
+    fn from(other: YamlPlayer) -> Self {
+        let mut p = Player::new();
+        let YamlPlayer { info, ai_type } = other;
+        p.info = info;
+        if let Some(t) = ai_type {
+            Self::Npc(npc::Npc::new(p, t))
+        } else {
+            Self::Human(p)
+        }
+    }
+}
 
 #[derive(Default, Serialize, Deserialize, Debug)]
 pub struct Player {
@@ -371,7 +391,6 @@ fn new_player_id() -> u128 {
     thread_rng().gen_range(0, u128::MAX)
 }
 
-
 #[cfg(target_arch = "wasm32")]
 pub const PLAYER_ID: u128 = 10;
 
@@ -379,4 +398,3 @@ pub const PLAYER_ID: u128 = 10;
 fn new_player_id() -> u128 {
     PLAYER_ID
 }
-

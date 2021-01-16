@@ -114,7 +114,11 @@ fn handle_client(p: u128, g: Arc<Mutex<Game>>) -> std::io::Result<()> {
             eprintln!("[{}]: Got response", "SUCCESS".color(Green));
             match resp {
                 Ok((aud, msg)) => {
-                    eprintln!("[{}]: message: {:#?}", "SUCCESS".color(Green), msg.to_self().color(Magenta));
+                    eprintln!(
+                        "[{}]: message: {:#?}",
+                        "SUCCESS".color(Green),
+                        msg.to_self().color(Magenta)
+                    );
                     let results = g.send(&*aud, &*msg);
                     for (id, result) in results {
                         if let Err(e) = result {

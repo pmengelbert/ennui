@@ -238,9 +238,7 @@ pub fn fill_interpreter(i: &mut Interpreter) {
                             "you fail in your effort. {} is too heavy for them to carry",
                             article(handle)
                         ),
-                        CmdErr::PlayerNotFound => {
-                            "there's no-one by that name here".to_owned()
-                        }
+                        CmdErr::PlayerNotFound => "there's no-one by that name here".to_owned(),
                         _ => {
                             return Err(fatal("GIVE: SHOULD BE UNREACHABLE"));
                         }
