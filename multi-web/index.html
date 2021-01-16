@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <title>Ennui: A MUD engine in 100% Rust, running here as a WebAssembly module</title>
+  </head>
+  <body style="background-color: black; color: white">
+    <script src="/socket.io/socket.io.js"></script>
+  <div id="result" style="padding-left:1em;margin-bottom: 1em;white-space:pre;background-color: black;height:30em;color: white">
+
+  </div>
+  <form id='form' autocomplete="off" onsubmit=fd >
+    > <input type="text" id="command" name="command" placeholder="enter thy wish. it shall be my command" autofocus style="background-color: black;
+    color: darkgrey;
+    border-width: 1px;
+    width: 75%;
+    height: 2em;
+    border-style: solid;
+    margin-top: 1em;
+    padding-left: 2em;
+    font-size: large;
+}" autocomplete="off"><br>
+  </form>
+    <script src="/command.js"></script>
+  </body>
+</html>

@@ -1,0 +1,10 @@
+{
+    "scripts": {},
+    "dependencies": {
+        "socket.io": "3.1.0",
+        "socket.io-client": "3.1.0",
+        "express": "4.17.1",
+        "net": "1.0.2",
+        "ansi-to-html": "0.6.14"
+    }
+}
