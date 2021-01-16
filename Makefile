@@ -43,3 +43,9 @@ serve: wasmserver
 
 web/node_modules:
 	npm install
+
+.PHONY: rebuild-map
+rebuild-map:
+	rm data/map.cbor
+	rm target/release/server
+	make target/release/server
