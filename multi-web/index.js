@@ -38,16 +38,21 @@ function run(srv, port) {
       socket.emit('chat message', color(data.toString()));
 	  });
 
+    client.on('end', () => {
+      client.destroy()
+    });
+
 	  socket.on('chat message', (msg) => {
       if ("quit".startsWith(msg.toString().toLowerCase())) {
         socket.emit('chat message', "DISCONNECTED");
         socket.disconnect();
+      } else {
+        client.write(msg + '\n');
       }
-      client.write(msg + '\n');
 	  });
 	
 	  socket.on('disconnect', (socket) => {
-      client.write('q\n');
+      client.destroy();
       console.log('a user disconnected');
 	  });
 	});
