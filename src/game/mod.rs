@@ -89,6 +89,7 @@ impl Game {
 
     pub fn interpret(&mut self, p: u128, s: &str) -> Result<CommandMessage, EnnuiError> {
         let s = s.to_lowercase();
+        eprintln!("executing command '{}' for player {}", s, p);
         let (cmd, args) = Interpreter::process_string_command(&s);
 
         let commands = self.interpreter.commands();
@@ -301,6 +302,7 @@ impl Game {
         let name = self.name_of(u)?;
 
         let mut other_msg = None;
+        let mut terminate = None;
 
         let msg: Cow<'static, str> = match self.move_player(loc, u, dir) {
             Ok(_) => {
@@ -309,6 +311,7 @@ impl Game {
             }
             Err(s) => {
                 use crate::map::door::DoorState::*;
+                terminate = Some(());
                 match s {
                     None => "alas! you cannot go that way...".into(),
                     Closed => "a door blocks your way".into(),
@@ -339,6 +342,9 @@ impl Game {
         };
 
         let return_msg = message(aud, msg);
+        if terminate.is_some() {
+            return return_msg;
+        }
 
         let next_room_aud = {
             if let Some(next_room) = self.rooms.get(&loc.add(dir)?) {
@@ -416,12 +422,13 @@ impl Game {
 
     fn move_player(&mut self, loc: Coord, u: u128, dir: MapDir) -> Result<(), DoorState> {
         let next_coord = loc.add(dir);
+
+        self.check_doors(loc, next_coord, dir)?;
+
         let rooms = &mut self.rooms;
         let players = &mut self.players;
-
         let src_room = rooms.get_mut(&loc)?;
 
-        Game::check_doors(dir, src_room)?;
         Self::check_guard(dir, src_room)?;
 
         src_room.players_mut().remove(&u);
@@ -453,11 +460,24 @@ impl Game {
         Ok(())
     }
 
-    fn check_doors(dir: MapDir, src_room: &mut Room) -> Result<(), DoorState> {
-        if let Some(door) = src_room.doors().get(&dir) {
-            match door.state() {
-                DoorState::None | DoorState::Open => (),
-                s => return Err(s),
+    fn check_doors(&self, loc: Coord, next_coord: Option<Coord>, dir: MapDir) -> Result<(), DoorState> {
+        {
+            let src_room = self.rooms.get(&loc)?;
+            if let Some(door) = src_room.doors().get(&dir) {
+                match door.state() {
+                    DoorState::None | DoorState::Open => (),
+                    s => return Err(s),
+                }
+            }
+        }
+
+        {
+            let dst_room = self.rooms.get(&next_coord?)?;
+            if let Some(door) = dst_room.doors().get(&dir.opposite()) {
+                match door.state() {
+                    DoorState::None | DoorState::Open => (),
+                    s => return Err(s),
+                }
             }
         }
 

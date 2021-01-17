@@ -76,6 +76,19 @@ impl MapDir {
             MapDir::NoneFound => "",
         }
     }
+
+    pub fn opposite(&self) -> MapDir {
+        match self {
+            MapDir::North => MapDir::South,
+            MapDir::South => MapDir::North,
+            MapDir::East => MapDir::West,
+            MapDir::West => MapDir::East,
+            MapDir::Up => MapDir::Down,
+            MapDir::Down => MapDir::Up,
+            MapDir::NorthEast => MapDir::NoneFound,
+            MapDir::NoneFound => MapDir::NoneFound,
+        }
+    }
 }
 
 impl std::fmt::Debug for MapDir {
