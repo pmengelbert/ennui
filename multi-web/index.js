@@ -39,7 +39,7 @@ function run(srv, port) {
 	  });
 
 	  socket.on('chat message', (msg) => {
-      if (msg.toString() === "q") {
+      if ("quit".startsWith(msg.toString().toLowerCase())) {
         socket.emit('chat message', "DISCONNECTED");
         socket.disconnect();
       }
