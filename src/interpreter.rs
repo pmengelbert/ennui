@@ -117,6 +117,7 @@ impl Interpreter {
             s if sw(s, "stand") => Stand,
             s if sw(s, "wake") => Wake,
             s if sw(s, "hit") => Hit,
+            s if sw(s, "kill") => Hit,
             s if sw(s, "quit") => Quit,
             _ => NotFound,
         }

@@ -32,6 +32,13 @@ use npc::YamlPlayer;
 pub enum PlayerType {
     Human(Player),
     Npc(npc::Npc),
+    Dummy(Player),
+}
+
+impl Default for PlayerType {
+    fn default() -> Self {
+        PlayerType::Dummy(Player::default())
+    }
 }
 
 impl From<YamlPlayer> for PlayerType {
@@ -58,6 +65,9 @@ impl PlayerType {
             Npc(npc) => {
                 npc.player()
             }
+            Dummy(ref p) => {
+                p
+            }
         }
     }
 
@@ -70,6 +80,7 @@ impl PlayerType {
             Npc(npc) => {
                 npc.player_mut()
             }
+            Dummy(ref mut p) => p,
         }
     }
 }

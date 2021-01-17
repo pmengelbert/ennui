@@ -1,6 +1,4 @@
 use super::*;
-use crate::player::PlayerType;
-use crate::player::npc::YamlPlayer;
 
 fn random_num(x: u8, y: u8) -> u8 {
     rand::thread_rng().gen_range(x, y)

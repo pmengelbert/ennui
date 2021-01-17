@@ -24,3 +24,22 @@ impl MessageHandler for MessageReceiver {
         })
     }
 }
+
+pub enum DiscreteMessage {
+    KillPlayer(u128),
+}
+
+pub struct GameActor(pub Receiver<DiscreteMessage>);
+
+impl MessageHandler for GameActor {
+    fn start(self, caster: Arc<Mutex<Game>>) -> JoinHandle<()> {
+        spawn(move || {
+            let caster = caster.clone();
+            for dm in self.0 {
+                if let DiscreteMessage::KillPlayer(p) = dm {
+                    caster.lock().unwrap().kill_player(p);
+                }
+            }
+        })
+    }
+}

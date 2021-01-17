@@ -438,12 +438,15 @@ pub fn fill_interpreter(i: &mut Interpreter) {
                 p.lock().unwrap().assign_fight_sender(mod_sender.clone())
             }
 
+            let discrete_sender = g.discrete_sender.as_ref().expect("HANDLE ME").clone();
+
             let mut fight = BasicFight::new(FightInfo {
                 defender,
                 aggressor,
                 delay: Duration::new(1, 0),
                 audience,
                 sender,
+                discrete_sender,
                 receiver,
             });
 

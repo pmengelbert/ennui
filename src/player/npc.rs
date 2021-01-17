@@ -1,9 +1,11 @@
-use super::Player;
+use super::{Player, PlayerType, Quality};
 use crate::map::coord::Coord;
 use crate::text::message::Broadcast;
-use crate::item::Description;
+use crate::item::{Description, Item, list::ItemList, list::ItemListTrout};
 use serde::{Deserialize, Serialize};
 use std::sync::{Arc, Mutex};
+use std::sync::mpsc::{Sender, TryRecvError, channel};
+use std::thread;
 use rand::Rng;
 
 #[derive(Debug, Deserialize, Serialize, Eq, PartialEq)]
@@ -23,10 +25,71 @@ pub struct YamlPlayer {
     pub loc: Coord,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct Npc {
     player: Player,
     ai_type: Option<AI>,
+    tx: Option<Mutex<Sender<NpcMessage>>>
+}
+
+impl From<PlayerType> for Item {
+    fn from(mut other: PlayerType) -> Self {
+        let player = match &mut other {
+            PlayerType::Npc(npc) => {
+                npc.stop();
+                let npc = std::mem::take(npc);
+                let Npc { player, .. } = npc;
+                player
+            }
+            PlayerType::Human(p) | PlayerType::Dummy(p) => {
+                std::mem::take(p)
+            }
+        };
+
+        player.into()
+    }
+}
+
+impl From<Player> for Item {
+    fn from(other: Player) -> Self {
+        let Player {
+            info,
+            mut items,
+            mut clothing,
+            ..
+        } = other;
+
+        let Description {
+            name,
+            mut handle,
+            mut attributes,
+            ..
+        } = info;
+
+        handle.push("corpse".into());
+        let display = format!("The corpse of {} lies here, decomposing", name);
+        let description = format!("Where once stood {}, now lies a rotting corpse", name);
+        attributes.push(Quality::Scenery);
+
+        let d = Description {
+            name,
+            display,
+            handle,
+            description,
+            attributes,
+        };
+
+        let mut new_items = ItemList::new_with_info(d);
+        for item in items.iter_mut() {
+            let item = std::mem::take(item);
+            new_items.push(item);
+        }
+        for item in clothing.iter_mut() {
+            let item = std::mem::take(item);
+            new_items.push(item);
+        }
+        Item::Container(Box::new(new_items))
+    }
 }
 
 impl From<YamlPlayer> for Npc {
@@ -38,28 +101,38 @@ impl From<YamlPlayer> for Npc {
         p.loc = loc;
         p.info = info;
 
-        Self { player: p, ai_type }
+        Self { player: p, ai_type, tx: None }
     }
+}
+
+pub enum NpcMessage {
+    Stop,
 }
 
 impl Npc {
     pub fn new(player: Player, ai_type: AI) -> Self {
         let ai_type = Some(ai_type);
-        Self { player, ai_type }
+        Self { player, ai_type, tx: None }
     }
 
     pub fn init(&mut self, g: Arc<Mutex<crate::game::Game>>) {
         let id = self.player.uuid;
         let ai_type = self.ai_type.take().unwrap_or(AI::Static);
+        let (tx, rx) = channel::<NpcMessage>();
+        self.tx = Some(Mutex::new(tx));
 
         match ai_type {
             AI::Static => (),
             AI::Talker(v) => {
                 let v = v.clone();
-                std::thread::spawn(move || {
+                thread::spawn(move || {
                     loop {
                         let interval: u64 = rand::thread_rng().gen_range(20, 30);
                         std::thread::sleep(std::time::Duration::new(interval, 0));
+                        match rx.try_recv() {
+                            Ok(NpcMessage::Stop) | Err(TryRecvError::Disconnected) => break,
+                            _ => (),
+                        }
                         let n: usize = rand::thread_rng().gen_range(0, v.len());
                         let phrase = &v[n];
                         eprintln!("PHRASE: {}", phrase);
@@ -79,10 +152,14 @@ impl Npc {
                 ()
             }
             AI::Walker => {
-                std::thread::spawn(move || {
+                thread::spawn(move || {
                     loop {
                         let interval: u64 = rand::thread_rng().gen_range(20, 30);
                         std::thread::sleep(std::time::Duration::new(interval, 0));
+                        match rx.try_recv() {
+                            Ok(NpcMessage::Stop) | Err(TryRecvError::Disconnected) => break,
+                            _ => (),
+                        }
                         let n: usize = rand::thread_rng().gen_range(0, 4);
                         let command = match n {
                             0 => "n",
@@ -102,6 +179,11 @@ impl Npc {
                 ()
             }
         }
+    }
+
+    pub fn stop(&mut self) -> Option<()> {
+        self.tx.as_ref()?.lock().ok()?.send(NpcMessage::Stop).ok()?;
+        Some(())
     }
 
     pub fn player(&self) -> &Player {

@@ -121,6 +121,13 @@ impl ItemList {
             info: Default::default(),
         }
     }
+
+    pub fn new_with_info(info: Description) -> Self {
+        Self {
+            inner: vec![],
+            info: YamlItem::Holdable(info),
+        }
+    }
 }
 
 impl ItemListTrout for ItemList {

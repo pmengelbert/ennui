@@ -11,6 +11,7 @@ use rand::Rng;
 use crate::error::EnnuiError;
 use crate::error::EnnuiError::{Fatal, Lesser};
 use crate::fight::FightMessage;
+use crate::text::channel::{DiscreteMessage, GameActor};
 use crate::game::util::load_rooms;
 use crate::interpreter::CommandQuality::{Awake, Motion};
 use crate::interpreter::{CommandKind, CommandMessage, Interpreter};
@@ -62,6 +63,7 @@ pub struct Game {
     rooms: RoomList,
     interpreter: Interpreter,
     fight_sender: Option<Sender<(FightAudience, FightMessage)>>,
+    discrete_sender: Option<Sender<DiscreteMessage>>,
 }
 
 impl Game {
@@ -73,11 +75,12 @@ impl Game {
         let mut interpreter = Interpreter::new();
         commands::fill_interpreter(&mut interpreter);
 
-        let mut g = Self {
+        let g = Self {
             players,
             rooms,
             interpreter,
             fight_sender: None,
+            discrete_sender: None,
         };
 
         Ok(g)
@@ -85,6 +88,10 @@ impl Game {
 
     pub fn set_fight_sender(&mut self, sender: Sender<(FightAudience, FightMessage)>) {
         self.fight_sender = Some(sender);
+    }
+
+    pub fn set_discrete_sender(&mut self, sender: Sender<DiscreteMessage>) {
+        self.discrete_sender = Some(sender);
     }
 
     pub fn interpret(&mut self, p: u128, s: &str) -> Result<CommandMessage, EnnuiError> {
@@ -194,6 +201,28 @@ impl Game {
         self.rooms
             .get_mut(&loc)
             .ok_or_else(|| fatal("UNABLE TO FIND ROOM"))
+    }
+
+    pub fn kill_player(&mut self, p: u128) -> Result<(), EnnuiError> {
+        let player = std::mem::take(&mut *self.players.remove(&p)
+            .ok_or_else(|| fatal("UNABLE TO FIND PLAYER!"))?
+            .lock()
+            .unwrap());
+        let loc = player.loc();
+        {
+            let room = 
+            self.rooms.get_mut(&loc)
+                .ok_or_else(|| fatal("ROOM NOT FOUND"))?;
+
+            room
+                .players_mut()
+                .remove(&p.uuid());
+
+            let corpse: Item = player.into();
+            room.items_mut().push(corpse);
+        }
+
+        Ok(())
     }
 
     fn describe_room<P: Uuid>(&mut self, p: P) -> Result<String, EnnuiError> {

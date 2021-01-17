@@ -11,7 +11,7 @@ use ennui::player::npc::{YamlPlayer};
 use ennui::text::message::{Broadcast, FightAudience, MessageFormat};
 
 use ennui::fight::FightMessage;
-use ennui::text::channel::{MessageHandler, MessageReceiver};
+use ennui::text::channel::{MessageHandler, MessageReceiver, DiscreteMessage, GameActor};
 use ennui::text::Color::{Green, Magenta, Red};
 use std::sync::mpsc::channel;
 
@@ -66,10 +66,16 @@ fn main() -> GameResult<()> {
     let (fight_sender, fight_receiver) = channel::<(FightAudience, FightMessage)>();
     let rcv = MessageReceiver(fight_receiver);
     rcv.start(shared_game.clone());
+
+    let (discrete_sender, discrete_receiver) = channel::<DiscreteMessage>();
+    let rcv = GameActor(discrete_receiver);
+    rcv.start(shared_game.clone());
+
     shared_game.lock().unwrap().set_fight_sender(fight_sender);
+    shared_game.lock().unwrap().set_discrete_sender(discrete_sender);
 
     let npcs = load_npcs()?;
-    shared_game.init_npcs(npcs);
+    shared_game.init_npcs(npcs)?;
 
     for stream in listener.incoming() {
         let game_clone = shared_game.clone();
@@ -78,7 +84,6 @@ fn main() -> GameResult<()> {
 
         let p = PlayerType::new_with_stream(stream);
         let uuid = p.uuid();
-
 
         {
             let mut game = match game_clone.lock() {

@@ -14,6 +14,7 @@ use crate::player::list::PlayerIdList;
 use crate::player::PlayerStatus::Dead;
 use crate::text::message::{FightAudience, Message, MessageFormat};
 use crate::text::Color::{Red, Yellow};
+use crate::text::channel::{DiscreteMessage};
 use std::borrow::{Borrow, Cow};
 use std::error::Error as StdError;
 use std::sync::atomic::AtomicBool;
@@ -45,6 +46,7 @@ pub struct BasicFight {
     audience: PlayerIdList,
     sender: Sender<(FightAudience, FightMessage)>,
     receiver: Option<Receiver<FightMod>>,
+    discrete_sender: Sender<DiscreteMessage>,
 }
 
 pub struct FightInfo {
@@ -53,6 +55,7 @@ pub struct FightInfo {
     pub delay: Duration,
     pub audience: PlayerIdList,
     pub sender: Sender<(FightAudience, FightMessage)>,
+    pub discrete_sender: Sender<DiscreteMessage>,
     pub receiver: Receiver<FightMod>,
 }
 
@@ -65,6 +68,7 @@ impl BasicFight {
             sender,
             audience,
             receiver,
+            discrete_sender,
         } = info;
 
         Arc::new(Mutex::new(Self {
@@ -73,6 +77,7 @@ impl BasicFight {
             delay,
             sender,
             audience,
+            discrete_sender,
             receiver: Some(receiver),
             ended: AtomicBool::new(false),
         }))
@@ -353,6 +358,11 @@ fn fight_logic(
         .map_err(|_| format!("player {} write error", aid))?;
 
     if player.hp() <= 0 {
+        if let BarePlayer::Npc(ref mut npc) = *player {
+            npc.stop();
+        }
+        let id = player.uuid();
+        cl.lock().unwrap().discrete_sender.send(DiscreteMessage::KillPlayer(id));
         player.set_attr(Dead);
         cl.end();
     }
