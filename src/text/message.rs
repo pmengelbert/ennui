@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 use std::io;
 
-use crate::player::{Player, Uuid};
+use crate::player::{PlayerType, Uuid};
 use crate::text::Color;
 use std::sync::{Arc, Mutex};
 
@@ -248,7 +248,7 @@ impl MessageFormat for &str {
     }
 }
 
-impl Messenger for Arc<Mutex<Player>> {
+impl Messenger for Arc<Mutex<PlayerType>> {
     fn id(&self) -> Option<u128> {
         Some(self.lock().unwrap().uuid())
     }

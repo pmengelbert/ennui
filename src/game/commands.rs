@@ -265,10 +265,12 @@ pub fn fill_interpreter(i: &mut Interpreter) {
     });
 
     i.insert("say", |g, u, a| {
+        eprintln!("MADE IT");
         let msg = a.join(" ");
         let name = g.name_of(u)?;
         let loc = g.loc_of(u)?;
         let others = g.rooms.player_ids(loc).except(u);
+        eprintln!("others: {:?}", others);
 
         let aud = Audience(u, others);
         let msg = Msg {
@@ -437,8 +439,8 @@ pub fn fill_interpreter(i: &mut Interpreter) {
             }
 
             let mut fight = BasicFight::new(FightInfo {
-                aggressor,
                 defender,
+                aggressor,
                 delay: Duration::new(1, 0),
                 audience,
                 sender,
@@ -520,7 +522,7 @@ pub fn fill_interpreter(i: &mut Interpreter) {
 fn try_door_unlock(
     name: String,
     other_msg: &mut Option<String>,
-    player: Arc<Mutex<Player>>,
+    player: Arc<Mutex<PlayerType>>,
     door: &mut Door,
 ) -> String {
     let mut res = None;

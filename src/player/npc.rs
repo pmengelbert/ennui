@@ -1,9 +1,9 @@
 use super::Player;
-use crate::error::EnnuiError;
-use crate::interpreter::{CommandFunc, CommandMessage};
+use crate::text::message::Broadcast;
 use crate::item::Description;
 use serde::{Deserialize, Serialize};
 use std::sync::{Arc, Mutex};
+use rand::Rng;
 
 #[derive(Debug, Deserialize, Serialize, Eq, PartialEq)]
 pub enum AI {
@@ -19,16 +19,17 @@ pub struct YamlPlayer {
     pub ai_type: Option<AI>,
 }
 
+#[derive(Debug)]
 pub struct Npc {
     player: Player,
-    ai_type: AI,
+    ai_type: Option<AI>,
 }
 
 impl From<YamlPlayer> for Npc {
     fn from(other: YamlPlayer) -> Self {
         let YamlPlayer { info, ai_type } = other;
 
-        let ai_type = ai_type.unwrap_or(AI::Static);
+        let ai_type = ai_type;
         let mut p = Player::new();
         p.info = info;
 
@@ -38,19 +39,49 @@ impl From<YamlPlayer> for Npc {
 
 impl Npc {
     pub fn new(player: Player, ai_type: AI) -> Self {
+        let ai_type = Some(ai_type);
         Self { player, ai_type }
     }
-    pub fn init(&mut self) {}
-}
 
-fn talker(g: &mut crate::game::Game, v: &[String]) -> CommandFunc {
-    g.interpreter()
-        .commands()
-        .lock()
-        .unwrap()
-        .get(&crate::interpreter::CommandKind::Say)
-        .unwrap()
-        .clone()
+    pub fn init(&mut self, g: Arc<Mutex<crate::game::Game>>) {
+        let id = self.player.uuid;
+        let ai_type = self.ai_type.take().unwrap_or(AI::Static);
+
+        match ai_type {
+            AI::Static => (),
+            AI::Talker(v) => {
+                let v = v.clone();
+                std::thread::spawn(move || {
+                    loop {
+                        std::thread::sleep(std::time::Duration::new(3, 0));
+                        let n: usize = rand::thread_rng().gen_range(0, v.len());
+                        let phrase = &v[n];
+                        eprintln!("PHRASE: {}", phrase);
+                        let mut command = String::with_capacity(4 + phrase.len());
+                        command.push_str("say ");
+                        command.push_str(phrase);
+                        eprintln!("command: {}", command);
+                        let (aud, msg) = g
+                            .lock()
+                            .unwrap()
+                            .interpret(id, &command).expect("HANDLE THIS BETTER");
+                        g.lock()
+                            .unwrap()
+                            .send(&*aud, &*msg);
+                    }
+                });
+                ()
+            }
+        }
+    }
+
+    pub fn player(&self) -> &Player {
+        &self.player
+    }
+
+    pub fn player_mut(&mut self) -> &mut Player {
+        &mut self.player
+    }
 }
 
 #[cfg(test)]

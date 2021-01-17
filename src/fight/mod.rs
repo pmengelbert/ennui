@@ -1,5 +1,5 @@
 use crate::map::Locate;
-use crate::player::{Player as BarePlayer, Uuid};
+use crate::player::{PlayerType as BarePlayer, Uuid};
 
 use std::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::{Arc, Mutex};

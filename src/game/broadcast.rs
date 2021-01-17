@@ -26,6 +26,7 @@ where
         let self_msg = message.to_self();
         let obj_msg = message.to_object();
         let other_msg = message.to_others();
+        eprintln!("this is the message going out to others: {:?}", other_msg);
 
         send_to_single_player(g, &mut v, self_id, self_msg);
 

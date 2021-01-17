@@ -6,7 +6,8 @@ use std::thread::{spawn, JoinHandle};
 use ennui::error::EnnuiError;
 
 use ennui::game::{Game, GameResult};
-use ennui::player::{Player, Uuid};
+use ennui::player::{PlayerType, Player, Uuid};
+use ennui::player::npc::{YamlPlayer};
 use ennui::text::message::{Broadcast, FightAudience, MessageFormat};
 
 use ennui::fight::FightMessage;
@@ -67,13 +68,33 @@ fn main() -> GameResult<()> {
     rcv.start(shared_game.clone());
     shared_game.lock().unwrap().set_fight_sender(fight_sender);
 
+        let x = r#"---
+ai_type: 
+  Talker:
+  - shut up
+  - get out
+name: Bill
+handle: ["bill", "guy"]
+description: ""
+display:
+  Bill is here, just minding his own business
+"#;
+        let q: YamlPlayer = serde_yaml::from_str(x).unwrap();
+        let mut q: PlayerType = q.into();
+        if let PlayerType::Npc(ref mut npc) = q {
+            npc.init(shared_game.clone());
+        }
+        shared_game.lock().unwrap().add_player(q);
+
     for stream in listener.incoming() {
         let game_clone = shared_game.clone();
 
         let stream = stream?;
 
-        let p = Player::new_with_stream(stream);
+        let p = PlayerType::new_with_stream(stream);
         let uuid = p.uuid();
+
+
         {
             let mut game = match game_clone.lock() {
                 Ok(g) => g,
@@ -97,6 +118,7 @@ fn handle_client(p: u128, g: Arc<Mutex<Game>>) -> std::io::Result<()> {
     get_and_set_player_name(p, g.clone())?;
 
     eprintln!("[{}]: player named", "SUCCESS".color(Green));
+    eprintln!("[{}]: player id: {}", "SUCCESS".color(Green), p);
     loop {
         let s = get_player_command(p, g.clone())?;
 
@@ -123,7 +145,10 @@ fn handle_client(p: u128, g: Arc<Mutex<Game>>) -> std::io::Result<()> {
                     for (id, result) in results {
                         if let Err(e) = result {
                             eprintln!("[{}]: {:?}", "ERROR".color(Red), e);
-                            let p = g.remove_player(id).unwrap_or_default();
+                            let p = match g.remove_player(id) {
+                                Some(p) => p,
+                                None => Arc::new(Mutex::new(PlayerType::Human(Player::default()))),
+                            };
 
                             std::mem::drop(p);
                         }

@@ -24,7 +24,7 @@ use crate::map::list::{RoomList, RoomListTrait};
 use crate::map::{coord::Coord, Locate, Room, Space};
 use crate::player::list::{PlayerIdList, PlayerIdListTrait, PlayerList, PlayerListTrait};
 use crate::player::PlayerStatus::{Asleep, Dead, Sitting};
-use crate::player::{Player, Uuid};
+use crate::player::{PlayerType, Uuid};
 use crate::text::article;
 use crate::text::message::{
     Audience, Broadcast, FightAudience, Message, MessageFormat, Messenger, Msg,
@@ -70,11 +70,12 @@ impl Game {
     }
 
     pub fn interpret(&mut self, p: u128, s: &str) -> Result<CommandMessage, EnnuiError> {
+        eprintln!("executing command \"{}\" for player {}", s, p);
         let (cmd, args) = Interpreter::process_string_command(s);
 
         let commands = self.interpreter.commands();
-        let mut other_commands = commands.lock().ok()?;
-        let mut cmd_func = other_commands.get(&cmd)?.lock().ok()?;
+        let other_commands = commands.lock().ok()?;
+        let cmd_func = other_commands.get(&cmd)?.lock().ok()?;
 
         if let Some(msg) = self.verify_status(cmd, p)? {
             return Ok(msg);
@@ -87,7 +88,7 @@ impl Game {
         &mut self.interpreter
     }
 
-    pub fn add_player(&mut self, p: Player) {
+    pub fn add_player(&mut self, p: PlayerType) {
         self.rooms.entry(p.loc()).or_default().add_player(&p);
         self.players.insert(p.uuid(), Arc::new(Mutex::new(p)));
     }
@@ -106,7 +107,7 @@ impl Game {
         Ok(())
     }
 
-    pub fn remove_player<T: Uuid>(&mut self, p: T) -> Option<Arc<Mutex<Player>>> {
+    pub fn remove_player<T: Uuid>(&mut self, p: T) -> Option<Arc<Mutex<PlayerType>>> {
         let mut name = String::new();
         let mut messages = vec![];
         let player = self.get_player(p.uuid())?;
@@ -254,7 +255,7 @@ impl Game {
         Ok(None)
     }
 
-    fn get_player(&self, p: u128) -> Result<Arc<Mutex<Player>>, EnnuiError> {
+    fn get_player(&self, p: u128) -> Result<Arc<Mutex<PlayerType>>, EnnuiError> {
         Ok(self
             .players
             .get(&p)
@@ -352,7 +353,7 @@ impl Game {
 
         let description = p.description();
 
-        let mut item_list_title = format!("\n{} is holding:", p.name());
+        let item_list_title = format!("\n{} is holding:", p.name());
         let mut item_list = String::new();
         for item in p.items().iter() {
             item_list.push('\n');

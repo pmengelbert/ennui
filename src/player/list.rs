@@ -1,10 +1,10 @@
 use std::collections::{HashMap, HashSet};
 
-use crate::player::{Player, Uuid};
+use crate::player::{PlayerType, Uuid};
 use crate::text::message::{MessageFormat, Messenger};
 
 use crate::item::Describe;
-use crate::map::coord::Coord;
+use crate::map::{coord::Coord, Locate};
 use crate::text::Color;
 use crate::text::Color::Yellow;
 use std::sync::{Arc, Mutex};
@@ -33,7 +33,7 @@ impl Messenger for PlayerIdList {
 
 pub trait PlayerIdListTrait {
     fn except(&self, id: u128) -> PlayerIdList;
-    fn as_players(&self, players: &PlayerList) -> Vec<Arc<Mutex<Player>>>;
+    fn as_players(&self, players: &PlayerList) -> Vec<Arc<Mutex<PlayerType>>>;
     fn display(&self, players: &PlayerList) -> String;
 }
 
@@ -44,7 +44,7 @@ impl PlayerIdListTrait for PlayerIdList {
         cl
     }
 
-    fn as_players(&self, players: &PlayerList) -> Vec<Arc<Mutex<Player>>> {
+    fn as_players(&self, players: &PlayerList) -> Vec<Arc<Mutex<PlayerType>>> {
         players.from_ids(self)
     }
 
@@ -59,7 +59,7 @@ impl PlayerIdListTrait for PlayerIdList {
     }
 }
 
-pub type PlayerList = HashMap<u128, Arc<Mutex<Player>>>;
+pub type PlayerList = HashMap<u128, Arc<Mutex<PlayerType>>>;
 
 impl Uuid for PlayerList {
     fn uuid(&self) -> u128 {
@@ -94,7 +94,7 @@ impl Uuid for &PlayerList {
 pub trait PlayerListTrait {
     fn to_id_list(&self) -> PlayerIdList;
     fn display(&self, loc: Coord) -> Vec<String>;
-    fn from_ids(&self, ids: &PlayerIdList) -> Vec<Arc<Mutex<Player>>>;
+    fn from_ids(&self, ids: &PlayerIdList) -> Vec<Arc<Mutex<PlayerType>>>;
 }
 
 impl PlayerListTrait for PlayerList {
@@ -108,12 +108,12 @@ impl PlayerListTrait for PlayerList {
 
     fn display(&self, loc: Coord) -> Vec<String> {
         self.values()
-            .filter(|p| p.lock().unwrap().loc == loc)
+            .filter(|p| p.loc() == loc)
             .map(|p| p.lock().unwrap().name().color(Yellow))
             .collect()
     }
 
-    fn from_ids(&self, ids: &PlayerIdList) -> Vec<Arc<Mutex<Player>>> {
+    fn from_ids(&self, ids: &PlayerIdList) -> Vec<Arc<Mutex<PlayerType>>> {
         ids.iter()
             .filter_map(|id| Some(self.get(&id)?.clone()))
             .collect()

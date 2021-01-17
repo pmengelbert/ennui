@@ -4,7 +4,7 @@ use crate::item::{Attribute, Describe, Item, Quality};
 use crate::map::coord::Coord;
 use crate::map::list::RoomList;
 use crate::player::list::PlayerList;
-use crate::player::{Player, Uuid};
+use crate::player::{PlayerType, Uuid};
 use crate::text::article;
 
 use crate::error::CmdErr::{ItemNotFound, NotClothing, PlayerNotFound, TooHeavy};
@@ -210,7 +210,7 @@ impl Game {
     fn get_player_mut(
         players: &mut PlayerList,
         uuid: u128,
-    ) -> Result<Arc<Mutex<Player>>, EnnuiError> {
+    ) -> Result<Arc<Mutex<PlayerType>>, EnnuiError> {
         match players.get_mut(&uuid) {
             Some(p) => Ok(p.clone()),
             None => Err(Fatal(format!("UNABLE TO FIND PLAYER {}", uuid))),

@@ -24,10 +24,11 @@ use std::sync::{Arc, Mutex};
 
 pub mod list;
 mod meter;
-mod npc;
+pub mod npc;
 mod player_test;
 use npc::YamlPlayer;
 
+#[derive(Debug)]
 pub enum PlayerType {
     Human(Player),
     Npc(npc::Npc),
@@ -42,6 +43,32 @@ impl From<YamlPlayer> for PlayerType {
             Self::Npc(npc::Npc::new(p, t))
         } else {
             Self::Human(p)
+        }
+    }
+}
+
+impl PlayerType {
+    fn safe_unwrap(&self) -> &Player {
+        use PlayerType::*;
+        match self {
+            Human(ref h) => {
+                h
+            }
+            Npc(npc) => {
+                npc.player()
+            }
+        }
+    }
+
+    fn safe_unwrap_mut(&mut self) -> &mut Player {
+        use PlayerType::*;
+        match self {
+            Human(ref mut h) => {
+                h
+            }
+            Npc(npc) => {
+                npc.player_mut()
+            }
         }
     }
 }
@@ -81,19 +108,19 @@ mod test_playerstatus {
     }
 }
 
-impl Attribute<PlayerStatus> for Player {
+impl Attribute<PlayerStatus> for PlayerType {
     fn attr(&self) -> Vec<PlayerStatus> {
-        self.status.clone()
+        self.safe_unwrap().status.clone()
     }
 
     fn set_attr(&mut self, q: PlayerStatus) {
-        self.status.push(q);
+        self.safe_unwrap_mut().status.push(q);
     }
 
     fn unset_attr(&mut self, q: PlayerStatus) {
-        let pos = self.status.iter().position(|u| *u == q);
+        let pos = self.safe_unwrap().status.iter().position(|u| *u == q);
         if let Some(pos) = pos {
-            self.status.remove(pos);
+            self.safe_unwrap_mut().status.remove(pos);
         }
     }
 }
@@ -105,18 +132,18 @@ pub trait Uuid {
     }
 }
 
-impl Read for Player {
+impl Read for PlayerType {
     fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
-        self.stream
+        self.safe_unwrap_mut().stream
             .as_ref()
             .ok_or(std::io::ErrorKind::BrokenPipe)?
             .read(buf)
     }
 }
 
-impl Drop for Player {
+impl Drop for PlayerType {
     fn drop(&mut self) {
-        match &self.stream {
+        match &self.safe_unwrap_mut().stream {
             Some(s) => {
                 s.shutdown(Both).unwrap_or_default();
             }
@@ -125,80 +152,80 @@ impl Drop for Player {
     }
 }
 
-impl ListTrait for Player {
+impl ListTrait for PlayerType {
     type Kind = ItemList;
 
     fn get_item(&self, handle: &str) -> Option<&Item> {
-        self.items.iter().find(|i| i.handle() == handle)
+        self.safe_unwrap().items.iter().find(|i| i.handle() == handle)
     }
 
     fn get_item_mut(&mut self, handle: &str) -> Option<&mut Item> {
-        self.items.iter_mut().find(|i| i.handle() == handle)
+        self.safe_unwrap_mut().items.iter_mut().find(|i| i.handle() == handle)
     }
 
     fn get_item_owned(&mut self, handle: &str) -> Result<Item, EnnuiError> {
-        self.items.get_owned(handle)
+        self.safe_unwrap_mut().items.get_owned(handle)
     }
 
     fn insert_item(&mut self, item: Item) -> Result<(), Item> {
-        self.items.push(item);
+        self.safe_unwrap_mut().items.push(item);
         Ok(())
     }
 
     fn list(&self) -> &Self::Kind {
-        &self.items
+        &self.safe_unwrap().items
     }
 }
 
-impl Locate for Player {
+impl Locate for PlayerType {
     fn loc(&self) -> Coord {
-        self.loc
+        self.safe_unwrap().loc
     }
 }
 
-impl Locate for Arc<Mutex<Player>> {
+impl Locate for Arc<Mutex<PlayerType>> {
     fn loc(&self) -> Coord {
-        self.lock().unwrap().loc
+        self.lock().unwrap().loc()
     }
 }
 
-impl Uuid for Player {
+impl Uuid for PlayerType {
     fn uuid(&self) -> u128 {
-        self.uuid
+        self.safe_unwrap().uuid
     }
 }
 
-impl Holder for Player {
+impl Holder for PlayerType {
     type Kind = ItemList;
 
     fn items(&self) -> &Self::Kind {
-        &self.items
+        &self.safe_unwrap().items
     }
 
     fn items_mut(&mut self) -> &mut Self::Kind {
-        &mut self.items
+        &mut self.safe_unwrap_mut().items
     }
 }
 
-impl Describe for Player {
+impl Describe for PlayerType {
     fn name(&self) -> String {
-        self.info.name()
+        self.safe_unwrap().info.name()
     }
 
     fn display(&self) -> String {
-        self.info.display()
+        self.safe_unwrap().info.display()
     }
 
     fn description(&self) -> String {
-        self.info.description()
+        self.safe_unwrap().info.description()
     }
 
     fn handle(&self) -> Handle {
-        self.info.handle()
+        self.safe_unwrap().info.handle()
     }
 }
 
-impl Describe for Arc<Mutex<Player>> {
+impl Describe for Arc<Mutex<PlayerType>> {
     fn name(&self) -> String {
         self.lock().unwrap().name()
     }
@@ -216,9 +243,10 @@ impl Describe for Arc<Mutex<Player>> {
     }
 }
 
-impl Attribute<Quality> for Arc<Mutex<Player>> {
+impl Attribute<Quality> for Arc<Mutex<PlayerType>> {
     fn attr(&self) -> Vec<Quality> {
-        self.lock().unwrap().attr()
+        let p = self.lock().unwrap();
+        p.attr()
     }
 
     fn set_attr(&mut self, q: Quality) {
@@ -230,9 +258,9 @@ impl Attribute<Quality> for Arc<Mutex<Player>> {
     }
 }
 
-impl Attribute<PlayerStatus> for Arc<Mutex<Player>> {
+impl Attribute<PlayerStatus> for Arc<Mutex<PlayerType>> {
     fn attr(&self) -> Vec<PlayerStatus> {
-        self.lock().unwrap().status.clone()
+        self.lock().unwrap().attr()
     }
 
     fn set_attr(&mut self, q: PlayerStatus) {
@@ -244,30 +272,30 @@ impl Attribute<PlayerStatus> for Arc<Mutex<Player>> {
     }
 }
 
-impl Attribute<Quality> for Player {
+impl Attribute<Quality> for PlayerType {
     fn attr(&self) -> Vec<Quality> {
-        self.info.attributes.clone()
+        self.safe_unwrap().info.attributes.clone()
     }
 
     fn set_attr(&mut self, q: Quality) {
-        self.info.set_attr(q);
+        self.safe_unwrap_mut().info.set_attr(q);
     }
 
     fn unset_attr(&mut self, q: Quality) {
-        self.info.unset_attr(q);
+        self.safe_unwrap_mut().info.unset_attr(q);
     }
 }
 
-impl Write for Player {
+impl Write for PlayerType {
     fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
-        match self.stream {
+        match self.safe_unwrap_mut().stream {
             Some(ref mut s) => s.write(buf),
             None => Ok(0),
         }
     }
 
     fn flush(&mut self) -> std::io::Result<()> {
-        match self.stream {
+        match self.safe_unwrap_mut().stream {
             Some(ref mut s) => s.flush(),
             None => Ok(()),
         }
@@ -311,26 +339,34 @@ impl Player {
         }
     }
 
+    fn assign_stream(&mut self, stream: TcpStream) {
+        self.stream = Some(stream);
+    }
+
+
+}
+
+impl PlayerType {
     pub fn new_with_stream(stream: TcpStream) -> Self {
-        let mut p = Self::new();
+        let mut p = Player::new();
         p.assign_stream(stream);
-        p
+        Self::Human(p)
     }
 
     pub fn set_name(&mut self, name: &str) {
-        self.info.handle.push(name.to_owned());
-        self.info.name = name.to_owned();
+        self.safe_unwrap_mut().info.handle.push(name.to_owned());
+        self.safe_unwrap_mut().info.name = name.to_owned();
     }
 
     pub fn hurt(&mut self, amt: usize) {
         use meter::MeterKind::*;
         let current = self.hp();
-        (*self.stats.iter_mut().find(|s| matches!(s, Hit(_))).unwrap()).set(current - amt as i64);
+        (*self.safe_unwrap_mut().stats.iter_mut().find(|s| matches!(s, Hit(_))).unwrap()).set(current - amt as i64);
     }
 
     pub fn hp(&self) -> i64 {
         use meter::MeterKind::*;
-        self.stats
+        self.stats()
             .iter()
             .find(|s| matches!(s, Hit(_)))
             .unwrap()
@@ -338,51 +374,48 @@ impl Player {
     }
 
     pub fn set_loc(&mut self, new_loc: Coord) {
-        self.loc = new_loc;
+        self.safe_unwrap_mut().loc = new_loc;
     }
 
     pub fn clothing(&self) -> &ItemList {
-        &self.clothing
+        &self.safe_unwrap().clothing
     }
 
     pub fn clothing_mut(&mut self) -> &mut ItemList {
-        &mut self.clothing
+        &mut self.safe_unwrap_mut().clothing
     }
 
     pub fn all_items_mut(&mut self) -> (&mut ItemList, &mut ItemList) {
-        (&mut self.items, &mut self.clothing)
+        let unwrapped = self.safe_unwrap_mut();
+        (&mut unwrapped.items, &mut unwrapped.clothing)
     }
 
     pub fn stats(&self) -> &[MeterKind] {
-        &self.stats
+        &self.safe_unwrap().stats
     }
 
     pub fn clone_stream(&self) -> Option<TcpStream> {
-        self.stream.as_ref().map(|s| s.try_clone().unwrap())
+        self.safe_unwrap().stream.as_ref().map(|s| s.try_clone().unwrap())
     }
 
     pub fn is_connected(&self) -> bool {
-        self.stream.is_some()
+        self.safe_unwrap().stream.is_some()
     }
 
     pub fn drop_stream(&mut self) {
-        self.stream = None
+        self.safe_unwrap_mut().stream = None
     }
 
     pub fn assign_fight_sender(&mut self, sender: Sender<FightMod>) {
-        self.fight_sender = Some(Arc::new(Mutex::new(sender)));
+        self.safe_unwrap_mut().fight_sender = Some(Arc::new(Mutex::new(sender)));
     }
 
     pub fn leave_fight(&mut self) -> Result<(), Box<dyn Error>> {
-        if let Some(sender) = self.fight_sender.take() {
+        if let Some(sender) = self.safe_unwrap_mut().fight_sender.take() {
             let sender = sender.lock().unwrap();
-            return Ok(sender.send(Leave(self.uuid))?);
+            return Ok(sender.send(Leave(self.uuid()))?);
         }
         Ok(())
-    }
-
-    fn assign_stream(&mut self, stream: TcpStream) {
-        self.stream = Some(stream);
     }
 }
 
