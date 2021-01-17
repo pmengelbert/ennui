@@ -1,8 +1,9 @@
 TARGET = x86_64-unknown-linux-gnu
 MAPFILE = sample.yaml
+NPCFILE = npcs.yaml
 OUTFILE = data/map.cbor
 
-target/release/ennui: data/map.cbor
+target/release/ennui: data/map.cbor data/npc.cbor
 	cargo +nightly build --release
 
 .PHONY: ennui
@@ -17,10 +18,14 @@ clean:
 
 target/release/convert:
 	if ! test -f data/map.cbor; then touch data/map.cbor; fi
+	if ! test -f data/npc.cbor; then touch data/npc.cbor; fi
 	cargo +nightly build --release --bin convert
 
 data/map.cbor: data target/release/convert
-	target/release/convert $(MAPFILE) $(OUTFILE)
+	target/release/convert map $(MAPFILE) $(OUTFILE)
+
+data/npc.cbor: data target/release/convert
+	target/release/convert npc $(NPCFILE) data/npc.cbor
 
 data:
 	mkdir data || true

@@ -41,6 +41,22 @@ mod util;
 pub type GameResult<T> = Result<T, Box<dyn StdError>>;
 pub type GameOutput = (Box<dyn Messenger>, Box<dyn Message>);
 
+pub trait NpcInit {
+    fn init_npcs(&self, npcs: Vec<PlayerType>) -> Result<(), EnnuiError>;
+}
+
+impl NpcInit for Arc<Mutex<Game>> {
+    fn init_npcs(&self, npcs: Vec<PlayerType>) -> Result<(), EnnuiError> {
+        for mut possible_npc in npcs.into_iter() {
+            if let PlayerType::Npc(ref mut npc) = &mut possible_npc {
+                npc.init(self.clone());
+            }
+            self.lock().unwrap().add_player(possible_npc);
+        }
+        Ok(())
+    }
+}
+
 pub struct Game {
     players: PlayerList,
     rooms: RoomList,
@@ -57,12 +73,14 @@ impl Game {
         let mut interpreter = Interpreter::new();
         commands::fill_interpreter(&mut interpreter);
 
-        Ok(Self {
+        let mut g = Self {
             players,
             rooms,
             interpreter,
             fight_sender: None,
-        })
+        };
+
+        Ok(g)
     }
 
     pub fn set_fight_sender(&mut self, sender: Sender<(FightAudience, FightMessage)>) {

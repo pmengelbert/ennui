@@ -247,6 +247,7 @@ impl Description {
 #[serde(default)]
 pub struct YamlItemList {
     inner: Vec<YamlItem>,
+    #[serde(default)]
     info: Description,
 }
 

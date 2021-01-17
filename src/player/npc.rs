@@ -10,6 +10,7 @@ use rand::Rng;
 pub enum AI {
     Static,
     Talker(Vec<String>),
+    Walker,
 }
 
 #[derive(Deserialize, Serialize)]
@@ -70,6 +71,29 @@ impl Npc {
                             .lock()
                             .unwrap()
                             .interpret(id, &command).expect("HANDLE THIS BETTER");
+                        g.lock()
+                            .unwrap()
+                            .send(&*aud, &*msg);
+                    }
+                });
+                ()
+            }
+            AI::Walker => {
+                std::thread::spawn(move || {
+                    loop {
+                        let interval: u64 = rand::thread_rng().gen_range(20, 30);
+                        std::thread::sleep(std::time::Duration::new(interval, 0));
+                        let n: usize = rand::thread_rng().gen_range(0, 4);
+                        let command = match n {
+                            0 => "n",
+                            1 => "s",
+                            2 => "e",
+                            _ => "w",
+                        };
+                        let (aud, msg) = g
+                            .lock()
+                            .unwrap()
+                            .interpret(id, command).expect("HANDLE THIS BETTER");
                         g.lock()
                             .unwrap()
                             .send(&*aud, &*msg);

@@ -24,9 +24,11 @@ type StateResult<T> = Result<(), T>;
 pub struct Room {
     info: Description,
     loc: Coord,
+    #[serde(default)]
     players: PlayerIdList,
     #[serde(skip_serializing, skip_deserializing)]
     items: ItemList,
+    #[serde(default)]
     inner_items: Option<YamlItemList>,
     #[serde(default)]
     doors: DoorList,

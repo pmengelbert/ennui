@@ -5,7 +5,7 @@ use std::thread::{spawn, JoinHandle};
 
 use ennui::error::EnnuiError;
 
-use ennui::game::{Game, GameResult};
+use ennui::game::{Game, GameResult, NpcInit};
 use ennui::player::{PlayerType, Player, Uuid};
 use ennui::player::npc::{YamlPlayer};
 use ennui::text::message::{Broadcast, FightAudience, MessageFormat};
@@ -68,29 +68,8 @@ fn main() -> GameResult<()> {
     rcv.start(shared_game.clone());
     shared_game.lock().unwrap().set_fight_sender(fight_sender);
 
-        let x = r#"---
-ai_type: 
-  Talker:
-  - hello, there. welcome to the game.
-  - if you like the game, please let me know by sending an email to peepee@poobuttz.lol
-  - this is Ennui, a new MUD engine written in Rust
-  - if you see any room for improvement, please don't hesitate to contact me at peepee@poobuttz.lol
-  - if you think this is worth developing further, consider developing it with me
-  - to create your own world, contact me and I can show you how to build a map
-name: The Game Driver
-handle: ["driver", "game", "gamedriver"]
-description:
-  I wouldn't try to mess with him. He's big and bulky. But very friendly!
-display:
-  The Game Driver is here, casually reading a book while causing you to be.
-loc: [0, 1]
-"#;
-        let q: YamlPlayer = serde_yaml::from_str(x).unwrap();
-        let mut q: PlayerType = q.into();
-        if let PlayerType::Npc(ref mut npc) = q {
-            npc.init(shared_game.clone());
-        }
-        shared_game.lock().unwrap().add_player(q);
+    let npcs = load_npcs()?;
+    shared_game.init_npcs(npcs);
 
     for stream in listener.incoming() {
         let game_clone = shared_game.clone();
@@ -226,4 +205,18 @@ fn get_and_set_player_name(p: u128, g: Arc<Mutex<Game>>) -> std::io::Result<()> 
         .map_err(|_| std::io::Error::from(std::io::ErrorKind::NotFound))?;
 
     res
+}
+
+
+fn load_npcs() -> GameResult<Vec<PlayerType>> {
+    let bytes = include_bytes!("../../data/npc.cbor");
+    let v: Vec<YamlPlayer> = serde_cbor::from_slice(bytes)?;
+    let mut ret: Vec<PlayerType> = vec![];
+
+    for yp in v.into_iter() {
+        ret.push(yp.into());
+    }
+
+
+    Ok(ret)
 }
