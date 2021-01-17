@@ -53,7 +53,7 @@ impl PlayerIdListTrait for PlayerIdList {
         players
             .from_ids(self)
             .iter()
-            .map(|p| p.name().color(Yellow).custom_padded("\n", ""))
+            .map(|p| p.display().color(Yellow).custom_padded("\n", ""))
             .collect::<Vec<_>>()
             .join("")
     }

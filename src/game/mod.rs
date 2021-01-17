@@ -70,8 +70,8 @@ impl Game {
     }
 
     pub fn interpret(&mut self, p: u128, s: &str) -> Result<CommandMessage, EnnuiError> {
-        eprintln!("executing command \"{}\" for player {}", s, p);
-        let (cmd, args) = Interpreter::process_string_command(s);
+        let s = s.to_lowercase();
+        let (cmd, args) = Interpreter::process_string_command(&s);
 
         let commands = self.interpreter.commands();
         let other_commands = commands.lock().ok()?;
@@ -227,7 +227,7 @@ impl Game {
     fn id_of(&self, name: &str) -> Option<u128> {
         self.players
             .iter()
-            .find(|(_, p)| p.lock().unwrap().name() == name)
+            .find(|(_, p)| p.lock().unwrap().handle() == name)
             .map(|(_, p)| p.lock().unwrap().uuid())
     }
 

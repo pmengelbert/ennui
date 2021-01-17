@@ -239,12 +239,14 @@ impl Game {
 
             match self.loc_of(other_id) {
                 Ok(other_loc) if &other_loc != loc => {
+                    eprintln!("FUCK YOU");
                     return Err(Msg(format!(
                         "you don't see {} here !",
                         other.unwrap_or_default()
                     )));
                 }
                 Err(_) => {
+                    eprintln!("FUCK YOU");
                     return Ok(());
                 }
                 _ => (),

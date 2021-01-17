@@ -37,8 +37,9 @@ pub enum PlayerType {
 impl From<YamlPlayer> for PlayerType {
     fn from(other: YamlPlayer) -> Self {
         let mut p = Player::new();
-        let YamlPlayer { info, ai_type } = other;
+        let YamlPlayer { info, ai_type, loc } = other;
         p.info = info;
+        p.loc = loc;
         if let Some(t) = ai_type {
             Self::Npc(npc::Npc::new(p, t))
         } else {
@@ -354,8 +355,9 @@ impl PlayerType {
     }
 
     pub fn set_name(&mut self, name: &str) {
-        self.safe_unwrap_mut().info.handle.push(name.to_owned());
+        self.safe_unwrap_mut().info.handle.push(name.to_lowercase());
         self.safe_unwrap_mut().info.name = name.to_owned();
+        self.safe_unwrap_mut().info.display = name.to_owned();
     }
 
     pub fn hurt(&mut self, amt: usize) {

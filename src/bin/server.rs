@@ -71,13 +71,19 @@ fn main() -> GameResult<()> {
         let x = r#"---
 ai_type: 
   Talker:
-  - shut up
-  - get out
-name: Bill
-handle: ["bill", "guy"]
-description: ""
+  - hello, there. welcome to the game.
+  - if you like the game, please let me know by sending an email to peepee@poobuttz.lol
+  - this is Ennui, a new MUD engine written in Rust
+  - if you see any room for improvement, please don't hesitate to contact me at peepee@poobuttz.lol
+  - if you think this is worth developing further, consider developing it with me
+  - to create your own world, contact me and I can show you how to build a map
+name: The Game Driver
+handle: ["driver", "game", "gamedriver"]
+description:
+  I wouldn't try to mess with him. He's big and bulky. But very friendly!
 display:
-  Bill is here, just minding his own business
+  The Game Driver is here, casually reading a book while causing you to be.
+loc: [0, 1]
 "#;
         let q: YamlPlayer = serde_yaml::from_str(x).unwrap();
         let mut q: PlayerType = q.into();

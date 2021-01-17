@@ -1,4 +1,5 @@
 use super::Player;
+use crate::map::coord::Coord;
 use crate::text::message::Broadcast;
 use crate::item::Description;
 use serde::{Deserialize, Serialize};
@@ -17,6 +18,8 @@ pub struct YamlPlayer {
     pub info: Description,
     #[serde(default)]
     pub ai_type: Option<AI>,
+    #[serde(default)]
+    pub loc: Coord,
 }
 
 #[derive(Debug)]
@@ -27,10 +30,11 @@ pub struct Npc {
 
 impl From<YamlPlayer> for Npc {
     fn from(other: YamlPlayer) -> Self {
-        let YamlPlayer { info, ai_type } = other;
+        let YamlPlayer { info, ai_type, loc } = other;
 
         let ai_type = ai_type;
         let mut p = Player::new();
+        p.loc = loc;
         p.info = info;
 
         Self { player: p, ai_type }
@@ -53,7 +57,8 @@ impl Npc {
                 let v = v.clone();
                 std::thread::spawn(move || {
                     loop {
-                        std::thread::sleep(std::time::Duration::new(3, 0));
+                        let interval: u64 = rand::thread_rng().gen_range(20, 30);
+                        std::thread::sleep(std::time::Duration::new(interval, 0));
                         let n: usize = rand::thread_rng().gen_range(0, v.len());
                         let phrase = &v[n];
                         eprintln!("PHRASE: {}", phrase);
