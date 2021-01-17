@@ -39,10 +39,15 @@ function run(srv, port) {
 	  });
 
 	  socket.on('chat message', (msg) => {
+      if (msg.toString() === "q") {
+        socket.emit('chat message', "DISCONNECTED");
+        socket.disconnect();
+      }
       client.write(msg + '\n');
 	  });
 	
 	  socket.on('disconnect', (socket) => {
+      client.write('q\n');
       console.log('a user disconnected');
 	  });
 	});
