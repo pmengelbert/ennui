@@ -1,6 +1,6 @@
 use crate::fight::FightMessage;
 use crate::game::Game;
-use crate::text::message::{Broadcast, FightAudience};
+use crate::text::message::{MessageFormat, Broadcast, FightAudience};
 use std::sync::mpsc::Receiver;
 use std::sync::{Arc, Mutex};
 use std::thread::{spawn, JoinHandle};
@@ -36,8 +36,12 @@ impl MessageHandler for GameActor {
         spawn(move || {
             let caster = caster.clone();
             for dm in self.0 {
-                if let DiscreteMessage::KillPlayer(p) = dm {
-                    caster.lock().unwrap().kill_player(p);
+                match dm {
+                    DiscreteMessage::KillPlayer(p) => {
+                        if let Err(e) = caster.lock().unwrap().kill_player(p) {
+                            eprintln!("[{}]: {:?}", "ERROR".color(super::Color::Magenta), e);
+                        }
+                    }
                 }
             }
         })

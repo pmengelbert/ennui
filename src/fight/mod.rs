@@ -362,7 +362,9 @@ fn fight_logic(
             npc.stop();
         }
         let id = player.uuid();
-        cl.lock().unwrap().discrete_sender.send(DiscreteMessage::KillPlayer(id));
+        if let Err(e) = cl.lock().unwrap().discrete_sender.send(DiscreteMessage::KillPlayer(id)) {
+            eprintln!("{:?}", e);
+        }
         player.set_attr(Dead);
         cl.end();
     }

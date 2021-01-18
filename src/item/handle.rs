@@ -4,11 +4,6 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Serialize, Deserialize, Default, Clone)]
 pub struct Hook(pub Vec<String>);
 
-pub enum IndexKind {
-    All,
-    Nth(usize),
-}
-
 pub struct Grabber<'a> {
     pub handle: &'a str,
     pub index: usize,

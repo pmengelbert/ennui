@@ -559,5 +559,5 @@ fn lesser(s: &str) -> EnnuiError {
 }
 
 fn print_err<T: Error + Debug>(err: T) {
-    eprintln!("[{}]: {:?}", "ERROR".color(Magenta), err)
+    eprintln!("[{}]: {:?}", "ERROR".color(Magenta), err);
 }

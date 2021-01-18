@@ -27,17 +27,3 @@ pub fn load_rooms(rooms: &mut RoomList) -> GameResult<()> {
     Ok(())
 }
 
-pub fn resolve_handle(handle: &str) -> (usize, &str) {
-    let num = match handle.find('.') {
-        Some(n) => n,
-        None => return (0, handle),
-    };
-
-    match &handle[0..num] {
-        "all" => todo!(),
-        s => match s.parse::<usize>() {
-            Ok(n) if n > 0 => (n - 1, &handle[num+1..]),
-            _ => (0, &handle[num+1..]),
-        }
-    }
-}
