@@ -1,7 +1,7 @@
 use crate::error::CmdErr::ItemNotFound;
 use crate::error::EnnuiError;
 use crate::error::EnnuiError::{Fatal, Simple};
-use crate::item::handle::Handle;
+use crate::item::handle::{Hook, Grabber};
 use crate::item::key::KeyType;
 use crate::item::YamlItem::{Clothing, Container, Edible, Holdable, Key, Scenery, Weapon};
 use crate::item::{Attribute, Describe, Description, Item, Quality, YamlItem, YamlItemList};
@@ -22,9 +22,9 @@ pub trait Holder: Describe {
 
 pub trait ListTrait: Describe + Debug {
     type Kind: Debug;
-    fn get_item(&self, handle: &str) -> Option<&Item>;
-    fn get_item_mut(&mut self, handle: &str) -> Option<&mut Item>;
-    fn get_item_owned(&mut self, handle: &str) -> Result<Item, EnnuiError>;
+    fn get_item(&self, handle: Grabber) -> Option<&Item>;
+    fn get_item_mut(&mut self, handle: Grabber) -> Option<&mut Item>;
+    fn get_item_owned(&mut self, handle: Grabber) -> Result<Item, EnnuiError>;
     fn insert_item(&mut self, item: Item) -> Result<(), Item>;
     fn list(&self) -> &Self::Kind;
 
@@ -33,7 +33,7 @@ pub trait ListTrait: Describe + Debug {
         other: &mut dyn ListTrait<Kind = Self::Kind>,
         handle: &str,
     ) -> Result<String, EnnuiError> {
-        let item = self.get_item_owned(handle)?;
+        let item = self.get_item_owned(handle.into())?;
 
         let name = item.name();
         if other.insert_item(item).is_err() {
@@ -62,7 +62,7 @@ impl Describe for ItemList {
         self.info.description()
     }
 
-    fn handle(&self) -> Handle {
+    fn handle(&self) -> Hook {
         self.info.handle()
     }
 }
@@ -83,15 +83,15 @@ impl Attribute<Quality> for ItemList {
 
 impl ListTrait for ItemList {
     type Kind = ItemList;
-    fn get_item(&self, handle: &str) -> Option<&Item> {
-        self.iter().find(|i| i.handle() == handle)
+    fn get_item(&self, handle: Grabber) -> Option<&Item> {
+        self.iter().filter(|i| i.handle() == handle.handle).nth(handle.index)
     }
 
-    fn get_item_mut(&mut self, handle: &str) -> Option<&mut Item> {
-        self.iter_mut().find(|i| i.handle() == handle)
+    fn get_item_mut(&mut self, handle: Grabber) -> Option<&mut Item> {
+        self.iter_mut().filter(|i| i.handle() == handle.handle).nth(handle.index)
     }
 
-    fn get_item_owned(&mut self, handle: &str) -> Result<Item, EnnuiError> {
+    fn get_item_owned(&mut self, handle: Grabber) -> Result<Item, EnnuiError> {
         self.get_owned(handle)
     }
 
@@ -106,7 +106,7 @@ impl ListTrait for ItemList {
 }
 
 pub trait ItemListTrout {
-    fn get_owned(&mut self, handle: &str) -> Result<Item, EnnuiError>;
+    fn get_owned(&mut self, handle: Grabber) -> Result<Item, EnnuiError>;
     fn display_items(&self) -> String;
     fn iter(&self) -> Iter<Item>;
     fn iter_mut(&mut self) -> IterMut<Item>;
@@ -131,11 +131,21 @@ impl ItemList {
 }
 
 impl ItemListTrout for ItemList {
-    fn get_owned(&mut self, handle: &str) -> Result<Item, EnnuiError> {
-        let pos = match self.iter().position(|i| i.handle() == handle) {
-            Some(i) => i,
-            None => return Err(Simple(ItemNotFound)),
-        };
+    fn get_owned(&mut self, handle: Grabber) -> Result<Item, EnnuiError> {
+        let Grabber {
+            handle,
+            index
+        } = handle;
+
+        let pos = self.iter().enumerate().filter_map(|(idx, item)| {
+            if item.handle() == handle {
+                Some(idx)
+            } else {
+                None
+            }
+        })
+        .nth(index)
+        .ok_or_else(|| Simple(ItemNotFound))?;
         Ok(self.inner.remove(pos))
     }
 

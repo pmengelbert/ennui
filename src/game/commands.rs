@@ -66,13 +66,13 @@ pub fn fill_interpreter(i: &mut Interpreter) {
             2 => {
                 let player = g.get_player(u)?;
                 let room = g.get_room_mut(loc)?;
-                let (object, container) = (a[0], a[1]);
+                let (object, container) = (*a[0], *a[1]);
 
-                match room.get_item_mut(container) {
+                match room.get_item_mut(container.into()) {
                     Some(c) => {
                         if let Item::Container(cont) = c {
                             use std::result::Result::*;
-                            match cont.get_item(object) {
+                            match cont.get_item(Grabber::from_str(object)) {
                                 Some(_) => match cont
                                     .transfer(player.lock().unwrap().deref_mut(), object)
                                 {
@@ -572,3 +572,5 @@ fn try_door_open(name: &str, other_msg: &mut Option<String>, door: &mut Door) ->
         },
     }
 }
+
+

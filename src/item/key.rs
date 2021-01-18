@@ -1,4 +1,4 @@
-use crate::item::handle::Handle;
+use crate::item::handle::Hook;
 use crate::item::{Attribute, Describe, Description, Quality};
 use std::fmt::Debug;
 
@@ -35,7 +35,7 @@ impl Describe for KeyType {
         self.info.description.clone()
     }
 
-    fn handle(&self) -> Handle {
+    fn handle(&self) -> Hook {
         self.info.handle.clone()
     }
 }

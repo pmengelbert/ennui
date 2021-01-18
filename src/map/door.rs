@@ -1,5 +1,5 @@
 use crate::error::EnnuiError;
-use crate::item::handle::Handle;
+use crate::item::handle::{Hook, Grabber};
 use crate::item::key::Key;
 use crate::item::list::{ItemList, ListTrait};
 use crate::item::{Attribute, Describe, Description, Item, Quality};
@@ -115,7 +115,7 @@ impl Describe for RenaissanceGuard {
         }
     }
 
-    fn handle(&self) -> Handle {
+    fn handle(&self) -> Hook {
         self.info.handle()
     }
 }
@@ -184,15 +184,15 @@ pub trait Guard: Lock<GuardState> + ListTrait<Kind = ItemList> {}
 impl ListTrait for RenaissanceGuard {
     type Kind = ItemList;
 
-    fn get_item(&self, handle: &str) -> Option<&Item> {
+    fn get_item(&self, handle: Grabber) -> Option<&Item> {
         self.items.get_item(handle)
     }
 
-    fn get_item_mut(&mut self, handle: &str) -> Option<&mut Item> {
+    fn get_item_mut(&mut self, handle: Grabber) -> Option<&mut Item> {
         self.items.get_item_mut(handle)
     }
 
-    fn get_item_owned(&mut self, handle: &str) -> Result<Item, EnnuiError> {
+    fn get_item_owned(&mut self, handle: Grabber) -> Result<Item, EnnuiError> {
         self.items.get_item_owned(handle)
     }
 

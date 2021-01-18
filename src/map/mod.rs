@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use direction::MapDir;
 
 use crate::error::EnnuiError;
-use crate::item::handle::Handle;
+use crate::item::handle::{Hook, Grabber};
 use crate::item::list::{Holder, ItemList, ItemListTrout, ListTrait};
 use crate::item::{Attribute, Describe, Description, Item, Quality, YamlItemList};
 use crate::map::coord::Coord;
@@ -76,7 +76,7 @@ impl Describe for Room {
         self.info.description()
     }
 
-    fn handle(&self) -> Handle {
+    fn handle(&self) -> Hook {
         self.info.handle()
     }
 }
@@ -98,15 +98,15 @@ impl Attribute<Quality> for Room {
 impl ListTrait for Room {
     type Kind = ItemList;
 
-    fn get_item(&self, handle: &str) -> Option<&Item> {
-        self.items.iter().find(|i| i.handle() == handle)
+    fn get_item(&self, handle: Grabber) -> Option<&Item> {
+        self.items.iter().filter(|i| i.handle() == handle.handle).nth(handle.index)
     }
 
-    fn get_item_mut(&mut self, handle: &str) -> Option<&mut Item> {
-        self.items.iter_mut().find(|i| i.handle() == handle)
+    fn get_item_mut(&mut self, handle: Grabber) -> Option<&mut Item> {
+        self.items.get_item_mut(handle)
     }
 
-    fn get_item_owned(&mut self, handle: &str) -> Result<Item, EnnuiError> {
+    fn get_item_owned(&mut self, handle: Grabber) -> Result<Item, EnnuiError> {
         self.items.get_owned(handle)
     }
 

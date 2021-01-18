@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 
 use YamlItem::*;
 
-use crate::item::handle::Handle;
+use crate::item::handle::Hook;
 use crate::item::key::Key;
 use crate::item::list::{ItemList, ListTrait};
 use crate::item::Item::NoItem;
@@ -19,7 +19,7 @@ pub trait Describe: Send + Sync + Debug + Attribute<Quality> {
     fn name(&self) -> String;
     fn display(&self) -> String;
     fn description(&self) -> String;
-    fn handle(&self) -> Handle;
+    fn handle(&self) -> Hook;
 }
 
 /// YamlItem is a no-frills representation of various objects, wrapped in a primary attribute.
@@ -128,14 +128,14 @@ impl Describe for Item {
         }
     }
 
-    fn handle(&self) -> Handle {
+    fn handle(&self) -> Hook {
         use Item::*;
         match self {
             Clothing(i) | Weapon(i) | Scenery(i) | Edible(i) | Holdable(i) => i.handle(),
             Container(i) => i.handle(),
             Key(i) => i.handle(),
             Guard(_, i) => i.handle(),
-            NoItem => Handle::default(),
+            NoItem => Hook::default(),
         }
     }
 }
@@ -186,7 +186,7 @@ pub struct Description {
     pub name: String,
     pub display: String,
     pub description: String,
-    pub handle: Handle,
+    pub handle: Hook,
     #[serde(default)]
     pub attributes: Vec<Quality>,
 }
@@ -204,7 +204,7 @@ impl Describe for Description {
         self.description.clone()
     }
 
-    fn handle(&self) -> Handle {
+    fn handle(&self) -> Hook {
         self.handle.clone()
     }
 }
@@ -227,7 +227,7 @@ impl Attribute<Quality> for Description {
 }
 
 impl Description {
-    pub fn new(name: &str, description: Option<&str>, handle: Handle) -> Self {
+    pub fn new(name: &str, description: Option<&str>, handle: Hook) -> Self {
         let description = description.unwrap_or_default().to_owned();
         let name = name.to_owned();
         let display = String::new();
@@ -278,7 +278,7 @@ impl Describe for YamlItemList {
         self.info.description()
     }
 
-    fn handle(&self) -> Handle {
+    fn handle(&self) -> Hook {
         self.info.handle()
     }
 }
@@ -350,7 +350,7 @@ impl Describe for YamlItem {
         self.safe_unwrap().description()
     }
 
-    fn handle(&self) -> Handle {
+    fn handle(&self) -> Hook {
         self.safe_unwrap().handle()
     }
 }

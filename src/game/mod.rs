@@ -12,7 +12,7 @@ use crate::error::EnnuiError;
 use crate::error::EnnuiError::{Fatal, Lesser};
 use crate::fight::FightMessage;
 use crate::text::channel::{DiscreteMessage, GameActor};
-use crate::game::util::load_rooms;
+use crate::game::util::{load_rooms, resolve_handle};
 use crate::interpreter::CommandQuality::{Awake, Motion};
 use crate::interpreter::{CommandKind, CommandMessage, Interpreter};
 use crate::item::list::ListTrait;
@@ -33,6 +33,7 @@ use crate::text::message::{
 use crate::text::Color::{Green, Magenta};
 use std::fmt::Debug;
 use std::mem::take;
+use crate::item::handle::Grabber;
 
 mod broadcast;
 mod commands;
@@ -253,7 +254,7 @@ impl Game {
         let loc = &p.lock().unwrap().loc();
         let room = self.rooms.get(loc)?;
 
-        Some(if let Some(item) = room.get_item(handle) {
+        Some(if let Some(item) = room.get_item((handle.into())) {
             let mut s = item.description();
             if let Item::Container(lst) = item {
                 s.push_str(&format!("\nthe {} is holding:\n", item.name()));
@@ -268,7 +269,7 @@ impl Game {
             }
             s
         } else {
-            p.lock().unwrap().items().get_item(handle)?.description()
+            p.lock().unwrap().items().get_item(Grabber::from_str(handle))?.description()
         })
     }
 

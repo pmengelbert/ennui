@@ -43,7 +43,7 @@ impl Game {
 
         if self.validate_other_player(other, loc, dir).is_err() {
             return Err(Msg(format!(
-                "You don't see {} in here. I'm beginning to question your sanity",
+                "No-one by the name {} is here. I'm beginning to question your sanity",
                 other.unwrap_or_default()
             )));
         };
@@ -72,7 +72,7 @@ impl Game {
             None => return Err(Simple(ItemNotFound)),
         };
 
-        match room.get_item(handle) {
+        match room.get_item(handle.into()) {
             Some(s) if s.is(Quality::Scenery) => return Err(Simple(TooHeavy)),
             _ => (),
         }
@@ -119,7 +119,7 @@ impl Game {
                 .get_mut(&uuid)
                 .ok_or_else(|| Fatal(format!("unable to find player {}", uuid)))?;
 
-            p.lock().unwrap().items_mut().get_item_owned(handle)?
+            p.lock().unwrap().items_mut().get_item_owned(handle.into())?
         };
 
         let item_name = item.name();
@@ -133,7 +133,7 @@ impl Game {
                         other_id, loc
                     ))
                 })?;
-                return match room.get_item_mut(other_name.unwrap_or_default()) {
+                return match room.get_item_mut(other_name.unwrap_or_default().into()) {
                     Some(Item::Guard(_, guard)) => match guard.insert_item(item) {
                         Ok(()) => Err(Msg(format!(
                             "you see {} relax a little bit. maybe now they'll let you through",
@@ -160,6 +160,28 @@ impl Game {
                             )))
                         }
                     },
+                    Some(Item::Container(cont)) => match cont.insert_item(item) {
+                        Ok(()) => Ok(format!("you give them a {}", handle)),
+                        Err(given_back) => {
+                            players
+                                .get_mut(&uuid)
+                                .ok_or_else(|| fatal("wasn't able to find the original player ..."))?
+                                .lock()
+                                .unwrap()
+                                .insert_item(given_back)
+                                .map_err(|_| {
+                                    fatal(
+                                        "wasn't able to return item to player after failed transfer \
+                                        to container type."
+                                    )
+                                })?;
+
+                            Err(Msg(format!(
+                                "I don't think they can accept {}",
+                                article(&item_name)
+                            )))
+                        }
+                    }
                     _ => Err(Msg(format!(
                         "you don't see {} here!",
                         other_name.unwrap_or_default()
@@ -193,7 +215,7 @@ impl Game {
     }
 
     fn check_if_clothing(handle: &str, items: &mut ItemList) -> Result<(), EnnuiError> {
-        match items.get_item(handle) {
+        match items.get_item(handle.into()) {
             Some(i) if i.is(Quality::Clothing) => Ok(()),
             None => Err(Simple(ItemNotFound)),
             _ => Err(Simple(NotClothing)),
@@ -230,7 +252,7 @@ impl Game {
 
         if let Give = dir {
             if let (Some(o), None) = (other, oid) {
-                return if self.get_room(*loc)?.get_item(o).is_some() {
+                return if self.get_room(*loc)?.get_item(o.into()).is_some() {
                     Ok(())
                 } else {
                     Err(Simple(PlayerNotFound))

@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use meter::MeterKind;
 
 use crate::error::EnnuiError;
-use crate::item::handle::Handle;
+use crate::item::handle::{Hook, Grabber};
 use crate::item::list::{Holder, ItemList, ItemListTrout, ListTrait};
 use crate::item::{Attribute, Describe, Description, Item, Quality};
 use crate::map::coord::Coord;
@@ -167,15 +167,15 @@ impl Drop for PlayerType {
 impl ListTrait for PlayerType {
     type Kind = ItemList;
 
-    fn get_item(&self, handle: &str) -> Option<&Item> {
-        self.safe_unwrap().items.iter().find(|i| i.handle() == handle)
+    fn get_item(&self, handle: Grabber) -> Option<&Item> {
+        self.safe_unwrap().items.iter().filter(|i| i.handle() == handle.handle).nth(handle.index)
     }
 
-    fn get_item_mut(&mut self, handle: &str) -> Option<&mut Item> {
-        self.safe_unwrap_mut().items.iter_mut().find(|i| i.handle() == handle)
+    fn get_item_mut(&mut self, handle: Grabber) -> Option<&mut Item> {
+        self.safe_unwrap_mut().items.get_item_mut(handle)
     }
 
-    fn get_item_owned(&mut self, handle: &str) -> Result<Item, EnnuiError> {
+    fn get_item_owned(&mut self, handle: Grabber) -> Result<Item, EnnuiError> {
         self.safe_unwrap_mut().items.get_owned(handle)
     }
 
@@ -232,7 +232,7 @@ impl Describe for PlayerType {
         self.safe_unwrap().info.description()
     }
 
-    fn handle(&self) -> Handle {
+    fn handle(&self) -> Hook {
         self.safe_unwrap().info.handle()
     }
 }
@@ -250,7 +250,7 @@ impl Describe for Arc<Mutex<PlayerType>> {
         self.lock().unwrap().description()
     }
 
-    fn handle(&self) -> Handle {
+    fn handle(&self) -> Hook {
         self.lock().unwrap().handle()
     }
 }
@@ -337,7 +337,7 @@ impl Player {
             info: Description {
                 description: String::new(),
                 name: String::new(),
-                handle: Handle(vec![]),
+                handle: Hook(vec![]),
                 display: String::new(),
                 attributes: vec![],
             },
