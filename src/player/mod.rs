@@ -117,6 +117,8 @@ mod test_playerstatus {
     #[test]
     fn test_player_status() {
         eprintln!("{:#?}", PlayerStatus::Asleep as u64);
+eprintln!("in file {} on line number {}", file!(), line!());
+
     }
 }
 

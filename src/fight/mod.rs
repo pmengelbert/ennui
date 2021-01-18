@@ -200,10 +200,15 @@ fn handle_receiver(
 ) {
     for handle in receiver {
         match handle.join() {
-            Ok(_r) => eprintln!("fight concluded"),
+            Ok(_r) => {
+                eprintln!("fight concluded");
+                eprintln!("in file {} on line number {}", file!(), line!());
+            }
             Err(e) => {
                 fight.clone().end();
-                eprintln!("[{}]: {:?}", "ERROR".color(Red), e)
+                eprintln!("[{}]: {:?}", "ERROR".color(Red), e);
+                eprintln!("in file {} on line number {}", file!(), line!());
+
             }
         }
     }
@@ -215,6 +220,8 @@ fn handle_fight_messages(mod_receiver: Receiver<FightMod>, mut fight: Arc<Mutex<
 
         if let Err(e) = res {
             eprintln!("{:?}", e);
+eprintln!("in file {} on line number {}", file!(), line!());
+
         }
     }
 }
@@ -250,6 +257,8 @@ fn handle_fight(
 
         let FightStatus { ended } = fight.status();
         eprintln!("status: {}", ended);
+eprintln!("in file {} on line number {}", file!(), line!());
+
         if ended {
             break;
         }
@@ -277,6 +286,8 @@ fn handle_fight(
 
         let FightStatus { ended } = fight.status();
         eprintln!("status: {}", ended);
+eprintln!("in file {} on line number {}", file!(), line!());
+
         if ended {
             break;
         }
@@ -364,6 +375,8 @@ fn fight_logic(
         let id = player.uuid();
         if let Err(e) = cl.lock().unwrap().discrete_sender.send(DiscreteMessage::KillPlayer(id)) {
             eprintln!("{:?}", e);
+eprintln!("in file {} on line number {}", file!(), line!());
+
         }
         player.set_attr(Dead);
         cl.end();

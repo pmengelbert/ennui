@@ -40,6 +40,8 @@ impl MessageHandler for GameActor {
                     DiscreteMessage::KillPlayer(p) => {
                         if let Err(e) = caster.lock().unwrap().kill_player(p) {
                             eprintln!("[{}]: {:?}", "ERROR".color(super::Color::Magenta), e);
+eprintln!("in file {} on line number {}", file!(), line!());
+
                         }
                     }
                 }

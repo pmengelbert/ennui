@@ -170,6 +170,8 @@ impl Room {
 
     pub fn display(&self) -> String {
         eprintln!("[{}]: room.display", "SUCCESS".color(Green));
+eprintln!("in file {} on line number {}", file!(), line!());
+
         let Room {
             info: Description {
                 name, description, ..

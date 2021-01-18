@@ -16,6 +16,8 @@ where
         message: &dyn Message,
     ) -> Vec<(u128, WriteResult)> {
         eprintln!("[{}]: made it to send func", "SUCCESS".color(Green));
+eprintln!("in file {} on line number {}", file!(), line!());
+
         let g = self.borrow_mut();
         let mut v = vec![];
 
@@ -27,6 +29,8 @@ where
         let obj_msg = message.to_object();
         let other_msg = message.to_others();
         eprintln!("this is the message going out to others: {:?}", other_msg);
+eprintln!("in file {} on line number {}", file!(), line!());
+
 
         send_to_single_player(g, &mut v, self_id, self_msg);
 

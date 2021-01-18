@@ -98,6 +98,8 @@ impl Game {
     pub fn interpret(&mut self, p: u128, s: &str) -> Result<CommandMessage, EnnuiError> {
         let s = s.to_lowercase();
         eprintln!("executing command '{}' for player {}", s, p);
+eprintln!("in file {} on line number {}", file!(), line!());
+
         let (cmd, args) = Interpreter::process_string_command(&s);
 
         let commands = self.interpreter.commands();
@@ -228,13 +230,19 @@ impl Game {
 
     fn describe_room<P: Uuid>(&mut self, p: P) -> Result<String, EnnuiError> {
         eprintln!("[{}]: describe_room", "SUCCESS".color(Green));
+eprintln!("in file {} on line number {}", file!(), line!());
+
         let loc = self.loc_of(p.uuid())?;
         eprintln!("[{}]: got uuid", "SUCCESS".color(Green));
+eprintln!("in file {} on line number {}", file!(), line!());
+
 
         let rooms = &self.rooms;
         let r = rooms.get(&loc)?;
         let player_list_string = r.players().except(p.uuid()).display(&self.players);
         eprintln!("[{}]: got room", "SUCCESS".color(Green));
+eprintln!("in file {} on line number {}", file!(), line!());
+
         let exits = Room::exit_display(&rooms.exits(loc));
 
         let mut room_string = r.display();
@@ -485,6 +493,8 @@ impl Game {
 
         if let Err(e) = p.leave_fight() {
             eprintln!("ERROR: {:?}", e);
+eprintln!("in file {} on line number {}", file!(), line!());
+
         };
 
         Ok(())
@@ -560,4 +570,6 @@ fn lesser(s: &str) -> EnnuiError {
 
 fn print_err<T: Error + Debug>(err: T) {
     eprintln!("[{}]: {:?}", "ERROR".color(Magenta), err);
+eprintln!("in file {} on line number {}", file!(), line!());
+
 }

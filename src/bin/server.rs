@@ -35,6 +35,8 @@ where
             Ok(n) => n,
             Err(e) => {
                 eprintln!("{}", e);
+eprintln!("in file {} on line number {}", file!(), line!());
+
                 0
             }
         };
@@ -58,6 +60,8 @@ fn main() -> GameResult<()> {
                 Ok(_) => (),
                 Err(err) => {
                     eprintln!("[{}]: {:#?}", "ERROR".color(Red), err);
+eprintln!("in file {} on line number {}", file!(), line!());
+
                 }
             }
         }
@@ -90,6 +94,8 @@ fn main() -> GameResult<()> {
                 Ok(g) => g,
                 Err(err) => {
                     eprintln!("error: {}", err);
+eprintln!("in file {} on line number {}", file!(), line!());
+
                     continue;
                 }
             };
@@ -108,22 +114,32 @@ fn handle_client(p: u128, g: Arc<Mutex<Game>>) -> std::io::Result<()> {
     get_and_set_player_name(p, g.clone())?;
 
     eprintln!("[{}]: player named", "SUCCESS".color(Green));
+eprintln!("in file {} on line number {}", file!(), line!());
+
     eprintln!("[{}]: player id: {}", "SUCCESS".color(Green), p);
+eprintln!("in file {} on line number {}", file!(), line!());
+
     loop {
         let s = get_player_command(p, g.clone())?;
 
         eprintln!("[{}]: Got player command", "SUCCESS".color(Green));
+eprintln!("in file {} on line number {}", file!(), line!());
+
         {
             let mut g = match g.lock() {
                 Ok(g) => g,
                 Err(err) => {
                     eprintln!("error: {}", err);
+eprintln!("in file {} on line number {}", file!(), line!());
+
                     break;
                 }
             };
 
             let resp = g.interpret(p, &s);
             eprintln!("[{}]: Got response", "SUCCESS".color(Green));
+eprintln!("in file {} on line number {}", file!(), line!());
+
             match resp {
                 Ok((aud, msg)) => {
                     eprintln!(
@@ -135,6 +151,8 @@ fn handle_client(p: u128, g: Arc<Mutex<Game>>) -> std::io::Result<()> {
                     for (id, result) in results {
                         if let Err(e) = result {
                             eprintln!("[{}]: {:?}", "ERROR".color(Red), e);
+eprintln!("in file {} on line number {}", file!(), line!());
+
                             let p = match g.remove_player(id) {
                                 Some(p) => p,
                                 None => Arc::new(Mutex::new(PlayerType::Human(Player::default()))),
@@ -149,8 +167,16 @@ fn handle_client(p: u128, g: Arc<Mutex<Game>>) -> std::io::Result<()> {
                         g.remove_player(p);
                         break;
                     }
-                    EnnuiError::Fatal(s) => eprintln!("[{}]: {:?}", "FATAL".color(Red), s),
-                    e => eprintln!("[{}]: {:?}", "ERROR".color(Magenta), e),
+                    EnnuiError::Fatal(s) => {
+                        eprintln!("[{}]: {:?}", "FATAL".color(Red), s);
+                        eprintln!("in file {} on line number {}", file!(), line!());
+                    }
+
+                    e => {
+                        eprintln!("[{}]: {:?}", "ERROR".color(Magenta), e);
+                        eprintln!("in file {} on line number {}", file!(), line!());
+                    }
+
                 },
             }
         }

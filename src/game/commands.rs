@@ -17,10 +17,14 @@ use std::time::Duration;
 pub fn fill_interpreter(i: &mut Interpreter) {
     i.insert("look", |g, u, args| {
         eprintln!("[{}]: made it to handler", "SUCCESS".color(Green));
+eprintln!("in file {} on line number {}", file!(), line!());
+
         let args: Vec<_> = args.iter().filter(|&&a| a != "at").collect();
         let msg: Cow<'static, str> = match args.len() {
             0 => {
                 eprintln!("[{}]: made it to case", "SUCCESS".color(Green));
+eprintln!("in file {} on line number {}", file!(), line!());
+
                 g.describe_room(u)?.into()
             }
             1 => {
@@ -266,11 +270,15 @@ pub fn fill_interpreter(i: &mut Interpreter) {
 
     i.insert("say", |g, u, a| {
         eprintln!("MADE IT");
+eprintln!("in file {} on line number {}", file!(), line!());
+
         let msg = a.join(" ");
         let name = g.name_of(u)?;
         let loc = g.loc_of(u)?;
         let others = g.rooms.player_ids(loc).except(u);
         eprintln!("others: {:?}", others);
+eprintln!("in file {} on line number {}", file!(), line!());
+
 
         let aud = Audience(u, others);
         let msg = Msg {

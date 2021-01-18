@@ -262,6 +262,8 @@ impl Game {
             match self.loc_of(other_id) {
                 Ok(other_loc) if &other_loc != loc => {
                     eprintln!("FUCK YOU");
+eprintln!("in file {} on line number {}", file!(), line!());
+
                     return Err(Msg(format!(
                         "you don't see {} here !",
                         other.unwrap_or_default()
@@ -269,6 +271,8 @@ impl Game {
                 }
                 Err(_) => {
                     eprintln!("FUCK YOU");
+eprintln!("in file {} on line number {}", file!(), line!());
+
                     return Ok(());
                 }
                 _ => (),

@@ -95,6 +95,8 @@ mod handle_test {
     fn handle_test() {
         let h = handle![sword, rusty];
         eprintln!("{:#?}", h);
+eprintln!("in file {} on line number {}", file!(), line!());
+
         assert_eq!("sword", h);
         assert_eq!("rusty", h);
     }

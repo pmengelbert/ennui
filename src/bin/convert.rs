@@ -13,14 +13,20 @@ fn main() -> io::Result<()> {
                     Ok(y) => y,
                     Err(err) => {
                         eprintln!("{}", err);
+eprintln!("in file {} on line number {}", file!(), line!());
+
                         std::process::exit(1)
                     }
                 };
                 // eprintln!("{:#?}", r);
+eprintln!("in file {} on line number {}", file!(), line!());
+
                 let buf = match serde_cbor::to_vec(&r) {
                     Ok(y) => y,
                     Err(err) => {
                         eprintln!("{}", err);
+eprintln!("in file {} on line number {}", file!(), line!());
+
                         std::process::exit(1)
                     }
                 };
@@ -33,14 +39,20 @@ fn main() -> io::Result<()> {
                     Ok(y) => y,
                     Err(err) => {
                         eprintln!("{}", err);
+eprintln!("in file {} on line number {}", file!(), line!());
+
                         std::process::exit(1)
                     }
                 };
                 // eprintln!("{:#?}", r);
+eprintln!("in file {} on line number {}", file!(), line!());
+
                 let buf = match serde_cbor::to_vec(&r) {
                     Ok(y) => y,
                     Err(err) => {
                         eprintln!("{}", err);
+eprintln!("in file {} on line number {}", file!(), line!());
+
                         std::process::exit(1)
                     }
                 };
@@ -50,6 +62,8 @@ fn main() -> io::Result<()> {
         }
     } else {
         eprintln!("usage: convert [map/npc] <srcfile> <dstfile>");
+eprintln!("in file {} on line number {}", file!(), line!());
+
     }
 
     Ok(())

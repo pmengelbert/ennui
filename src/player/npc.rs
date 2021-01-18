@@ -136,10 +136,14 @@ impl Npc {
                         let n: usize = rand::thread_rng().gen_range(0, v.len());
                         let phrase = &v[n];
                         eprintln!("PHRASE: {}", phrase);
+eprintln!("in file {} on line number {}", file!(), line!());
+
                         let mut command = String::with_capacity(4 + phrase.len());
                         command.push_str("say ");
                         command.push_str(phrase);
                         eprintln!("command: {}", command);
+eprintln!("in file {} on line number {}", file!(), line!());
+
                         let (aud, msg) = g
                             .lock()
                             .unwrap()
