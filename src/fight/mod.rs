@@ -12,9 +12,9 @@ use crate::error::EnnuiError;
 use crate::error::EnnuiError::Simple;
 use crate::player::list::PlayerIdList;
 use crate::player::PlayerStatus::Dead;
+use crate::text::channel::DiscreteMessage;
 use crate::text::message::{FightAudience, Message, MessageFormat};
 use crate::text::Color::{Red, Yellow};
-use crate::text::channel::{DiscreteMessage};
 use std::borrow::{Borrow, Cow};
 use std::error::Error as StdError;
 use std::sync::atomic::AtomicBool;
@@ -208,7 +208,6 @@ fn handle_receiver(
                 fight.clone().end();
                 eprintln!("[{}]: {:?}", "ERROR".color(Red), e);
                 eprintln!("in file {} on line number {}", file!(), line!());
-
             }
         }
     }
@@ -220,8 +219,7 @@ fn handle_fight_messages(mod_receiver: Receiver<FightMod>, mut fight: Arc<Mutex<
 
         if let Err(e) = res {
             eprintln!("{:?}", e);
-eprintln!("in file {} on line number {}", file!(), line!());
-
+            eprintln!("in file {} on line number {}", file!(), line!());
         }
     }
 }
@@ -257,7 +255,7 @@ fn handle_fight(
 
         let FightStatus { ended } = fight.status();
         eprintln!("status: {}", ended);
-eprintln!("in file {} on line number {}", file!(), line!());
+        eprintln!("in file {} on line number {}", file!(), line!());
 
         if ended {
             break;
@@ -286,7 +284,7 @@ eprintln!("in file {} on line number {}", file!(), line!());
 
         let FightStatus { ended } = fight.status();
         eprintln!("status: {}", ended);
-eprintln!("in file {} on line number {}", file!(), line!());
+        eprintln!("in file {} on line number {}", file!(), line!());
 
         if ended {
             break;
@@ -373,10 +371,14 @@ fn fight_logic(
             npc.stop();
         }
         let id = player.uuid();
-        if let Err(e) = cl.lock().unwrap().discrete_sender.send(DiscreteMessage::KillPlayer(id)) {
+        if let Err(e) = cl
+            .lock()
+            .unwrap()
+            .discrete_sender
+            .send(DiscreteMessage::KillPlayer(id))
+        {
             eprintln!("{:?}", e);
-eprintln!("in file {} on line number {}", file!(), line!());
-
+            eprintln!("in file {} on line number {}", file!(), line!());
         }
         player.set_attr(Dead);
         cl.end();

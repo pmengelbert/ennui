@@ -1,5 +1,6 @@
 #![feature(try_trait)]
 #![feature(assoc_char_funcs)]
+#![feature(backtrace)]
 
 pub mod error;
 pub mod fight;

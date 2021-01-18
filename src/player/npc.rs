@@ -1,12 +1,12 @@
 use super::{Player, PlayerType, Quality};
+use crate::item::{list::ItemList, list::ItemListTrout, Description, Item};
 use crate::map::coord::Coord;
 use crate::text::message::Broadcast;
-use crate::item::{Description, Item, list::ItemList, list::ItemListTrout};
-use serde::{Deserialize, Serialize};
-use std::sync::{Arc, Mutex};
-use std::sync::mpsc::{Sender, TryRecvError, channel};
-use std::thread;
 use rand::Rng;
+use serde::{Deserialize, Serialize};
+use std::sync::mpsc::{channel, Sender, TryRecvError};
+use std::sync::{Arc, Mutex};
+use std::thread;
 
 #[derive(Debug, Deserialize, Serialize, Eq, PartialEq)]
 pub enum AI {
@@ -29,7 +29,7 @@ pub struct YamlPlayer {
 pub struct Npc {
     player: Player,
     ai_type: Option<AI>,
-    tx: Option<Mutex<Sender<NpcMessage>>>
+    tx: Option<Mutex<Sender<NpcMessage>>>,
 }
 
 impl From<PlayerType> for Item {
@@ -41,9 +41,7 @@ impl From<PlayerType> for Item {
                 let Npc { player, .. } = npc;
                 player
             }
-            PlayerType::Human(p) | PlayerType::Dummy(p) => {
-                std::mem::take(p)
-            }
+            PlayerType::Human(p) | PlayerType::Dummy(p) => std::mem::take(p),
         };
 
         player.into()
@@ -101,7 +99,11 @@ impl From<YamlPlayer> for Npc {
         p.loc = loc;
         p.info = info;
 
-        Self { player: p, ai_type, tx: None }
+        Self {
+            player: p,
+            ai_type,
+            tx: None,
+        }
     }
 }
 
@@ -112,7 +114,11 @@ pub enum NpcMessage {
 impl Npc {
     pub fn new(player: Player, ai_type: AI) -> Self {
         let ai_type = Some(ai_type);
-        Self { player, ai_type, tx: None }
+        Self {
+            player,
+            ai_type,
+            tx: None,
+        }
     }
 
     pub fn init(&mut self, g: Arc<Mutex<crate::game::Game>>) {
@@ -125,60 +131,54 @@ impl Npc {
             AI::Static => (),
             AI::Talker(v) => {
                 let v = v.clone();
-                thread::spawn(move || {
-                    loop {
-                        let interval: u64 = rand::thread_rng().gen_range(20, 30);
-                        std::thread::sleep(std::time::Duration::new(interval, 0));
-                        match rx.try_recv() {
-                            Ok(NpcMessage::Stop) | Err(TryRecvError::Disconnected) => break,
-                            _ => (),
-                        }
-                        let n: usize = rand::thread_rng().gen_range(0, v.len());
-                        let phrase = &v[n];
-                        eprintln!("PHRASE: {}", phrase);
-eprintln!("in file {} on line number {}", file!(), line!());
-
-                        let mut command = String::with_capacity(4 + phrase.len());
-                        command.push_str("say ");
-                        command.push_str(phrase);
-                        eprintln!("command: {}", command);
-eprintln!("in file {} on line number {}", file!(), line!());
-
-                        let (aud, msg) = g
-                            .lock()
-                            .unwrap()
-                            .interpret(id, &command).expect("HANDLE THIS BETTER");
-                        g.lock()
-                            .unwrap()
-                            .send(&*aud, &*msg);
+                thread::spawn(move || loop {
+                    let interval: u64 = rand::thread_rng().gen_range(20, 30);
+                    std::thread::sleep(std::time::Duration::new(interval, 0));
+                    match rx.try_recv() {
+                        Ok(NpcMessage::Stop) | Err(TryRecvError::Disconnected) => break,
+                        _ => (),
                     }
+                    let n: usize = rand::thread_rng().gen_range(0, v.len());
+                    let phrase = &v[n];
+                    eprintln!("PHRASE: {}", phrase);
+                    eprintln!("in file {} on line number {}", file!(), line!());
+
+                    let mut command = String::with_capacity(4 + phrase.len());
+                    command.push_str("say ");
+                    command.push_str(phrase);
+                    eprintln!("command: {}", command);
+                    eprintln!("in file {} on line number {}", file!(), line!());
+
+                    let (aud, msg) = g
+                        .lock()
+                        .unwrap()
+                        .interpret(id, &command)
+                        .expect("HANDLE THIS BETTER");
+                    g.lock().unwrap().send(&*aud, &*msg);
                 });
                 ()
             }
             AI::Walker => {
-                thread::spawn(move || {
-                    loop {
-                        let interval: u64 = rand::thread_rng().gen_range(20, 30);
-                        std::thread::sleep(std::time::Duration::new(interval, 0));
-                        match rx.try_recv() {
-                            Ok(NpcMessage::Stop) | Err(TryRecvError::Disconnected) => break,
-                            _ => (),
-                        }
-                        let n: usize = rand::thread_rng().gen_range(0, 4);
-                        let command = match n {
-                            0 => "n",
-                            1 => "s",
-                            2 => "e",
-                            _ => "w",
-                        };
-                        let (aud, msg) = g
-                            .lock()
-                            .unwrap()
-                            .interpret(id, command).expect("HANDLE THIS BETTER");
-                        g.lock()
-                            .unwrap()
-                            .send(&*aud, &*msg);
+                thread::spawn(move || loop {
+                    let interval: u64 = rand::thread_rng().gen_range(20, 30);
+                    std::thread::sleep(std::time::Duration::new(interval, 0));
+                    match rx.try_recv() {
+                        Ok(NpcMessage::Stop) | Err(TryRecvError::Disconnected) => break,
+                        _ => (),
                     }
+                    let n: usize = rand::thread_rng().gen_range(0, 4);
+                    let command = match n {
+                        0 => "n",
+                        1 => "s",
+                        2 => "e",
+                        _ => "w",
+                    };
+                    let (aud, msg) = g
+                        .lock()
+                        .unwrap()
+                        .interpret(id, command)
+                        .expect("HANDLE THIS BETTER");
+                    g.lock().unwrap().send(&*aud, &*msg);
                 });
                 ()
             }

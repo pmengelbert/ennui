@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use meter::MeterKind;
 
 use crate::error::EnnuiError;
-use crate::item::handle::{Hook, Grabber};
+use crate::item::handle::{Grabber, Hook};
 use crate::item::list::{Holder, ItemList, ItemListTrout, ListTrait};
 use crate::item::{Attribute, Describe, Description, Item, Quality};
 use crate::map::coord::Coord;
@@ -59,27 +59,17 @@ impl PlayerType {
     fn safe_unwrap(&self) -> &Player {
         use PlayerType::*;
         match self {
-            Human(ref h) => {
-                h
-            }
-            Npc(npc) => {
-                npc.player()
-            }
-            Dummy(ref p) => {
-                p
-            }
+            Human(ref h) => h,
+            Npc(npc) => npc.player(),
+            Dummy(ref p) => p,
         }
     }
 
     fn safe_unwrap_mut(&mut self) -> &mut Player {
         use PlayerType::*;
         match self {
-            Human(ref mut h) => {
-                h
-            }
-            Npc(npc) => {
-                npc.player_mut()
-            }
+            Human(ref mut h) => h,
+            Npc(npc) => npc.player_mut(),
             Dummy(ref mut p) => p,
         }
     }
@@ -95,7 +85,7 @@ pub struct Player {
     #[serde(skip_serializing, skip_deserializing)]
     clothing: ItemList,
     #[serde(skip_serializing, skip_deserializing)]
-    stream: Option<TcpStream>,
+    pub stream: Option<TcpStream>,
     stats: Vec<MeterKind>,
     status: Vec<PlayerStatus>,
     #[serde(skip_serializing, skip_deserializing)]
@@ -117,8 +107,7 @@ mod test_playerstatus {
     #[test]
     fn test_player_status() {
         eprintln!("{:#?}", PlayerStatus::Asleep as u64);
-eprintln!("in file {} on line number {}", file!(), line!());
-
+        eprintln!("in file {} on line number {}", file!(), line!());
     }
 }
 
@@ -148,7 +137,8 @@ pub trait Uuid {
 
 impl Read for PlayerType {
     fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
-        self.safe_unwrap_mut().stream
+        self.safe_unwrap_mut()
+            .stream
             .as_ref()
             .ok_or(std::io::ErrorKind::BrokenPipe)?
             .read(buf)
@@ -170,7 +160,11 @@ impl ListTrait for PlayerType {
     type Kind = ItemList;
 
     fn get_item(&self, handle: Grabber) -> Option<&Item> {
-        self.safe_unwrap().items.iter().filter(|i| i.handle() == handle.handle).nth(handle.index)
+        self.safe_unwrap()
+            .items
+            .iter()
+            .filter(|i| i.handle() == handle.handle)
+            .nth(handle.index)
     }
 
     fn get_item_mut(&mut self, handle: Grabber) -> Option<&mut Item> {
@@ -356,8 +350,6 @@ impl Player {
     fn assign_stream(&mut self, stream: TcpStream) {
         self.stream = Some(stream);
     }
-
-
 }
 
 impl PlayerType {
@@ -376,7 +368,13 @@ impl PlayerType {
     pub fn hurt(&mut self, amt: usize) {
         use meter::MeterKind::*;
         let current = self.hp();
-        (*self.safe_unwrap_mut().stats.iter_mut().find(|s| matches!(s, Hit(_))).unwrap()).set(current - amt as i64);
+        (*self
+            .safe_unwrap_mut()
+            .stats
+            .iter_mut()
+            .find(|s| matches!(s, Hit(_)))
+            .unwrap())
+        .set(current - amt as i64);
     }
 
     pub fn hp(&self) -> i64 {
@@ -410,7 +408,10 @@ impl PlayerType {
     }
 
     pub fn clone_stream(&self) -> Option<TcpStream> {
-        self.safe_unwrap().stream.as_ref().map(|s| s.try_clone().unwrap())
+        self.safe_unwrap()
+            .stream
+            .as_ref()
+            .map(|s| s.try_clone().unwrap())
     }
 
     pub fn is_connected(&self) -> bool {

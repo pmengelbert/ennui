@@ -19,19 +19,15 @@ impl<'a> Grabber<'a> {
         match &handle[0..num] {
             "all" => todo!(),
             s => match s.parse::<usize>() {
-                Ok(n) if n > 0 => {
-                    Self {
-                        handle: &handle[num+1..],
-                        index: n - 1
-                    }
+                Ok(n) if n > 0 => Self {
+                    handle: &handle[num + 1..],
+                    index: n - 1,
                 },
-                _ => {
-                    Self {
-                        handle: &handle[num+1..],
-                        index: 0
-                    }
+                _ => Self {
+                    handle: &handle[num + 1..],
+                    index: 0,
                 },
-            }
+            },
         }
     }
 }
@@ -95,10 +91,9 @@ mod handle_test {
     fn handle_test() {
         let h = handle![sword, rusty];
         eprintln!("{:#?}", h);
-eprintln!("in file {} on line number {}", file!(), line!());
+        eprintln!("in file {} on line number {}", file!(), line!());
 
         assert_eq!("sword", h);
         assert_eq!("rusty", h);
     }
 }
-

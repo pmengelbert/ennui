@@ -1,6 +1,6 @@
 use crate::fight::FightMessage;
 use crate::game::Game;
-use crate::text::message::{MessageFormat, Broadcast, FightAudience};
+use crate::text::message::{Broadcast, FightAudience, MessageFormat};
 use std::sync::mpsc::Receiver;
 use std::sync::{Arc, Mutex};
 use std::thread::{spawn, JoinHandle};
@@ -40,8 +40,7 @@ impl MessageHandler for GameActor {
                     DiscreteMessage::KillPlayer(p) => {
                         if let Err(e) = caster.lock().unwrap().kill_player(p) {
                             eprintln!("[{}]: {:?}", "ERROR".color(super::Color::Magenta), e);
-eprintln!("in file {} on line number {}", file!(), line!());
-
+                            eprintln!("in file {} on line number {}", file!(), line!());
                         }
                     }
                 }

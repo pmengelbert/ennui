@@ -1,3 +1,4 @@
+use std::backtrace::Backtrace;
 use std::borrow::Cow;
 use std::collections::HashMap;
 use std::error::{Error as StdError, Error};
@@ -11,13 +12,14 @@ use rand::Rng;
 use crate::error::EnnuiError;
 use crate::error::EnnuiError::{Fatal, Lesser};
 use crate::fight::FightMessage;
-use crate::text::channel::{DiscreteMessage};
-use crate::game::util::{load_rooms};
+use crate::game::util::load_rooms;
 use crate::interpreter::CommandQuality::{Awake, Motion};
 use crate::interpreter::{CommandKind, CommandMessage, Interpreter};
 use crate::item::list::ListTrait;
 use crate::item::list::{Holder, ItemListTrout};
+use crate::text::channel::DiscreteMessage;
 
+use crate::item::handle::Grabber;
 use crate::item::{Attribute, Describe, Item};
 use crate::map::direction::MapDir;
 use crate::map::door::{DoorState, GuardState, ObstacleState};
@@ -33,7 +35,6 @@ use crate::text::message::{
 use crate::text::Color::{Green, Magenta};
 use std::fmt::Debug;
 use std::mem::take;
-use crate::item::handle::Grabber;
 
 mod broadcast;
 mod commands;
@@ -98,7 +99,7 @@ impl Game {
     pub fn interpret(&mut self, p: u128, s: &str) -> Result<CommandMessage, EnnuiError> {
         let s = s.to_lowercase();
         eprintln!("executing command '{}' for player {}", s, p);
-eprintln!("in file {} on line number {}", file!(), line!());
+        eprintln!("in file {} on line number {}", file!(), line!());
 
         let (cmd, args) = Interpreter::process_string_command(&s);
 
@@ -207,19 +208,35 @@ eprintln!("in file {} on line number {}", file!(), line!());
     }
 
     pub fn kill_player(&mut self, p: u128) -> Result<(), EnnuiError> {
-        let player = std::mem::take(&mut *self.players.remove(&p)
-            .ok_or_else(|| fatal("UNABLE TO FIND PLAYER!"))?
-            .lock()
-            .unwrap());
+        let mut player = std::mem::take(
+            &mut *self
+                .players
+                .remove(&p)
+                .ok_or_else(|| fatal("UNABLE TO FIND PLAYER!"))?
+                .lock()
+                .unwrap(),
+        );
+
+        if let PlayerType::Human(ref mut p) = &mut player {
+            let s = p.stream.take();
+            if let Some(mut s) = s {
+                let _z = write!(s, "{}", "you have been killed. disconnecting".padded())
+                    .unwrap_or_default();
+                let res = s.shutdown(std::net::Shutdown::Both);
+                if res.is_err() {
+                    eprintln!("error shutting down socket: {}", std::backtrace::Backtrace::capture());
+                }
+            }
+        }
+
         let loc = player.loc();
         {
-            let room = 
-            self.rooms.get_mut(&loc)
+            let room = self
+                .rooms
+                .get_mut(&loc)
                 .ok_or_else(|| fatal("ROOM NOT FOUND"))?;
 
-            room
-                .players_mut()
-                .remove(&p.uuid());
+            room.players_mut().remove(&p.uuid());
 
             let corpse: Item = player.into();
             room.items_mut().push(corpse);
@@ -230,18 +247,17 @@ eprintln!("in file {} on line number {}", file!(), line!());
 
     fn describe_room<P: Uuid>(&mut self, p: P) -> Result<String, EnnuiError> {
         eprintln!("[{}]: describe_room", "SUCCESS".color(Green));
-eprintln!("in file {} on line number {}", file!(), line!());
+        eprintln!("in file {} on line number {}", file!(), line!());
 
         let loc = self.loc_of(p.uuid())?;
         eprintln!("[{}]: got uuid", "SUCCESS".color(Green));
-eprintln!("in file {} on line number {}", file!(), line!());
-
+        eprintln!("in file {} on line number {}", file!(), line!());
 
         let rooms = &self.rooms;
         let r = rooms.get(&loc)?;
         let player_list_string = r.players().except(p.uuid()).display(&self.players);
         eprintln!("[{}]: got room", "SUCCESS".color(Green));
-eprintln!("in file {} on line number {}", file!(), line!());
+        eprintln!("in file {} on line number {}", file!(), line!());
 
         let exits = Room::exit_display(&rooms.exits(loc));
 
@@ -277,7 +293,11 @@ eprintln!("in file {} on line number {}", file!(), line!());
             }
             s
         } else {
-            p.lock().unwrap().items().get_item(Grabber::from_str(handle))?.description()
+            p.lock()
+                .unwrap()
+                .items()
+                .get_item(Grabber::from_str(handle))?
+                .description()
         })
     }
 
@@ -493,14 +513,18 @@ eprintln!("in file {} on line number {}", file!(), line!());
 
         if let Err(e) = p.leave_fight() {
             eprintln!("ERROR: {:?}", e);
-eprintln!("in file {} on line number {}", file!(), line!());
-
+            eprintln!("in file {} on line number {}", file!(), line!());
         };
 
         Ok(())
     }
 
-    fn check_doors(&self, loc: Coord, next_coord: Option<Coord>, dir: MapDir) -> Result<(), DoorState> {
+    fn check_doors(
+        &self,
+        loc: Coord,
+        next_coord: Option<Coord>,
+        dir: MapDir,
+    ) -> Result<(), DoorState> {
         {
             let src_room = self.rooms.get(&loc)?;
             if let Some(door) = src_room.doors().get(&dir) {
@@ -561,15 +585,16 @@ where
 }
 
 fn fatal(s: &str) -> EnnuiError {
-    Fatal(s.to_owned())
+    let mut s = String::from(s);
+    s.push_str(&format!(" with backtrace\n {}", Backtrace::capture()));
+    Fatal(s)
 }
 
 fn lesser(s: &str) -> EnnuiError {
     Lesser(s.to_owned())
 }
 
-fn print_err<T: Error + Debug>(err: T) {
-    eprintln!("[{}]: {:?}", "ERROR".color(Magenta), err);
-eprintln!("in file {} on line number {}", file!(), line!());
-
+pub fn print_err<T: Error + Debug>(err: T) {
+    eprintln!("[{}]: {}", "ERROR".color(Magenta), err);
+    eprintln!("in file {} on line number {}", file!(), line!());
 }

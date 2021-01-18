@@ -6,12 +6,12 @@ use std::thread::{spawn, JoinHandle};
 use ennui::error::EnnuiError;
 
 use ennui::game::{Game, GameResult, NpcInit};
-use ennui::player::{PlayerType, Player, Uuid};
-use ennui::player::npc::{YamlPlayer};
+use ennui::player::npc::YamlPlayer;
+use ennui::player::{Player, PlayerType, Uuid};
 use ennui::text::message::{Broadcast, FightAudience, MessageFormat};
 
 use ennui::fight::FightMessage;
-use ennui::text::channel::{MessageHandler, MessageReceiver, DiscreteMessage, GameActor};
+use ennui::text::channel::{DiscreteMessage, GameActor, MessageHandler, MessageReceiver};
 use ennui::text::Color::{Green, Magenta, Red};
 use std::sync::mpsc::channel;
 
@@ -35,7 +35,7 @@ where
             Ok(n) => n,
             Err(e) => {
                 eprintln!("{}", e);
-eprintln!("in file {} on line number {}", file!(), line!());
+                eprintln!("in file {} on line number {}", file!(), line!());
 
                 0
             }
@@ -60,8 +60,7 @@ fn main() -> GameResult<()> {
                 Ok(_) => (),
                 Err(err) => {
                     eprintln!("[{}]: {:#?}", "ERROR".color(Red), err);
-eprintln!("in file {} on line number {}", file!(), line!());
-
+                    eprintln!("in file {} on line number {}", file!(), line!());
                 }
             }
         }
@@ -76,7 +75,10 @@ eprintln!("in file {} on line number {}", file!(), line!());
     rcv.start(shared_game.clone());
 
     shared_game.lock().unwrap().set_fight_sender(fight_sender);
-    shared_game.lock().unwrap().set_discrete_sender(discrete_sender);
+    shared_game
+        .lock()
+        .unwrap()
+        .set_discrete_sender(discrete_sender);
 
     let npcs = load_npcs()?;
     shared_game.init_npcs(npcs)?;
@@ -94,7 +96,7 @@ eprintln!("in file {} on line number {}", file!(), line!());
                 Ok(g) => g,
                 Err(err) => {
                     eprintln!("error: {}", err);
-eprintln!("in file {} on line number {}", file!(), line!());
+                    eprintln!("in file {} on line number {}", file!(), line!());
 
                     continue;
                 }
@@ -114,23 +116,23 @@ fn handle_client(p: u128, g: Arc<Mutex<Game>>) -> std::io::Result<()> {
     get_and_set_player_name(p, g.clone())?;
 
     eprintln!("[{}]: player named", "SUCCESS".color(Green));
-eprintln!("in file {} on line number {}", file!(), line!());
+    eprintln!("in file {} on line number {}", file!(), line!());
 
     eprintln!("[{}]: player id: {}", "SUCCESS".color(Green), p);
-eprintln!("in file {} on line number {}", file!(), line!());
+    eprintln!("in file {} on line number {}", file!(), line!());
 
     loop {
         let s = get_player_command(p, g.clone())?;
 
         eprintln!("[{}]: Got player command", "SUCCESS".color(Green));
-eprintln!("in file {} on line number {}", file!(), line!());
+        eprintln!("in file {} on line number {}", file!(), line!());
 
         {
             let mut g = match g.lock() {
                 Ok(g) => g,
                 Err(err) => {
                     eprintln!("error: {}", err);
-eprintln!("in file {} on line number {}", file!(), line!());
+                    eprintln!("in file {} on line number {}", file!(), line!());
 
                     break;
                 }
@@ -138,7 +140,7 @@ eprintln!("in file {} on line number {}", file!(), line!());
 
             let resp = g.interpret(p, &s);
             eprintln!("[{}]: Got response", "SUCCESS".color(Green));
-eprintln!("in file {} on line number {}", file!(), line!());
+            eprintln!("in file {} on line number {}", file!(), line!());
 
             match resp {
                 Ok((aud, msg)) => {
@@ -151,7 +153,7 @@ eprintln!("in file {} on line number {}", file!(), line!());
                     for (id, result) in results {
                         if let Err(e) = result {
                             eprintln!("[{}]: {:?}", "ERROR".color(Red), e);
-eprintln!("in file {} on line number {}", file!(), line!());
+                            eprintln!("in file {} on line number {}", file!(), line!());
 
                             let p = match g.remove_player(id) {
                                 Some(p) => p,
@@ -168,15 +170,14 @@ eprintln!("in file {} on line number {}", file!(), line!());
                         break;
                     }
                     EnnuiError::Fatal(s) => {
-                        eprintln!("[{}]: {:?}", "FATAL".color(Red), s);
+                        eprintln!("[{}]: {}", "FATAL".color(Red), s);
                         eprintln!("in file {} on line number {}", file!(), line!());
                     }
 
                     e => {
-                        eprintln!("[{}]: {:?}", "ERROR".color(Magenta), e);
+                        eprintln!("[{}]: {}", "ERROR".color(Magenta), e);
                         eprintln!("in file {} on line number {}", file!(), line!());
                     }
-
                 },
             }
         }
@@ -238,7 +239,6 @@ fn get_and_set_player_name(p: u128, g: Arc<Mutex<Game>>) -> std::io::Result<()> 
     res
 }
 
-
 fn load_npcs() -> GameResult<Vec<PlayerType>> {
     let bytes = include_bytes!("../../data/npc.cbor");
     let v: Vec<YamlPlayer> = serde_cbor::from_slice(bytes)?;
@@ -247,7 +247,6 @@ fn load_npcs() -> GameResult<Vec<PlayerType>> {
     for yp in v.into_iter() {
         ret.push(yp.into());
     }
-
 
     Ok(ret)
 }

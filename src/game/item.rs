@@ -119,7 +119,10 @@ impl Game {
                 .get_mut(&uuid)
                 .ok_or_else(|| Fatal(format!("unable to find player {}", uuid)))?;
 
-            p.lock().unwrap().items_mut().get_item_owned(handle.into())?
+            p.lock()
+                .unwrap()
+                .items_mut()
+                .get_item_owned(handle.into())?
         };
 
         let item_name = item.name();
@@ -181,7 +184,7 @@ impl Game {
                                 article(&item_name)
                             )))
                         }
-                    }
+                    },
                     _ => Err(Msg(format!(
                         "you don't see {} here!",
                         other_name.unwrap_or_default()
@@ -262,7 +265,7 @@ impl Game {
             match self.loc_of(other_id) {
                 Ok(other_loc) if &other_loc != loc => {
                     eprintln!("FUCK YOU");
-eprintln!("in file {} on line number {}", file!(), line!());
+                    eprintln!("in file {} on line number {}", file!(), line!());
 
                     return Err(Msg(format!(
                         "you don't see {} here !",
@@ -271,7 +274,7 @@ eprintln!("in file {} on line number {}", file!(), line!());
                 }
                 Err(_) => {
                     eprintln!("FUCK YOU");
-eprintln!("in file {} on line number {}", file!(), line!());
+                    eprintln!("in file {} on line number {}", file!(), line!());
 
                     return Ok(());
                 }

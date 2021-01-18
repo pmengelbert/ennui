@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use direction::MapDir;
 
 use crate::error::EnnuiError;
-use crate::item::handle::{Hook, Grabber};
+use crate::item::handle::{Grabber, Hook};
 use crate::item::list::{Holder, ItemList, ItemListTrout, ListTrait};
 use crate::item::{Attribute, Describe, Description, Item, Quality, YamlItemList};
 use crate::map::coord::Coord;
@@ -99,7 +99,10 @@ impl ListTrait for Room {
     type Kind = ItemList;
 
     fn get_item(&self, handle: Grabber) -> Option<&Item> {
-        self.items.iter().filter(|i| i.handle() == handle.handle).nth(handle.index)
+        self.items
+            .iter()
+            .filter(|i| i.handle() == handle.handle)
+            .nth(handle.index)
     }
 
     fn get_item_mut(&mut self, handle: Grabber) -> Option<&mut Item> {
@@ -170,7 +173,7 @@ impl Room {
 
     pub fn display(&self) -> String {
         eprintln!("[{}]: room.display", "SUCCESS".color(Green));
-eprintln!("in file {} on line number {}", file!(), line!());
+        eprintln!("in file {} on line number {}", file!(), line!());
 
         let Room {
             info: Description {
