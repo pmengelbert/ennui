@@ -1,9 +1,7 @@
 .idea/
-sample.yaml
 src/mapdata.rs
 target/
 data/
 node_modules/
 dist/
 dist/*
-npcs.yaml

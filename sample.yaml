@@ -1,0 +1,197 @@
+---
+- loc:
+    - 0
+    - 0
+  info:
+    name: A Dark Cell
+    description: 
+      You awake in darkness. Memories swirl. You contemplate the events leading to this.
+      You are alone. You know that much.  So much is unremembered. But something about
+      this place feels familiar.
+    display: ""
+    handle: []
+  inner_items:
+    name: lol
+    display: A rotting corpse of a fallen soldier lay slumped in the corner
+    description: 
+      You don't want to get too close, for fear of whatever diseases it may have.
+      Its rank stench fills the entire room.
+    handle: [corpse]
+    inner:
+    - Weapon:
+        name: rusty sword
+        display: A rusty sword is here, broken at the hilt
+        description: 
+          An old rusted sword, broken at the hilt. You shudder to think of how it
+          came to be this way.
+        handle: [sword, rusty]
+    - Container:
+        info:
+          name: corpse
+          display: A rotting corpse of a fallen soldier lay slumped in the corner
+          description: 
+            You don't want to get too close, for fear of whatever diseases it may have. 
+            Its rank stench fills the entire room.
+          handle: [corpse]
+          attributes:
+            - Scenery
+        inner:
+        - Key:
+          - 1
+          - name: skeleton key
+            display: A rusted old skeleton key lies here
+            description: An ordinary key. Nothing extraordinary about it.
+            handle: [key, rusted, skeleton]
+  doors:
+    North:
+      dir: North
+      state: Locked
+      alt_dest: ~
+      keyhole: 1
+- loc:
+    - 0
+    - 1
+  info:
+    name: A Damp, Narrow Corridor
+    description: 
+      The stench of death is all around you. Water leaks from the cracked ceiling,
+      down the walls into great puddles on the floor.  In some places, the water
+      reaches your ankles. On the wall, written in blood, are the words
+      "What's the point?", and you begin to wonder that yourself... To the south
+      you see the cell where you first awakened. The only other place to go is north.
+    display: ""
+    handle: []
+- loc:
+    - 0
+    - 2
+  info:
+    name: A Brighter Cell
+    description:
+      Light streams in from a barred window. You feel a glimmer of hope, knowing that the sun can reach a place so dark as this.
+      You feel the urge to laugh, and praise the sun.
+    display: ""
+    handle: []
+  inner_items: 
+    inner:
+    - Key:
+      - 8
+      - name: codpiece
+        display: A tattered old codpiece is here, mocking you.
+        description:
+          It's very ornate, but it's still very much a codpiece. You see no need for it, and 
+          yet you simply can't resist the urge to put it on. You can't rationalize its
+          power over you, and you hang your head, ashamed.
+        handle: [codpiece]
+        attributes:
+        - Clothing
+- loc:
+    - 0
+    - 3
+  info:
+    name: More hallway...
+    description:
+      You step out of the brightness right back into a huge puddle of dirty water.
+      You wish you could be back home.  But suddenly, you can't remember your home.
+      This place is truly God-forsaken.
+    display: ""
+    handle: []
+- loc:
+    - 1
+    - 3
+  info:
+    name: A Doorway
+    description:
+      You see the exit to the east, but there's a big beefy guard blocking the way.
+      You wonder if you could take him out, but you know what they say... you catch
+      more flies with honey than with vinegar.
+    display: ""
+    handle: []
+  inner_items: 
+    inner:
+    - Guard:
+        dir: East
+        lock: 8
+        state: Closed
+        info: 
+          name: renaissance guard
+          display: A guard with a floppy hat stands here, blocking the eastern door.
+          description: 
+            The man seems to have a certain poise. He looks as though he's escaped
+            from a Renaissance faire. Your illusions of his poise vanish rapidly as
+            he begins screaming, "MY GENITALS ARE COLD, YOU OUTRAGEOUS SCOUNDREL!! 
+            BRING ME SOMETHING FOR TO COVER MY GENITALS!". You start to back away
+            but then, why not help the guy? Maybe he'll help you back.
+          handle: [guard, renaissance, man]
+          attributes:
+            - Scenery
+- loc:
+    - 2
+    - 3
+  info:
+    name: YOU MADE IT
+    description:
+      Great job.
+    display: ""
+    handle: []
+- loc:
+    - 2
+    - 4
+  info:
+    name: Temple Yard.
+    description:
+      You are at the Temple Yard of Dragonia.  Beautiful marble stairs lead up
+      to the Temple of Dragonia.  You feel small as you stare up the huge pillars
+      making the entrance to the temple.  This place serves as a sanctuary where
+      the people of the city can come and seek refuge, and rest their tired
+      bones.  Just north of here is the common square, and the temple opens to
+      the south.
+    display: ""
+    handle: []
+- loc:
+    - 2
+    - 5
+  info:
+    name: The Common Square.
+    description:
+      The common square, people pass you, talking to each other.  To the west is
+      the Cleric's Road, and to the east is the Magic Road.  To the north, this
+      square is connected to the southern part of the market square.  To the
+      south you see the entrance to the Wedding Chapel.
+    display: ""
+    handle: []
+- loc:
+    - 2
+    - 6
+  info:
+    name: Southern End of the Market Square.
+    description:
+      You are standing on the market square, the famous Square of Dragonia.
+      A large, peculiar looking statue is standing in the middle of the square.
+      Roads lead in every direction, north to the temple square, south to the
+      common square, east and westbound is the dragon street.
+    display: ""
+    handle: []
+- loc:
+    - 3
+    - 5
+  info:
+    name: Town Square.
+    description:
+      You are at the new town square.  The town hall was recently built south of
+      here and moved from its previous location.  The entrance is just south of here
+      and the magic shop is just north.  Magic Street goes east, and the common
+      square is just west.
+    display: ""
+    handle: []
+- loc:
+    - 1
+    - 5
+  info:
+    name: Cleric's Road.
+    description:
+      You are standing at the beginning of the Cleric's Road.  Just like the
+      Magic Street, this road was named in honor of the Cleric's Guild, which
+      is located here.  To the east is the Common Square, known to be quite
+      a busy place in this town.
+    display: ""
+    handle: []

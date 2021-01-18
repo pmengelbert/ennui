@@ -1,0 +1,45 @@
+---
+- ai_type: 
+    Talker:
+    - hello, there. welcome to the game.
+    - if you like the game, please let me know by sending an email to peepee@poobuttz.lol
+    - this is Ennui, a new MUD engine written in Rust
+    - if you see any room for improvement, please don't hesitate to contact me at peepee@poobuttz.lol
+    - if you think this is worth developing further, consider developing it with me
+    - to create your own world, contact me and I can show you how to build a map
+  name: The Game Driver
+  handle: ["driver", "game", "gamedriver"]
+  description:
+    I wouldn't try to mess with him. He's big and bulky. But very friendly!
+  display:
+    The Game Driver is here, casually reading a book while causing you to be.
+  loc: [0, 0]
+
+- ai_type: Walker
+  name: An idiot
+  handle: ["idiot"]
+  description:
+    What an idiot
+  display:
+    An idiot is here, wandering around, getting lost.
+  loc: [0, 1]
+
+- ai_type: Walker
+  name: Mitchell
+  handle: ["mitchell", "mitch", "cat"]
+  description:
+    With the gaze and ferocity of a panther, Mitchell the cat is as Rilke describes--
+
+
+    Only at times the pupil’s curtain slides
+
+    up soundlessly — . An image enters then,
+
+    goes through the tensioned stillness of the limbs —
+
+    and in the heart ceases to be.
+
+
+  display:
+    Short, dark and handsome, Mitchell the cat is here.
+  loc: [0, 1]
