@@ -1,5 +1,5 @@
 use crate::map::Locate;
-use crate::player::{PlayerType as BarePlayer, Uuid};
+use crate::player::{PlayerType as BarePlayer, Uuid, ConnectionStatus};
 
 use std::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::{Arc, Mutex};
@@ -112,6 +112,7 @@ impl Fight for Arc<Mutex<BasicFight>> {
     }
 
     fn end(&mut self) {
+        eprintln!("fight ended: {}", std::backtrace::Backtrace::capture());
         let cl = self.clone();
         let mut cl = cl.lock().unwrap();
         let x = cl.ended.get_mut();
@@ -203,6 +204,7 @@ fn handle_receiver(
             Ok(_r) => {
                 eprintln!("fight concluded");
                 eprintln!("in file {} on line number {}", file!(), line!());
+                eprintln!("backtrace:\n{}", std::backtrace::Backtrace::capture());
             }
             Err(e) => {
                 fight.clone().end();
@@ -258,16 +260,19 @@ fn handle_fight(
         eprintln!("in file {} on line number {}", file!(), line!());
 
         if ended {
+            eprintln!("fight break in file {} on line number {}", file!(), line!());
             break;
         }
 
         if a_loc != b_loc {
+            eprintln!("fight break in file {} on line number {}", file!(), line!());
             fight.end();
             break;
         }
 
         a_loc = pa.loc();
         if a_loc != b_loc {
+            eprintln!("fight break in file {} on line number {}", file!(), line!());
             fight.end();
             break;
         }
@@ -287,11 +292,13 @@ fn handle_fight(
         eprintln!("in file {} on line number {}", file!(), line!());
 
         if ended {
+            eprintln!("fight break in file {} on line number {}", file!(), line!());
             break;
         }
 
         b_loc = pb.loc();
         if a_loc != b_loc {
+            eprintln!("fight break in file {} on line number {}", file!(), line!());
             fight.end();
             break;
         }
@@ -312,6 +319,7 @@ fn handle_fight(
         )?;
 
         if a_loc != b_loc {
+            eprintln!("a loc: {:?}, b loc: {:?}", a_loc, b_loc);
             fight.end();
             break;
         }
@@ -331,7 +339,7 @@ fn fight_logic(
     starter: Starter,
 ) -> Result<(), String> {
     let mut player = player.lock().unwrap();
-    if !player.is_connected() {
+    if let ConnectionStatus::Disconnected = player.is_connected() {
         cl.end();
     }
 
@@ -364,7 +372,9 @@ fn fight_logic(
                 ),
             },
         ))
-        .map_err(|_| format!("player {} write error", aid))?;
+        .map_err(|_| {
+            format!("player {} write error", aid)
+        })?;
 
     if player.hp() <= 0 {
         if let BarePlayer::Npc(ref mut npc) = *player {

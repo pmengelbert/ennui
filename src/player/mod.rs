@@ -414,8 +414,16 @@ impl PlayerType {
             .map(|s| s.try_clone().unwrap())
     }
 
-    pub fn is_connected(&self) -> bool {
-        self.safe_unwrap().stream.is_some()
+    pub fn is_connected(&self) -> ConnectionStatus {
+        match self {
+            PlayerType::Npc(_) => ConnectionStatus::Npc,
+            PlayerType::Human(p) => if p.stream.is_some() {
+                ConnectionStatus::Connected
+            } else {
+                ConnectionStatus::Disconnected
+            },
+            PlayerType::Dummy(_) => ConnectionStatus::None,
+        }
     }
 
     pub fn drop_stream(&mut self) {
@@ -433,6 +441,13 @@ impl PlayerType {
         }
         Ok(())
     }
+}
+
+pub enum ConnectionStatus {
+    Npc,
+    Connected,
+    Disconnected,
+    None,
 }
 
 #[cfg(not(target_arch = "wasm32"))]
