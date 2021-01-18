@@ -11,8 +11,8 @@ use rand::Rng;
 use crate::error::EnnuiError;
 use crate::error::EnnuiError::{Fatal, Lesser};
 use crate::fight::FightMessage;
-use crate::text::channel::{DiscreteMessage, GameActor};
-use crate::game::util::{load_rooms, resolve_handle};
+use crate::text::channel::{DiscreteMessage};
+use crate::game::util::{load_rooms};
 use crate::interpreter::CommandQuality::{Awake, Motion};
 use crate::interpreter::{CommandKind, CommandMessage, Interpreter};
 use crate::item::list::ListTrait;
@@ -254,7 +254,7 @@ impl Game {
         let loc = &p.lock().unwrap().loc();
         let room = self.rooms.get(loc)?;
 
-        Some(if let Some(item) = room.get_item((handle.into())) {
+        Some(if let Some(item) = room.get_item(handle.into()) {
             let mut s = item.description();
             if let Item::Container(lst) = item {
                 s.push_str(&format!("\nthe {} is holding:\n", item.name()));

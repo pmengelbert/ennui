@@ -85,7 +85,7 @@ impl Hook {
 macro_rules! handle {
     ( $( $name:ident ),* ) => {
         {
-            let mut h: Handle = Handle(Vec::new());
+            let mut h: Hook = Hook(Vec::new());
             $( h.push(stringify!($name).to_owned()); )*
             h
         }
