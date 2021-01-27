@@ -16,6 +16,7 @@ pub fn random_insult() -> String {
     .to_owned()
 }
 
+#[cfg(feature = "game")]
 pub fn load_rooms(rooms: &mut RoomList) -> GameResult<()> {
     let bytes = include_bytes!("../../../data/map.cbor");
     let v: Vec<Room> = serde_cbor::from_slice(bytes)?;

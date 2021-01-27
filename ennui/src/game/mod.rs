@@ -12,6 +12,8 @@ use rand::Rng;
 use crate::error::EnnuiError;
 use crate::error::EnnuiError::{Fatal, Lesser};
 use crate::fight::FightMessage;
+
+#[cfg(feature = "game")]
 use crate::game::util::load_rooms;
 use crate::interpreter::CommandQuality::{Awake, Motion};
 use crate::interpreter::{CommandKind, CommandMessage, Interpreter};
@@ -69,6 +71,7 @@ pub struct Game {
 }
 
 impl Game {
+    #[cfg(feature = "game")]
     pub fn new() -> GameResult<Self> {
         let (players, mut rooms) = (HashMap::new(), RoomList::default());
 

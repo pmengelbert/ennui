@@ -1,4 +1,4 @@
-.PHONY: server ennui clean pi wasmserver serve rebuild-map
+.PHONY: server ennui clean pi wasmserver serve rebuild-map convert
 
 TARGET = x86_64-unknown-linux-gnu
 MAPFILE = sample.yaml
@@ -6,7 +6,7 @@ NPCFILE = npcs.yaml
 OUTFILE = data/map.cbor
 
 target/release/ennui: data/map.cbor data/npc.cbor
-	cargo +nightly build --release
+	cd ennui && cargo +nightly build --release
 
 ennui: target/release/ennui
 
@@ -16,10 +16,12 @@ clean:
 	rm target/release/server || true
 	rm -rf data || true
 
+convert: target/release/convert
+
 target/release/convert:
 	if ! test -f data/map.cbor; then touch data/map.cbor; fi
 	if ! test -f data/npc.cbor; then touch data/npc.cbor; fi
-	cargo +nightly build --release --bin convert
+	cd ennui/convert && cargo +nightly build --release
 
 data/map.cbor: data target/release/convert
 	target/release/convert map $(MAPFILE) $(OUTFILE)
@@ -39,14 +41,14 @@ pi: data/map.cbor
 	cargo +nightly build --release --target armv7-unknown-linux-gnueabihf
 
 wasmserver: web/node_modules data/map.cbor
-	cd web && npm run build
-	cd web && cp index.html dist/index.html
+	cd ennui/web && npm run build
+	cd ennui/web && cp index.html dist/index.html
 
 serve: wasmserver
-	python3 -m http.server --directory web/dist --bind 100.106.254.52 8000
+	python3 -m http.server --directory ennui/web/dist --bind 100.106.254.52 8000
 
 web/node_modules:
-	npm install
+	cd ennui/web && npm install
 
 rebuild-map:
 	rm data/map.cbor || true
