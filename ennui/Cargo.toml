@@ -6,8 +6,9 @@ edition = "2018"
 default-run = "ennui"
 
 [features]
-default = ["game"]
-game = []
+default = ["map"]
+map = []
+maponly = []
 
 
 [lib]
