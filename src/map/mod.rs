@@ -22,6 +22,7 @@ type StateResult<T> = Result<(), T>;
 
 #[derive(Default, Serialize, Deserialize, Debug)]
 pub struct Room {
+    #[serde(flatten)]
     info: Description,
     loc: Coord,
     #[serde(default)]

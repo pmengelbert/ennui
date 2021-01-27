@@ -49,6 +49,6 @@ web/node_modules:
 	npm install
 
 rebuild-map:
-	rm data/map.cbor
-	rm target/release/server
+	rm data/map.cbor || true
+	rm target/release/server || true
 	make target/release/server

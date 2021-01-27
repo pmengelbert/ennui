@@ -417,11 +417,13 @@ impl PlayerType {
     pub fn is_connected(&self) -> ConnectionStatus {
         match self {
             PlayerType::Npc(_) => ConnectionStatus::Npc,
-            PlayerType::Human(p) => if p.stream.is_some() {
-                ConnectionStatus::Connected
-            } else {
-                ConnectionStatus::Disconnected
-            },
+            PlayerType::Human(p) => {
+                if p.stream.is_some() {
+                    ConnectionStatus::Connected
+                } else {
+                    ConnectionStatus::Disconnected
+                }
+            }
             PlayerType::Dummy(_) => ConnectionStatus::None,
         }
     }
