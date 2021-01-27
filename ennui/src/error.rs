@@ -1,4 +1,3 @@
-use serde::export::Formatter;
 use std::error;
 
 #[derive(Debug)]
@@ -24,7 +23,7 @@ pub enum EnnuiError {
 }
 
 impl std::fmt::Display for EnnuiError {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             EnnuiError::Unidentified => write!(f, "Source contains no data"),
             EnnuiError::NoneFound(ref _err) => write!(f, "None error encountered"),

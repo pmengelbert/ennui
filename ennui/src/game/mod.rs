@@ -1,3 +1,4 @@
+#![cfg(feature = "game")]
 use std::backtrace::Backtrace;
 use std::borrow::Cow;
 use std::collections::HashMap;
@@ -224,7 +225,10 @@ impl Game {
                     .unwrap_or_default();
                 let res = s.shutdown(std::net::Shutdown::Both);
                 if res.is_err() {
-                    eprintln!("error shutting down socket: {}", std::backtrace::Backtrace::capture());
+                    eprintln!(
+                        "error shutting down socket: {}",
+                        std::backtrace::Backtrace::capture()
+                    );
                 }
             }
         }

@@ -1,4 +1,3 @@
-use serde::export::fmt::Debug;
 use serde::{Deserialize, Serialize};
 
 use YamlItem::*;
@@ -15,7 +14,7 @@ pub mod handle;
 pub mod key;
 pub mod list;
 
-pub trait Describe: Send + Sync + Debug + Attribute<Quality> {
+pub trait Describe: Send + Sync + std::fmt::Debug + Attribute<Quality> {
     fn name(&self) -> String;
     fn display(&self) -> String;
     fn description(&self) -> String;

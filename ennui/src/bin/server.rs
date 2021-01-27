@@ -240,7 +240,7 @@ fn get_and_set_player_name(p: u128, g: Arc<Mutex<Game>>) -> std::io::Result<()> 
 }
 
 fn load_npcs() -> GameResult<Vec<PlayerType>> {
-    let bytes = include_bytes!("../../data/npc.cbor");
+    let bytes = include_bytes!("../../../data/npc.cbor");
     let v: Vec<YamlPlayer> = serde_cbor::from_slice(bytes)?;
     let mut ret: Vec<PlayerType> = vec![];
 
