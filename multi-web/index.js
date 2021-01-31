@@ -14,12 +14,6 @@ function run(srv, port) {
 	  return convert.toHtml(s);
 	}
 
-  if (process.env.ENVIRONMENT === "production") {
-    app.get('*', (req, resp) => {
-      resp.redirect("https://" + req.headers.host + req.url);
-    });
-  }
-
 	app.get('/', (req, res) => {
 	  res.sendFile(__dirname + '/index.html');
 	});
@@ -69,8 +63,8 @@ function run(srv, port) {
 }
 
 if (process.env.ENVIRONMENT === "production") {
-	const privateKey = fs.readFileSync('/etc/letsencrypt/live/ennuimud.org/privkey.pem', 'utf8');
-	const certificate = fs.readFileSync('/etc/letsencrypt/live/ennuimud.org/fullchain.pem', 'utf8');
+	const privateKey = fs.readFileSync('/etc/letsencrypt/live/poobuttz.lol/privkey.pem', 'utf8');
+	const certificate = fs.readFileSync('/etc/letsencrypt/live/poobuttz.lol/fullchain.pem', 'utf8');
 	const credentials = {key: privateKey, cert: certificate};
 	const httpsServer = https.createServer(credentials, app);
 	run(httpsServer, 443);
