@@ -63,8 +63,13 @@ function run(srv, port) {
 }
 
 if (process.env.ENVIRONMENT === "production") {
-	const privateKey = fs.readFileSync('/etc/letsencrypt/live/poobuttz.lol/privkey.pem', 'utf8');
-	const certificate = fs.readFileSync('/etc/letsencrypt/live/poobuttz.lol/fullchain.pem', 'utf8');
+  const httpApp = require('express')();
+  httpApp.all('*', (req, res) => res.redirect(301, 'https://ennuimud.org'));
+  const httpServer = require('http').createServer(httpApp);
+  httpServer.listen(80, () => console.log('listening http too...'));
+
+	const privateKey = fs.readFileSync('/etc/letsencrypt/live/ennuimud.org/privkey.pem', 'utf8');
+	const certificate = fs.readFileSync('/etc/letsencrypt/live/ennuimud.org/fullchain.pem', 'utf8');
 	const credentials = {key: privateKey, cert: certificate};
 	const httpsServer = https.createServer(credentials, app);
 	run(httpsServer, 443);
