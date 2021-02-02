@@ -41,6 +41,7 @@ pub enum CommandKind {
     Sleep,
     Stand,
     Wake,
+    Who,
     Quit,
     // not yet implemented
     #[allow(dead_code)]
@@ -116,6 +117,7 @@ impl Interpreter {
             s if sw(s, "sleep") => Sleep,
             s if sw(s, "stand") => Stand,
             s if sw(s, "wake") => Wake,
+            s if sw(s, "who") => Who,
             s if sw(s, "hit") => Hit,
             s if sw(s, "kill") => Hit,
             s if sw(s, "quit") => Quit,
@@ -126,10 +128,10 @@ impl Interpreter {
     pub fn insert<F: 'static>(&mut self, c: &str, f: F)
     where
         F: Fn(
-            &mut Game,
-            u128,
-            &[&str],
-        ) -> Result<(Box<dyn Messenger>, Box<dyn Message>), EnnuiError>
+                &mut Game,
+                u128,
+                &[&str],
+            ) -> Result<(Box<dyn Messenger>, Box<dyn Message>), EnnuiError>
             + Send
             + Sync,
     {

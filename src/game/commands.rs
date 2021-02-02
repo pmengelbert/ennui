@@ -9,7 +9,7 @@ use crate::map::door::{Door, DoorState, Lock, ObstacleState};
 use crate::text::message::{Audience, Msg};
 
 use crate::fight::{BasicFight, Fight, FightInfo, FightMod};
-use crate::text::Color::{Green, Red};
+use crate::text::Color::{Green, Red, Yellow};
 use std::ops::DerefMut;
 use std::sync::mpsc::channel;
 use std::time::Duration;
@@ -520,6 +520,32 @@ pub fn fill_interpreter(i: &mut Interpreter) {
         let aud = u;
         let msg = g.list_inventory(u)?;
         message(aud, msg)
+    });
+
+    i.insert("who", |g, u, _| {
+        let template = "PLAYERS\n-------";
+
+        let mut msg = String::from(template);
+        g.players
+            .iter()
+            .filter_map(|(_, p)| {
+                let conditions = {
+                    let q = p.lock().unwrap();
+                    q.uuid() != u && matches!(&*q, PlayerType::Human(_))
+                };
+
+                if conditions {
+                    Some(p.name().color(Yellow))
+                } else {
+                    None
+                }
+            })
+            .for_each(|s| {
+                msg.push('\n');
+                msg.push_str(&s);
+            });
+
+        message(u, msg)
     });
 
     i.insert("", |_, _, _| message(0, ""));
