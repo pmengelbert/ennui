@@ -26,15 +26,27 @@ impl DB {
 
     pub fn helpfile(&mut self, name: &str) -> Result<String, Box<dyn std::error::Error>> {
         let it = self.conn.query(
-            "SELECT title FROM ennui.help WHERE $1 = ANY(hook)",
+            "SELECT title, description FROM ennui.help WHERE $1 = ANY(hook)",
             &[&name],
         )?;
-        let data: &str = match it.get(0) {
+
+        let title: &str = match it.get(0) {
             Some(row) => row,
             None => Err(DBError::NoRows)?,
         }
         .get(0);
-        Ok(data.to_owned())
+
+        let desc: &str = match it.get(0) {
+            Some(row) => row,
+            None => Err(DBError::NoRows)?,
+        }
+        .get(1);
+
+        let mut ret = String::from(title);
+        ret.push_str("\n\n");
+        ret.push_str(desc);
+
+        Ok(ret)
     }
 }
 
@@ -49,14 +61,16 @@ mod db_test {
         let result = db.helpfile("look");
         assert!(dbg!(&result).is_ok());
         let result = result.unwrap();
-        assert_eq!(result, "the look command");
+        assert!(result.starts_with("LOOK"));
 
-        let result2 = db.helpfile("loo");
+        let result2 = db.helpfile("examine");
         assert!(dbg!(&result2).is_ok());
         let result2 = result2.unwrap();
         assert_eq!(result, result2);
 
         let bad = db.helpfile("butts");
         assert!(bad.is_err());
+
+        println!("{}", result2);
     }
 }

@@ -548,6 +548,17 @@ pub fn fill_interpreter(i: &mut Interpreter) {
         message(u, msg)
     });
 
+    i.insert("help", |_, u, a| {
+        let mut db = crate::db::DB::new().expect("UNABLE TO CONNECT TO DB");
+
+        let s: String = match a.len() {
+            1 => db.helpfile(a[0]).unwrap(),
+            _ => "not sure what you mean".into(),
+        };
+
+        message(u, s)
+    });
+
     i.insert("", |_, _, _| message(0, ""));
 
     i.insert("none", |_, u, _| message(u, random_insult()));
