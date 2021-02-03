@@ -2,6 +2,7 @@
 #![feature(assoc_char_funcs)]
 #![feature(backtrace)]
 
+mod db;
 pub mod error;
 pub mod fight;
 pub mod game;
