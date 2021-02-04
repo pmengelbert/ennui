@@ -1,4 +1,4 @@
-.PHONY: server ennui clean pi wasmserver serve rebuild-map
+.PHONY: server ennui clean pi wasmserver serve rebuild-map convert build-and-push docker-build up
 
 TARGET = x86_64-unknown-linux-gnu
 MAPFILE = sample.yaml
@@ -15,6 +15,8 @@ clean:
 	rm target/release/ennui || true
 	rm target/release/server || true
 	rm -rf data || true
+
+convert: target/release/convert
 
 target/release/convert:
 	if ! test -f data/map.cbor; then touch data/map.cbor; fi
@@ -52,3 +54,15 @@ rebuild-map:
 	rm data/map.cbor || true
 	rm target/release/server || true
 	make target/release/server
+
+build-and-push: docker-build
+	docker push bundle.bar/u/pmengelbert/ennui:latest
+
+docker-build:
+	docker build -t bundle.bar/u/pmengelbert/ennui:latest .
+
+up:
+	scripts/up.sh
+
+down:
+	docker-compose down

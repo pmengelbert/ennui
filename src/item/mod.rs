@@ -1,5 +1,5 @@
-use serde::export::fmt::Debug;
 use serde::{Deserialize, Serialize};
+use std::fmt::Debug;
 
 use YamlItem::*;
 

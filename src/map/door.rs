@@ -7,11 +7,10 @@ use crate::map::coord::Coord;
 use crate::map::direction::MapDir;
 use crate::map::door::DoorState::{Locked, Open};
 use crate::map::StateResult;
-use serde::export::Formatter;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::error::Error;
-use std::fmt::Debug;
+use std::fmt::{Debug, Display, Formatter};
 
 use std::option::NoneError;
 
