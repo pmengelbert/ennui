@@ -554,17 +554,22 @@ pub fn fill_interpreter(i: &mut Interpreter) {
             Err(e) => {
                 eprintln!("{}", e);
                 print_err(fatal("db problem"));
-                return Err(fatal("db problem"));
+                return message(u, "There was an error with the database. Please file an issue at github.com/pmengelbert/ennui, or email peter@engelbert.dev");
             }
         };
 
         let s: String = match a.len() {
             1 => db.helpfile(a[0]).unwrap_or_else(|e| {
                 eprintln!("{}", e);
-                print_err(fatal("db problem"));
-                format!("database problem")
+                print_err(fatal("dbproblem"));
+                format!("There was an error with the database. Please file an issue at github.com/pmengelbert/ennui, or email peter@engelbert.dev")
             }),
-            _ => "not sure what you mean".into(),
+            0 => db.helpfile("commands").unwrap_or_else(|e| {
+                eprintln!("{}", e);
+                print_err(fatal("dbproblem"));
+                format!("There was an error with the database. Please file an issue at github.com/pmengelbert/ennui, or email peter@engelbert.dev")
+            }),
+            _ => "Usage: help <command>".into(),
         };
 
         message(u, s)

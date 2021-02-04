@@ -1,0 +1,178 @@
+LOOK,"{look, examine"},"
+Usage: look
+       look [at] <item>
+
+Anything in [] brackets is optional and usually omitted.
+
+For studying your surroundings.
+
+Examples:
+
+    > look
+    > look at angel
+
+Note that if you LOOK CORPSE, you will see its inventory."
+COMMANDS,"{command, commands, cmd}","The following is a list of valid commands:
+look,
+take,
+get,
+wear,
+remove,
+drop,
+give,
+say,
+chat,
+evaluate, // i.e. show your stats
+open,
+unlock,
+hit,
+sleep,
+wake,
+stand,
+north,
+south,
+east,
+west,
+who,
+help,
+inventory,
+quit"
+GET,"{get, take}","Usage:  get <item>
+        get <item> <container>
+
+For taking items from your surroundings.
+
+Examples:
+
+    > get sword
+    > get key corpse"
+WEAR,{wear},"Usage: wear <item>
+
+For wearing gear.
+
+Examples:
+
+    > wear codpiece"
+REMOVE,"{remove}","Usage:   remove <item>
+
+Take off a piece of clothing.
+
+Examples:
+
+    > remove codpiece"
+DROP,{drop},"Usage:   drop <item>
+
+Drop an item.
+
+Examples:
+    > drop sword"
+GIVE,"{give}","Usage: give <item> <other_player>
+
+Hand an item over to another player, whether NPC or human.
+
+Examples:
+    > give codpiece guard.
+
+NOTE: the object you are giving always comes before the person you are giving it to."
+SAY,"{say}","Usage: say <text that you want to say>
+
+Chat with other players in the same room.
+
+Examples:
+    > say hey there, what's up?
+    
+To talk to all players in the game, use CHAT.
+
+SEE ALSO: CHAT"
+CHAT,"{chat}","Usage: chat <text you wish to chat>
+
+Broadcasts your mouth words to all other players in the game.
+
+Examples:
+    > chat hey all, what's new?
+
+To speak to only the characters in your room, use SAY.
+
+SEE ALSO: SAY"
+EVALUATE,"{ev, eval, evaluate}","Usage: evaluate
+
+Show the current state of your skills and character.
+
+Examples:
+    evaluate"
+OPEN,"{open}","Usage:  open <object>
+        open <door> <direction>
+
+Open a door or any other closed object.
+
+Examples:
+    > open chest
+    > open door     // works if there is only one door
+    > open door n   // if there are multiple doors, you must specify which to open"
+UNLOCK,"{unlock}","Usage:  unlock <object>
+        unlock <door> <direction>
+
+Unlock a door or any other locked object.
+
+Examples:
+    > unlock chest
+    > unlock door     // works if there is only one door
+    > unlock door n   // if there are multiple doors, you must specify which to unlock"
+HIT,"{hit}","Usage: hit <player>
+
+Hit a player or NPC, thus beginning a fight.
+
+Examples:
+    > hit idiot"
+SLEEP,"{sleep}","Usage: sleep
+
+Puts you to sleep. In the future, this will speed health regeneration.
+
+Examples:
+    > sleep
+
+SEE ALSO: WAKE"
+WAKE,"{wake}","Usage: wake
+
+Wakes you up from sleep, and leaves you in a seated state.
+
+Examples:
+    > wake
+
+SEE ALSO: SLEEP, STAND"
+STAND,"{stand}","Usage: stand
+
+Stand up from a seated position.
+
+Examples:
+    > stand"
+MOVEMENT,"{north, n, south, s, east, e, west,w }","Usage: <direction>
+
+Moves your character around the map.
+
+Examples:
+    > north
+    > s         // moves south
+    > east
+    > w         // moves west"
+WHO,"{who}","Usage: who
+
+Displays all the human players currently logged in.
+
+Examples:
+    > who"
+INVENTORY,"{inv, inventory}","Usage: inventory
+
+Displays the items you are currently holding.
+
+Examples:
+    > inv
+    > inventory"
+QUIT,"{quit}","Usage: quit
+
+Exits the game and closes the connection.
+
+Examples:
+    > quit
+
+NOTE: At present, your data will not persist between sessions."
