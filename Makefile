@@ -61,7 +61,7 @@ build-and-push: docker-build
 docker-build:
 	docker build -t bundle.bar/u/pmengelbert/ennui:latest .
 
-up:
+up: down
 	scripts/up.sh
 
 down:

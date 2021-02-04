@@ -8,7 +8,7 @@ docker-compose up -d
 docker-compose logs -f &
 trap "docker-compose down --remove-orphans" EXIT
 
-( sleep 2 && PGPASSWORD=password123 psql -U postgres -h localhost -f ./populate.sql -x )
+( sleep 5 && PGPASSWORD=password123 psql -U postgres -h localhost -f ./populate.sql -x )
 
 while :
 do
