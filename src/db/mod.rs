@@ -26,7 +26,9 @@ impl DB {
 
     pub fn helpfile(&mut self, name: &str) -> Result<String, Box<dyn std::error::Error>> {
         let it = self.conn.query(
-            "SELECT title, description FROM ennui.help WHERE $1 = ANY(hook)",
+            "SELECT title, description \
+                FROM ennui.help \
+                WHERE $1 = ANY(hook)",
             &[&name],
         )?;
 

@@ -1,4 +1,4 @@
-.PHONY: server ennui clean pi wasmserver serve rebuild-map
+.PHONY: server ennui clean pi wasmserver serve rebuild-map convert
 
 TARGET = x86_64-unknown-linux-gnu
 MAPFILE = sample.yaml
@@ -15,6 +15,8 @@ clean:
 	rm target/release/ennui || true
 	rm target/release/server || true
 	rm -rf data || true
+
+convert: target/release/convert
 
 target/release/convert:
 	if ! test -f data/map.cbor; then touch data/map.cbor; fi
