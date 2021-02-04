@@ -62,6 +62,7 @@ docker-build:
 	docker build -t bundle.bar/u/pmengelbert/ennui:latest .
 
 up: down
+	docker-compose pull ennui
 	scripts/up.sh
 
 down:

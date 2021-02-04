@@ -8,7 +8,10 @@ services:
   postgres:
     image: 'postgres'
     volumes: ['postgres:/var/lib/postgresql/data']
-    env_file: ['./postgres.env']
+    environment:
+      - 'POSTGRES_DB=postgres'
+      - 'POSTGRES_USER=postgres'
+      - 'POSTGRES_PASSWORD=password123'
     ports: ['5432:5432']
 
   ennui:

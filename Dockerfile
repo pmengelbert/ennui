@@ -11,9 +11,8 @@ COPY npcs.yaml /home/rust/src/npcs.yaml
 COPY Cargo.toml /home/rust/src/Cargo.toml
 COPY Cargo.lock /home/rust/src/Cargo.lock
 COPY Makefile /home/rust/src/Makefile
-RUN sed -Ei 's/([^-])release/\1x86_64-unknown-linux-musl\/release/g' Makefile
+RUN sed -Ei 's/release\//x86_64-unknown-linux-musl\/release\//g' Makefile
 
-RUN make convert
 RUN make server
 
 FROM scratch
