@@ -14,8 +14,6 @@ COPY Makefile /home/rust/src/Makefile
 RUN sed -Ei 's/([^-])release/\1x86_64-unknown-linux-musl\/release/g' Makefile
 
 RUN make convert
-RUN ls target
-RUN ls target/release
 RUN make server
 
 FROM scratch

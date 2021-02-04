@@ -20,7 +20,7 @@ pub struct DB {
 impl DB {
     pub fn new() -> Result<Self, postgres::Error> {
         Ok(Self {
-            conn: Client::connect("host=localhost user=pme dbname=exercises", NoTls)?,
+            conn: Client::connect("host=postgres user=postgres password=password123", NoTls)?,
         })
     }
 

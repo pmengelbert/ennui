@@ -549,10 +549,21 @@ pub fn fill_interpreter(i: &mut Interpreter) {
     });
 
     i.insert("help", |_, u, a| {
-        let mut db = crate::db::DB::new().expect("UNABLE TO CONNECT TO DB");
+        let mut db = match crate::db::DB::new() {
+            Ok(db) => db,
+            Err(e) => {
+                eprintln!("{}", e);
+                print_err(fatal("db problem"));
+                return Err(fatal("db problem"));
+            }
+        };
 
         let s: String = match a.len() {
-            1 => db.helpfile(a[0]).unwrap(),
+            1 => db.helpfile(a[0]).unwrap_or_else(|e| {
+                eprintln!("{}", e);
+                print_err(fatal("db problem"));
+                format!("database problem")
+            }),
             _ => "not sure what you mean".into(),
         };
 
