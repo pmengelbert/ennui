@@ -44,9 +44,6 @@ wasmserver: web/node_modules data/map.cbor
 	cd web && npm run build
 	cd web && cp index.html dist/index.html
 
-serve: wasmserver
-	python3 -m http.server --directory web/dist --bind 100.106.254.52 8000
-
 web/node_modules:
 	npm install
 
