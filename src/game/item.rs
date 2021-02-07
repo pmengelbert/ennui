@@ -1,6 +1,8 @@
 use crate::game::{fatal, Game};
 
-use crate::item::{Attribute, Describe, Item, Quality};
+use crate::attribute::Attribute;
+use crate::describe::Describe;
+use crate::item::{Item, Quality};
 use crate::map::coord::Coord;
 use crate::map::list::RoomList;
 use crate::player::list::PlayerList;
@@ -163,7 +165,7 @@ impl Game {
                             )))
                         }
                     },
-                    Some(Item::Container(cont)) => match cont.insert_item(item) {
+                    Some(Item::Container(_, cont)) => match cont.insert_item(item) {
                         Ok(()) => Ok(format!("you give them a {}", handle)),
                         Err(given_back) => {
                             players

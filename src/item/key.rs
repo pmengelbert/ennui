@@ -1,8 +1,10 @@
-use crate::item::handle::Hook;
-use crate::item::{Attribute, Describe, Description, Quality};
+use crate::attribute::Attribute;
+use crate::describe::{Describe, Description};
+use crate::gram_object::Hook;
+use crate::item::Quality;
 use std::fmt::Debug;
 
-pub trait Key<T>: Describe + Debug {
+pub trait Key<T>: Describe + Debug + Attribute<Quality> {
     fn key(&self) -> T;
 }
 
@@ -10,15 +12,12 @@ pub trait Key<T>: Describe + Debug {
 pub struct KeyType {
     info: Description,
     key: u64,
+    attr: Vec<super::Quality>,
 }
 
 impl KeyType {
     pub fn set_key(&mut self, key: u64) {
         self.key = key
-    }
-
-    pub fn add_quality(&mut self, q: Quality) {
-        self.info.attributes.push(q);
     }
 }
 
@@ -42,22 +41,30 @@ impl Describe for KeyType {
 
 impl Attribute<Quality> for KeyType {
     fn attr(&self) -> Vec<Quality> {
-        self.info.attributes.clone()
+        self.attr.clone()
     }
 
     fn set_attr(&mut self, q: Quality) {
-        self.info.set_attr(q);
+        self.attr.set_attr(q);
     }
 
     fn unset_attr(&mut self, q: Quality) {
-        self.info.unset_attr(q);
-        todo!()
+        self.attr.unset_attr(q);
     }
 }
 
-impl From<Description> for KeyType {
-    fn from(b: Description) -> Self {
-        Self { info: b, key: 0 }
+impl From<super::Item2> for KeyType {
+    fn from(b: super::Item2) -> Self {
+        Self {
+            info: Description {
+                name: b.name(),
+                display: b.display(),
+                description: b.description(),
+                handle: b.handle(),
+            },
+            key: 0,
+            attr: vec![super::Quality::Key],
+        }
     }
 }
 

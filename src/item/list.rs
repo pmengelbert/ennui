@@ -1,10 +1,12 @@
+use crate::attribute::Attribute;
+use crate::describe::{Describe, Description};
 use crate::error::CmdErr::ItemNotFound;
 use crate::error::EnnuiError;
 use crate::error::EnnuiError::{Fatal, Simple};
-use crate::item::handle::{Grabber, Hook};
+use crate::gram_object::{Grabber, Hook};
 use crate::item::key::KeyType;
 use crate::item::YamlItem::{Clothing, Container, Edible, Holdable, Key, Scenery, Weapon};
-use crate::item::{Attribute, Describe, Description, Item, Quality, YamlItem, YamlItemList};
+use crate::item::{Item, Quality, YamlItem, YamlItemList};
 use crate::map::door::RenaissanceGuard;
 use crate::text::message::MessageFormat;
 use crate::text::Color::Green;
@@ -46,7 +48,8 @@ pub trait ListTrait: Describe + Debug {
 #[derive(Default, Debug)]
 pub struct ItemList {
     inner: Vec<Item>,
-    info: YamlItem,
+    info: Description,
+    attr: Vec<Quality>,
 }
 
 impl Describe for ItemList {
@@ -69,15 +72,15 @@ impl Describe for ItemList {
 
 impl Attribute<Quality> for ItemList {
     fn attr(&self) -> Vec<Quality> {
-        self.info.attr()
+        self.attr.clone()
     }
 
     fn set_attr(&mut self, q: Quality) {
-        self.info.set_attr(q)
+        self.attr.set_attr(q)
     }
 
     fn unset_attr(&mut self, q: Quality) {
-        self.info.unset_attr(q);
+        self.attr.unset_attr(q);
     }
 }
 
@@ -123,13 +126,15 @@ impl ItemList {
         Self {
             inner: vec![],
             info: Default::default(),
+            attr: vec![super::Quality::Container],
         }
     }
 
     pub fn new_with_info(info: Description) -> Self {
         Self {
             inner: vec![],
-            info: YamlItem::Holdable(info),
+            attr: vec![super::Quality::Container],
+            info,
         }
     }
 }
@@ -187,10 +192,13 @@ impl From<YamlItemList> for ItemList {
     }
 }
 
-fn conv_desc(d: &mut Description, q: Quality) -> Box<dyn Describe> {
-    let mut new = d.clone();
-    new.attributes.push(q);
-    Box::new(new)
+fn conv_desc(d: &mut super::Item2, q: Quality) -> super::Item2 {
+    let mut info = d.clone();
+    let mut attr = vec![q];
+    super::Item2 {
+        info: info.info,
+        attr,
+    }
 }
 
 fn conv(list: &mut YamlItemList) -> ItemList {
@@ -202,25 +210,30 @@ fn conv(list: &mut YamlItemList) -> ItemList {
             Scenery(i) => Item::Scenery(conv_desc(i, Quality::Scenery)),
             Edible(i) => Item::Edible(conv_desc(i, Quality::Edible)),
             Holdable(i) => Item::Holdable(conv_desc(i, Quality::Holdable)),
-            Container(ref mut listy) => Item::Container(Box::new(conv(listy))),
+            Container(ref mut listy) => Item::Container(
+                super::Item2 {
+                    info: listy.info.info.clone(),
+                    attr: vec![Quality::Container],
+                },
+                Box::new(conv(listy)),
+            ),
             YamlItem::Guard {
                 dir, info, lock, ..
             } => {
                 let mut g: RenaissanceGuard = take(info).into();
                 g.lock = *lock;
-                g.info.attributes.push(Quality::Container);
                 Item::Guard(*dir, Box::new(g))
             }
             Key(n, item) => {
                 let i = take(item);
                 let mut k: KeyType = i.into();
                 k.set_key(*n);
-                k.add_quality(Quality::Key);
+                k.set_attr(Quality::Key);
                 Item::Key(Box::new(k))
             }
         };
         ret.push(i);
     }
-    ret.info = Clothing(list.info.clone());
+    ret.info = list.info.info.clone();
     ret
 }

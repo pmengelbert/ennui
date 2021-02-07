@@ -1,8 +1,10 @@
+use crate::attribute::Attribute;
+use crate::describe::{Describe, Description};
 use crate::error::EnnuiError;
-use crate::item::handle::{Grabber, Hook};
+use crate::gram_object::{Grabber, Hook};
 use crate::item::key::Key;
 use crate::item::list::{ItemList, ListTrait};
-use crate::item::{Attribute, Describe, Description, Item, Quality};
+use crate::item::{Item, Quality};
 use crate::map::coord::Coord;
 use crate::map::direction::MapDir;
 use crate::map::door::DoorState::{Locked, Open};
@@ -85,10 +87,15 @@ impl Clone for RenaissanceGuard {
     }
 }
 
-impl From<Description> for RenaissanceGuard {
-    fn from(b: Description) -> Self {
+impl From<crate::item::Item2> for RenaissanceGuard {
+    fn from(b: crate::item::Item2) -> Self {
         Self {
-            info: b,
+            info: Description {
+                name: b.name(),
+                description: b.description(),
+                display: b.display(),
+                handle: b.handle(),
+            },
             ..Self::default()
         }
     }
@@ -121,15 +128,15 @@ impl Describe for RenaissanceGuard {
 
 impl Attribute<Quality> for RenaissanceGuard {
     fn attr(&self) -> Vec<Quality> {
-        self.info.attributes.clone()
+        self.items.attr()
     }
 
     fn set_attr(&mut self, q: Quality) {
-        self.info.set_attr(q);
+        self.items.set_attr(q);
     }
 
     fn unset_attr(&mut self, q: Quality) {
-        self.info.unset_attr(q);
+        self.items.unset_attr(q);
     }
 }
 
@@ -178,7 +185,7 @@ impl Lock<GuardState> for RenaissanceGuard {
     }
 }
 
-pub trait Guard: Lock<GuardState> + ListTrait<Kind = ItemList> {}
+pub trait Guard: Lock<GuardState> + ListTrait<Kind = ItemList> + Attribute<Quality> {}
 
 impl ListTrait for RenaissanceGuard {
     type Kind = ItemList;

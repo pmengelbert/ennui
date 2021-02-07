@@ -74,7 +74,7 @@ pub fn fill_interpreter(i: &mut Interpreter) {
 
                 match room.get_item_mut(container.into()) {
                     Some(c) => {
-                        if let Item::Container(cont) = c {
+                        if let Item::Container(_, cont) = c {
                             use std::result::Result::*;
                             match cont.get_item(Grabber::from_str(object)) {
                                 Some(_) => match cont

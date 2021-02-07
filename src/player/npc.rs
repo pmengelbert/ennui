@@ -1,5 +1,6 @@
 use super::{Player, PlayerType, Quality};
-use crate::item::{list::ItemList, list::ItemListTrout, Description, Item};
+use crate::describe::Description;
+use crate::item::{list::ItemList, list::ItemListTrout, Item};
 use crate::map::coord::Coord;
 use crate::text::message::Broadcast;
 use rand::Rng;
@@ -52,16 +53,16 @@ impl From<Player> for Item {
     fn from(other: Player) -> Self {
         let Player {
             info,
+            mut attr,
             mut items,
             mut clothing,
             ..
         } = other;
 
+        let mut attributes = attr;
+
         let Description {
-            name,
-            mut handle,
-            mut attributes,
-            ..
+            name, mut handle, ..
         } = info;
 
         handle.push("corpse".into());
@@ -74,7 +75,11 @@ impl From<Player> for Item {
             display,
             handle,
             description,
-            attributes,
+        };
+
+        let i2 = crate::item::Item2 {
+            info: d.clone(),
+            attr: attributes,
         };
 
         let mut new_items = ItemList::new_with_info(d);
@@ -82,11 +87,13 @@ impl From<Player> for Item {
             let item = std::mem::take(item);
             new_items.push(item);
         }
+
         for item in clothing.iter_mut() {
             let item = std::mem::take(item);
             new_items.push(item);
         }
-        Item::Container(Box::new(new_items))
+
+        Item::Container(i2, Box::new(new_items))
     }
 }
 
