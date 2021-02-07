@@ -7,8 +7,8 @@ use crate::item::YamlItem::{Clothing, Container, Edible, Holdable, Scenery, Weap
 use crate::item::{
     Attribute, Describe, DescriptionWithQualities, Item, Quality, YamlItem, YamlItemList,
 };
+use crate::map::door::StateResult;
 use crate::map::door::{GuardState, Lock, ObstacleState};
-use crate::map::StateResult;
 use crate::obstacle::key::{Key, KeyType};
 use crate::text::message::MessageFormat;
 use crate::text::Color::Green;

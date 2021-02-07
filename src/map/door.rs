@@ -1,6 +1,5 @@
 use crate::map::coord::Coord;
 use crate::map::direction::MapDir;
-use crate::map::StateResult;
 use crate::obstacle::key::Key;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -10,6 +9,8 @@ use std::fmt::{Debug, Formatter};
 use DoorState::{Locked, Open};
 
 use std::option::NoneError;
+
+pub type StateResult<T> = Result<(), T>;
 
 pub trait Lock<T>: ObstacleState<T> {
     type Lock;

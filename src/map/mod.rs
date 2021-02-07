@@ -20,8 +20,6 @@ pub mod direction;
 pub mod door;
 pub mod list;
 
-pub type StateResult<T> = Result<(), T>;
-
 #[derive(Default, Serialize, Deserialize, Debug)]
 pub struct Room {
     #[serde(flatten)]
