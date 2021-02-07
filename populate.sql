@@ -2,6 +2,7 @@ BEGIN;
 
 CREATE SCHEMA IF NOT EXISTS ennui;
 CREATE TABLE IF NOT EXISTS ennui.help (
+    helpid serial,
     title text,
     hook text[],
     description text
@@ -25,6 +26,7 @@ WHERE
     ennui.help.title = t.title;
 
 INSERT INTO ennui.help
+(title, hook, description)
 SELECT t.title, t.hook, t.description
     FROM 
         thing t
