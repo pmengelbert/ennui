@@ -2,12 +2,10 @@ use serde::{Deserialize, Serialize};
 
 use direction::MapDir;
 
-use crate::attribute::Attribute;
-use crate::describe::{Describe, Description};
 use crate::error::EnnuiError;
-use crate::gram_object::{Grabber, Hook};
+use crate::item::handle::{Grabber, Hook};
 use crate::item::list::{Holder, ItemList, ItemListTrout, ListTrait};
-use crate::item::{Item, Quality, YamlItemList};
+use crate::item::{Attribute, Describe, Description, Item, Quality, YamlItemList};
 use crate::map::coord::Coord;
 use crate::map::door::DoorList;
 use crate::player::list::PlayerIdList;
@@ -81,6 +79,20 @@ impl Describe for Room {
 
     fn handle(&self) -> Hook {
         self.info.handle()
+    }
+}
+
+impl Attribute<Quality> for Room {
+    fn attr(&self) -> Vec<Quality> {
+        self.info.attributes.clone()
+    }
+
+    fn set_attr(&mut self, q: Quality) {
+        self.info.set_attr(q)
+    }
+
+    fn unset_attr(&mut self, q: Quality) {
+        self.info.unset_attr(q);
     }
 }
 

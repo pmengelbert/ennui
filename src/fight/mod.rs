@@ -1,12 +1,11 @@
 use crate::map::Locate;
-use crate::player::{ConnectionStatus, PlayerType as BarePlayer, Uuid};
+use crate::player::{PlayerType as BarePlayer, Uuid, ConnectionStatus};
 
 use std::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::{Arc, Mutex};
 
-use crate::attribute::Attribute;
-use crate::describe::Describe;
 use crate::fight::Starter::{Aggressor, Defender};
+use crate::item::{Attribute, Describe};
 
 use crate::error::CmdErr::PlayerNotFound;
 use crate::error::EnnuiError;
@@ -373,7 +372,9 @@ fn fight_logic(
                 ),
             },
         ))
-        .map_err(|_| format!("player {} write error", aid))?;
+        .map_err(|_| {
+            format!("player {} write error", aid)
+        })?;
 
     if player.hp() <= 0 {
         if let BarePlayer::Npc(ref mut npc) = *player {

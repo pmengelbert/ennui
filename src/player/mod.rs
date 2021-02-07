@@ -5,12 +5,10 @@ use serde::{Deserialize, Serialize};
 
 use meter::MeterKind;
 
-use crate::attribute::Attribute;
-use crate::describe::{Describe, Description};
 use crate::error::EnnuiError;
-use crate::gram_object::{Grabber, Hook};
+use crate::item::handle::{Grabber, Hook};
 use crate::item::list::{Holder, ItemList, ItemListTrout, ListTrait};
-use crate::item::{Item, Quality};
+use crate::item::{Attribute, Describe, Description, Item, Quality};
 use crate::map::coord::Coord;
 use crate::map::Locate;
 
@@ -89,7 +87,6 @@ pub struct Player {
     #[serde(skip_serializing, skip_deserializing)]
     pub stream: Option<TcpStream>,
     stats: Vec<MeterKind>,
-    attr: Vec<Quality>,
     status: Vec<PlayerStatus>,
     #[serde(skip_serializing, skip_deserializing)]
     fight_sender: Option<Arc<Mutex<Sender<FightMod>>>>,
@@ -285,15 +282,15 @@ impl Attribute<PlayerStatus> for Arc<Mutex<PlayerType>> {
 
 impl Attribute<Quality> for PlayerType {
     fn attr(&self) -> Vec<Quality> {
-        self.safe_unwrap().attr.clone()
+        self.safe_unwrap().info.attributes.clone()
     }
 
     fn set_attr(&mut self, q: Quality) {
-        self.safe_unwrap_mut().attr.set_attr(q);
+        self.safe_unwrap_mut().info.set_attr(q);
     }
 
     fn unset_attr(&mut self, q: Quality) {
-        self.safe_unwrap_mut().attr.unset_attr(q);
+        self.safe_unwrap_mut().info.unset_attr(q);
     }
 }
 
@@ -338,8 +335,8 @@ impl Player {
                 name: String::new(),
                 handle: Hook(vec![]),
                 display: String::new(),
+                attributes: vec![],
             },
-            attr: vec![],
             loc: Coord(0, 0),
             items: ItemList::new(),
             clothing: ItemList::new(),

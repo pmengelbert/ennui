@@ -3,78 +3,56 @@ use std::fmt::Debug;
 
 use YamlItem::*;
 
+use crate::item::handle::Hook;
 use crate::item::key::Key;
 use crate::item::list::{ItemList, ListTrait};
 use crate::item::Item::NoItem;
 use crate::map::direction::MapDir;
 use crate::map::door::{Guard, GuardState};
 
-use crate::attribute::Attribute;
-use crate::describe::{Describe, Description};
-use crate::gram_object::Hook;
-
 pub mod error;
 pub mod handle;
 pub mod key;
 pub mod list;
 
+pub trait Describe: Send + Sync + Debug + Attribute<Quality> {
+    fn name(&self) -> String;
+    fn display(&self) -> String;
+    fn description(&self) -> String;
+    fn handle(&self) -> Hook;
+}
+
 /// YamlItem is a no-frills representation of various objects, wrapped in a primary attribute.
 /// Its primary use is for serialization
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum YamlItem {
-    Clothing(Item2),
-    Weapon(Item2),
-    Scenery(Item2),
-    Edible(Item2),
-    Holdable(Item2),
+    Clothing(Description),
+    Weapon(Description),
+    Scenery(Description),
+    Edible(Description),
+    Holdable(Description),
     Guard {
         dir: MapDir,
         state: GuardState,
-        info: Item2,
+        info: Description,
         lock: u64,
     },
     Container(YamlItemList),
-    Key(u64, Item2),
+    Key(u64, Description),
 }
 
 /// Item is a simple wrapping of an item-y type in a primary attribute
 #[derive(Debug)]
 pub enum Item {
-    Clothing(Item2),
-    Weapon(Item2),
-    Scenery(Item2),
-    Edible(Item2),
-    Holdable(Item2),
-    Container(Item2, Box<dyn ListTrait<Kind = ItemList>>),
+    Clothing(Box<dyn Describe>),
+    Weapon(Box<dyn Describe>),
+    Scenery(Box<dyn Describe>),
+    Edible(Box<dyn Describe>),
+    Holdable(Box<dyn Describe>),
+    Container(Box<dyn ListTrait<Kind = ItemList>>),
     Guard(MapDir, Box<dyn Guard<Lock = u64, Kind = ItemList>>),
     Key(Box<dyn Key<u64>>),
     NoItem,
-}
-
-#[derive(Debug, Deserialize, Serialize, Clone, Default)]
-pub struct Item2 {
-    #[serde(default)]
-    pub info: Description,
-    #[serde(default)]
-    pub attr: Vec<Quality>,
-}
-
-impl Describe for Item2 {
-    fn handle(&self) -> Hook {
-        self.info.handle()
-    }
-
-    fn name(&self) -> String {
-        self.info.name()
-    }
-
-    fn description(&self) -> String {
-        self.info.description()
-    }
-
-    fn display(&self) -> String {
-        self.info.display()
-    }
 }
 
 impl Default for Item {
@@ -96,21 +74,23 @@ pub enum Quality {
     Key,
 }
 
-impl Attribute<Quality> for Vec<Quality> {
-    fn attr(&self) -> Vec<Quality> {
-        self.clone()
+pub trait Attribute<T: Copy + Eq> {
+    fn attr(&self) -> Vec<T>;
+    fn set_attr(&mut self, q: T);
+    fn unset_attr(&mut self, q: T);
+
+    fn is(&self, a: T) -> bool {
+        self.attr().contains(&a)
     }
 
-    fn set_attr(&mut self, q: Quality) {
-        self.push(q);
-    }
-
-    fn unset_attr(&mut self, q: Quality) {
-        let count = self.iter().take_while(|i| **i != q).count();
-
-        if count < self.len() {
-            self.remove(count);
+    fn is_all(&self, ats: &[T]) -> bool {
+        for a in ats {
+            if !self.attr().contains(a) {
+                return false;
+            }
         }
+
+        true
     }
 }
 
@@ -118,8 +98,8 @@ impl Describe for Item {
     fn name(&self) -> String {
         use Item::*;
         match self {
-            Clothing(i) | Weapon(i) | Scenery(i) | Edible(i) | Holdable(i) => i.info.name(),
-            Container(_, i) => i.name(),
+            Clothing(i) | Weapon(i) | Scenery(i) | Edible(i) | Holdable(i) => i.name(),
+            Container(i) => i.name(),
             Key(i) => i.name(),
             Guard(_, i) => i.name(),
             NoItem => String::new(),
@@ -129,8 +109,8 @@ impl Describe for Item {
     fn display(&self) -> String {
         use Item::*;
         match self {
-            Clothing(i) | Weapon(i) | Scenery(i) | Edible(i) | Holdable(i) => i.info.display(),
-            Container(_, i) => i.display(),
+            Clothing(i) | Weapon(i) | Scenery(i) | Edible(i) | Holdable(i) => i.display(),
+            Container(i) => i.display(),
             Key(i) => i.display(),
             Guard(_, i) => i.display(),
             NoItem => String::new(),
@@ -140,8 +120,8 @@ impl Describe for Item {
     fn description(&self) -> String {
         use Item::*;
         match self {
-            Clothing(i) | Weapon(i) | Scenery(i) | Edible(i) | Holdable(i) => i.info.description(),
-            Container(_, i) => i.description(),
+            Clothing(i) | Weapon(i) | Scenery(i) | Edible(i) | Holdable(i) => i.description(),
+            Container(i) => i.description(),
             Key(i) => i.description(),
             Guard(_, i) => i.description(),
             NoItem => String::new(),
@@ -151,26 +131,12 @@ impl Describe for Item {
     fn handle(&self) -> Hook {
         use Item::*;
         match self {
-            Clothing(i) | Weapon(i) | Scenery(i) | Edible(i) | Holdable(i) => i.info.handle(),
-            Container(_, i) => i.handle(),
+            Clothing(i) | Weapon(i) | Scenery(i) | Edible(i) | Holdable(i) => i.handle(),
+            Container(i) => i.handle(),
             Key(i) => i.handle(),
             Guard(_, i) => i.handle(),
             NoItem => Hook::default(),
         }
-    }
-}
-
-impl Attribute<Quality> for Item2 {
-    fn attr(&self) -> Vec<Quality> {
-        self.attr.clone()
-    }
-
-    fn unset_attr(&mut self, q: Quality) {
-        self.attr.unset_attr(q)
-    }
-
-    fn set_attr(&mut self, q: Quality) {
-        self.attr.set_attr(q)
     }
 }
 
@@ -179,7 +145,7 @@ impl Attribute<Quality> for Item {
         use Item::*;
         match self {
             Clothing(i) | Weapon(i) | Scenery(i) | Edible(i) | Holdable(i) => i.attr(),
-            Container(i, _) => i.attr(),
+            Container(i) => i.attr(),
             Key(i) => i.attr(),
             Guard(_, i) => i.attr(),
             NoItem => vec![],
@@ -190,7 +156,7 @@ impl Attribute<Quality> for Item {
         use Item::*;
         match self {
             Clothing(i) | Weapon(i) | Scenery(i) | Edible(i) | Holdable(i) => i.set_attr(q),
-            Container(i, _) => i.set_attr(q),
+            Container(i) => i.set_attr(q),
             Key(i) => i.set_attr(q),
             Guard(_, i) => i.set_attr(q),
             NoItem => (),
@@ -201,7 +167,7 @@ impl Attribute<Quality> for Item {
         use Item::*;
         match self {
             Clothing(i) | Weapon(i) | Scenery(i) | Edible(i) | Holdable(i) => i.unset_attr(q),
-            Container(i, _) => i.unset_attr(q),
+            Container(i) => i.unset_attr(q),
             Key(i) => i.unset_attr(q),
             Guard(_, i) => i.unset_attr(q),
             NoItem => (),
@@ -211,7 +177,69 @@ impl Attribute<Quality> for Item {
 
 impl Default for YamlItem {
     fn default() -> Self {
-        Holdable(Item2::default())
+        Holdable(Description::default())
+    }
+}
+
+#[derive(Debug, Default, Serialize, Deserialize, Clone)]
+pub struct Description {
+    pub name: String,
+    pub display: String,
+    pub description: String,
+    pub handle: Hook,
+    #[serde(default)]
+    pub attributes: Vec<Quality>,
+}
+
+impl Describe for Description {
+    fn name(&self) -> String {
+        self.name.clone()
+    }
+
+    fn display(&self) -> String {
+        self.display.clone()
+    }
+
+    fn description(&self) -> String {
+        self.description.clone()
+    }
+
+    fn handle(&self) -> Hook {
+        self.handle.clone()
+    }
+}
+
+impl Attribute<Quality> for Description {
+    fn attr(&self) -> Vec<Quality> {
+        self.attributes.clone()
+    }
+
+    fn set_attr(&mut self, q: Quality) {
+        self.attributes.push(q);
+    }
+
+    fn unset_attr(&mut self, q: Quality) {
+        let pos = self.attributes.iter().position(|u| *u == q);
+        if let Some(pos) = pos {
+            self.attributes.remove(pos);
+        }
+    }
+}
+
+impl Description {
+    pub fn new(name: &str, description: Option<&str>, handle: Hook) -> Self {
+        let description = description.unwrap_or_default().to_owned();
+        let name = name.to_owned();
+        let display = String::new();
+        let attributes = Vec::new();
+
+        Self {
+            name,
+            description,
+            handle,
+            display,
+            attributes,
+        }
     }
 }
 
@@ -219,39 +247,39 @@ impl Default for YamlItem {
 #[serde(default)]
 pub struct YamlItemList {
     inner: Vec<YamlItem>,
-    #[serde(default, flatten)]
-    info: Item2,
+    #[serde(default)]
+    info: Description,
 }
 
 impl Attribute<Quality> for YamlItemList {
     fn attr(&self) -> Vec<Quality> {
-        self.info.attr.clone()
+        self.info.attributes.clone()
     }
 
     fn set_attr(&mut self, q: Quality) {
-        self.info.attr.set_attr(q)
+        self.info.set_attr(q)
     }
 
     fn unset_attr(&mut self, q: Quality) {
-        self.info.attr.unset_attr(q);
+        self.info.unset_attr(q);
     }
 }
 
 impl Describe for YamlItemList {
     fn name(&self) -> String {
-        self.info.info.name()
+        self.info.name()
     }
 
     fn display(&self) -> String {
-        self.info.info.display()
+        self.info.display()
     }
 
     fn description(&self) -> String {
-        self.info.info.description()
+        self.info.description()
     }
 
     fn handle(&self) -> Hook {
-        self.info.info.handle()
+        self.info.handle()
     }
 }
 
@@ -259,14 +287,12 @@ impl YamlItemList {
     pub fn new() -> Self {
         Self {
             inner: vec![],
-            info: Item2 {
-                info: Description {
-                    name: "".to_string(),
-                    display: "".to_string(),
-                    description: "".to_string(),
-                    handle: Default::default(),
-                },
-                attr: vec![Quality::Container],
+            info: Description {
+                name: "".to_string(),
+                display: "".to_string(),
+                description: "".to_string(),
+                handle: Default::default(),
+                attributes: vec![Quality::Container],
             },
         }
     }
@@ -284,7 +310,7 @@ impl YamlItemList {
 }
 
 impl YamlItem {
-    fn safe_unwrap(&self) -> &Item2 {
+    fn safe_unwrap(&self) -> &Description {
         match self {
             Key(_, item)
             | Clothing(item)
@@ -297,7 +323,7 @@ impl YamlItem {
         }
     }
 
-    fn safe_unwrap_mut(&mut self) -> &mut Item2 {
+    fn safe_unwrap_mut(&mut self) -> &mut Description {
         match self {
             Key(_, item)
             | Clothing(item)
@@ -331,7 +357,7 @@ impl Describe for YamlItem {
 
 impl Attribute<Quality> for YamlItem {
     fn attr(&self) -> Vec<Quality> {
-        self.safe_unwrap().attr.clone()
+        self.safe_unwrap().attr()
     }
 
     fn set_attr(&mut self, q: Quality) {

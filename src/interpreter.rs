@@ -1,9 +1,9 @@
 use std::collections::HashMap;
 
-use crate::attribute::Attribute;
 use crate::error::EnnuiError;
 use crate::game::Game;
 use crate::interpreter::CommandQuality::{Awake, Motion};
+use crate::item::Attribute;
 use crate::text::message::{Message, Messenger};
 use std::sync::{Arc, Mutex};
 
