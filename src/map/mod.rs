@@ -6,7 +6,7 @@ use crate::describe::Describe;
 use crate::error::EnnuiError;
 use crate::gram_object::{Grabber, Hook};
 use crate::item::list::{Holder, ItemList, ItemListTrout, ListTrait};
-use crate::item::{Attribute, Description, Item, Quality, YamlItemList};
+use crate::item::{Attribute, DescriptionWithQualities, Item, Quality, YamlItemList};
 use crate::map::coord::Coord;
 use crate::map::door::DoorList;
 use crate::player::list::PlayerIdList;
@@ -24,7 +24,7 @@ type StateResult<T> = Result<(), T>;
 #[derive(Default, Serialize, Deserialize, Debug)]
 pub struct Room {
     #[serde(flatten)]
-    info: Description,
+    info: DescriptionWithQualities,
     loc: Coord,
     #[serde(default)]
     players: PlayerIdList,
@@ -179,7 +179,7 @@ impl Room {
 
         let Room {
             info:
-                Description {
+                DescriptionWithQualities {
                     info:
                         crate::describe::Description {
                             name, description, ..

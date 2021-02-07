@@ -3,7 +3,7 @@ use std::fmt::Debug;
 
 use YamlItem::*;
 
-use crate::describe::{Describe, Description as nDescription};
+use crate::describe::{Describe, Description};
 use crate::gram_object::Hook;
 use crate::item::key::Key;
 use crate::item::list::{ItemList, ListTrait};
@@ -16,35 +16,35 @@ pub mod handle;
 pub mod key;
 pub mod list;
 
-pub trait Descrippy: Describe + Attribute<Quality> {}
+pub trait ItemDescribe: Describe + Attribute<Quality> {}
 
 /// YamlItem is a no-frills representation of various objects, wrapped in a primary attribute.
 /// Its primary use is for serialization
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum YamlItem {
-    Clothing(Description),
-    Weapon(Description),
-    Scenery(Description),
-    Edible(Description),
-    Holdable(Description),
+    Clothing(DescriptionWithQualities),
+    Weapon(DescriptionWithQualities),
+    Scenery(DescriptionWithQualities),
+    Edible(DescriptionWithQualities),
+    Holdable(DescriptionWithQualities),
     Guard {
         dir: MapDir,
         state: GuardState,
-        info: Description,
+        info: DescriptionWithQualities,
         lock: u64,
     },
     Container(YamlItemList),
-    Key(u64, Description),
+    Key(u64, DescriptionWithQualities),
 }
 
 /// Item is a simple wrapping of an item-y type in a primary attribute
 #[derive(Debug)]
 pub enum Item {
-    Clothing(Box<dyn Descrippy>),
-    Weapon(Box<dyn Descrippy>),
-    Scenery(Box<dyn Descrippy>),
-    Edible(Box<dyn Descrippy>),
-    Holdable(Box<dyn Descrippy>),
+    Clothing(Box<dyn ItemDescribe>),
+    Weapon(Box<dyn ItemDescribe>),
+    Scenery(Box<dyn ItemDescribe>),
+    Edible(Box<dyn ItemDescribe>),
+    Holdable(Box<dyn ItemDescribe>),
     Container(Box<dyn ListTrait<Kind = ItemList>>),
     Guard(MapDir, Box<dyn Guard<Lock = u64, Kind = ItemList>>),
     Key(Box<dyn Key<u64>>),
@@ -173,21 +173,21 @@ impl Attribute<Quality> for Item {
 
 impl Default for YamlItem {
     fn default() -> Self {
-        Holdable(Description::default())
+        Holdable(DescriptionWithQualities::default())
     }
 }
 
 #[derive(Debug, Default, Serialize, Deserialize, Clone)]
-pub struct Description {
+pub struct DescriptionWithQualities {
     #[serde(flatten)]
-    pub info: nDescription,
+    pub info: Description,
     #[serde(default)]
     pub attr: Vec<Quality>,
 }
 
-impl Descrippy for Description {}
+impl ItemDescribe for DescriptionWithQualities {}
 
-impl Describe for Description {
+impl Describe for DescriptionWithQualities {
     fn name(&self) -> String {
         self.info.name.clone()
     }
@@ -205,7 +205,7 @@ impl Describe for Description {
     }
 }
 
-impl Attribute<Quality> for Description {
+impl Attribute<Quality> for DescriptionWithQualities {
     fn attr(&self) -> Vec<Quality> {
         self.attr.clone()
     }
@@ -222,7 +222,7 @@ impl Attribute<Quality> for Description {
     }
 }
 
-impl Description {
+impl DescriptionWithQualities {
     pub fn new(name: &str, description: Option<&str>, handle: Hook) -> Self {
         let description = description.unwrap_or_default().to_owned();
         let name = name.to_owned();
@@ -230,7 +230,7 @@ impl Description {
         let attributes = Vec::new();
 
         Self {
-            info: nDescription {
+            info: Description {
                 name,
                 description,
                 handle,
@@ -246,7 +246,7 @@ impl Description {
 pub struct YamlItemList {
     inner: Vec<YamlItem>,
     #[serde(default)]
-    info: Description,
+    info: DescriptionWithQualities,
 }
 
 impl Attribute<Quality> for YamlItemList {
@@ -288,8 +288,8 @@ impl YamlItemList {
     pub fn new() -> Self {
         Self {
             inner: vec![],
-            info: Description {
-                info: nDescription {
+            info: DescriptionWithQualities {
+                info: Description {
                     name: "".to_string(),
                     display: "".to_string(),
                     description: "".to_string(),
@@ -313,7 +313,7 @@ impl YamlItemList {
 }
 
 impl YamlItem {
-    fn safe_unwrap(&self) -> &Description {
+    fn safe_unwrap(&self) -> &DescriptionWithQualities {
         match self {
             Key(_, item)
             | Clothing(item)
@@ -326,7 +326,7 @@ impl YamlItem {
         }
     }
 
-    fn safe_unwrap_mut(&mut self) -> &mut Description {
+    fn safe_unwrap_mut(&mut self) -> &mut DescriptionWithQualities {
         match self {
             Key(_, item)
             | Clothing(item)

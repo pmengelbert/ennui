@@ -9,7 +9,7 @@ use crate::describe::Describe;
 use crate::error::EnnuiError;
 use crate::gram_object::{Grabber, Hook};
 use crate::item::list::{Holder, ItemList, ItemListTrout, ListTrait};
-use crate::item::{Attribute, Description, Item, Quality};
+use crate::item::{Attribute, DescriptionWithQualities, Item, Quality};
 use crate::map::coord::Coord;
 use crate::map::Locate;
 
@@ -79,7 +79,7 @@ impl PlayerType {
 #[derive(Default, Serialize, Deserialize, Debug)]
 pub struct Player {
     uuid: u128,
-    info: Description,
+    info: DescriptionWithQualities,
     loc: Coord,
     #[serde(skip_serializing, skip_deserializing)]
     items: ItemList,
@@ -331,7 +331,7 @@ impl Player {
 
         Self {
             uuid,
-            info: Description {
+            info: DescriptionWithQualities {
                 info: crate::describe::Description {
                     description: String::new(),
                     name: String::new(),

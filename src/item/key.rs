@@ -1,5 +1,5 @@
 use crate::gram_object::Hook;
-use crate::item::{Attribute, Describe, Description, Quality};
+use crate::item::{Attribute, Describe, DescriptionWithQualities, Quality};
 use std::fmt::Debug;
 
 pub trait Key<T>: Describe + Debug + Attribute<Quality> {
@@ -8,7 +8,7 @@ pub trait Key<T>: Describe + Debug + Attribute<Quality> {
 
 #[derive(Clone, Debug)]
 pub struct KeyType {
-    info: Description,
+    info: DescriptionWithQualities,
     key: u64,
 }
 
@@ -54,8 +54,8 @@ impl Attribute<Quality> for KeyType {
     }
 }
 
-impl From<Description> for KeyType {
-    fn from(b: Description) -> Self {
+impl From<DescriptionWithQualities> for KeyType {
+    fn from(b: DescriptionWithQualities) -> Self {
         Self { info: b, key: 0 }
     }
 }

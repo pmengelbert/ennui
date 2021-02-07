@@ -1,4 +1,3 @@
-#![allow(warnings)]
 #![feature(try_trait)]
 #![feature(assoc_char_funcs)]
 #![feature(backtrace)]

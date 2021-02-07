@@ -4,7 +4,9 @@ use crate::error::EnnuiError::{Fatal, Simple};
 use crate::gram_object::{Grabber, Hook};
 use crate::item::key::KeyType;
 use crate::item::YamlItem::{Clothing, Container, Edible, Holdable, Key, Scenery, Weapon};
-use crate::item::{Attribute, Describe, Description, Item, Quality, YamlItem, YamlItemList};
+use crate::item::{
+    Attribute, Describe, DescriptionWithQualities, Item, Quality, YamlItem, YamlItemList,
+};
 use crate::map::door::RenaissanceGuard;
 use crate::text::message::MessageFormat;
 use crate::text::Color::Green;
@@ -46,7 +48,7 @@ pub trait ListTrait: Describe + Debug + Attribute<Quality> {
 #[derive(Default, Debug)]
 pub struct ItemList {
     inner: Vec<Item>,
-    info: super::Description,
+    info: super::DescriptionWithQualities,
 }
 
 impl Describe for ItemList {
@@ -126,7 +128,7 @@ impl ItemList {
         }
     }
 
-    pub fn new_with_info(info: super::Description) -> Self {
+    pub fn new_with_info(info: super::DescriptionWithQualities) -> Self {
         Self {
             inner: vec![],
             info,
@@ -187,7 +189,7 @@ impl From<YamlItemList> for ItemList {
     }
 }
 
-fn conv_desc(d: &mut Description, q: Quality) -> Box<dyn super::Descrippy> {
+fn conv_desc(d: &mut DescriptionWithQualities, q: Quality) -> Box<dyn super::ItemDescribe> {
     let mut new = d.clone();
     d.set_attr(q);
     Box::new(new)

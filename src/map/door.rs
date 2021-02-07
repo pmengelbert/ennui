@@ -3,7 +3,7 @@ use crate::error::EnnuiError;
 use crate::gram_object::{Grabber, Hook};
 use crate::item::key::Key;
 use crate::item::list::{ItemList, ListTrait};
-use crate::item::{Attribute, Description, Item, Quality};
+use crate::item::{Attribute, DescriptionWithQualities, Item, Quality};
 use crate::map::coord::Coord;
 use crate::map::direction::MapDir;
 use crate::map::door::DoorState::{Locked, Open};
@@ -72,7 +72,7 @@ pub struct RenaissanceGuard {
     #[serde(default)]
     state: GuardState,
     pub lock: u64,
-    pub info: Description,
+    pub info: DescriptionWithQualities,
 }
 
 impl Clone for RenaissanceGuard {
@@ -86,8 +86,8 @@ impl Clone for RenaissanceGuard {
     }
 }
 
-impl From<Description> for RenaissanceGuard {
-    fn from(b: Description) -> Self {
+impl From<DescriptionWithQualities> for RenaissanceGuard {
+    fn from(b: DescriptionWithQualities) -> Self {
         Self {
             info: b,
             ..Self::default()
