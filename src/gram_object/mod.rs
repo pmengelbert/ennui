@@ -1,5 +1,4 @@
 use serde::{Deserialize, Serialize};
-
 #[repr(transparent)]
 #[derive(Debug, Serialize, Deserialize, Default, Clone)]
 pub struct Hook(pub Vec<String>);
@@ -69,31 +68,5 @@ impl Hook {
 
     fn inner(&self) -> &Vec<String> {
         &self.0
-    }
-}
-
-#[macro_export]
-macro_rules! handle {
-    ( $( $name:ident ),* ) => {
-        {
-            let mut h: crate::gram_object::Hook = crate::gram_object::Hook(Vec::new());
-            $( h.push(stringify!($name).to_owned()); )*
-            h
-        }
-    }
-}
-
-#[cfg(test)]
-mod handle_test {
-    use super::*;
-
-    #[test]
-    fn handle_test() {
-        let h = handle![sword, rusty];
-        eprintln!("{:#?}", h);
-        eprintln!("in file {} on line number {}", file!(), line!());
-
-        assert_eq!("sword", h);
-        assert_eq!("rusty", h);
     }
 }

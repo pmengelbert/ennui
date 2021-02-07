@@ -1,8 +1,8 @@
-use crate::item::handle::Hook;
+use crate::gram_object::Hook;
 use crate::item::{Attribute, Describe, Description, Quality};
 use std::fmt::Debug;
 
-pub trait Key<T>: Describe + Debug {
+pub trait Key<T>: Describe + Debug + Attribute<Quality> {
     fn key(&self) -> T;
 }
 
@@ -18,31 +18,31 @@ impl KeyType {
     }
 
     pub fn add_quality(&mut self, q: Quality) {
-        self.info.attributes.push(q);
+        self.info.attr.push(q);
     }
 }
 
 impl Describe for KeyType {
     fn name(&self) -> String {
-        self.info.name.clone()
+        self.info.name()
     }
 
     fn display(&self) -> String {
-        self.info.display.clone()
+        self.info.display()
     }
 
     fn description(&self) -> String {
-        self.info.description.clone()
+        self.info.description()
     }
 
     fn handle(&self) -> Hook {
-        self.info.handle.clone()
+        self.info.handle()
     }
 }
 
 impl Attribute<Quality> for KeyType {
     fn attr(&self) -> Vec<Quality> {
-        self.info.attributes.clone()
+        self.info.attr.clone()
     }
 
     fn set_attr(&mut self, q: Quality) {
@@ -51,7 +51,6 @@ impl Attribute<Quality> for KeyType {
 
     fn unset_attr(&mut self, q: Quality) {
         self.info.unset_attr(q);
-        todo!()
     }
 }
 

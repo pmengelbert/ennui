@@ -5,10 +5,11 @@ use serde::{Deserialize, Serialize};
 
 use meter::MeterKind;
 
+use crate::describe::Describe;
 use crate::error::EnnuiError;
-use crate::item::handle::{Grabber, Hook};
+use crate::gram_object::{Grabber, Hook};
 use crate::item::list::{Holder, ItemList, ItemListTrout, ListTrait};
-use crate::item::{Attribute, Describe, Description, Item, Quality};
+use crate::item::{Attribute, Description, Item, Quality};
 use crate::map::coord::Coord;
 use crate::map::Locate;
 
@@ -282,7 +283,7 @@ impl Attribute<PlayerStatus> for Arc<Mutex<PlayerType>> {
 
 impl Attribute<Quality> for PlayerType {
     fn attr(&self) -> Vec<Quality> {
-        self.safe_unwrap().info.attributes.clone()
+        self.safe_unwrap().info.attr.clone()
     }
 
     fn set_attr(&mut self, q: Quality) {
@@ -331,11 +332,13 @@ impl Player {
         Self {
             uuid,
             info: Description {
-                description: String::new(),
-                name: String::new(),
-                handle: Hook(vec![]),
-                display: String::new(),
-                attributes: vec![],
+                info: crate::describe::Description {
+                    description: String::new(),
+                    name: String::new(),
+                    handle: Hook(vec![]),
+                    display: String::new(),
+                },
+                attr: vec![],
             },
             loc: Coord(0, 0),
             items: ItemList::new(),
@@ -360,9 +363,13 @@ impl PlayerType {
     }
 
     pub fn set_name(&mut self, name: &str) {
-        self.safe_unwrap_mut().info.handle.push(name.to_lowercase());
-        self.safe_unwrap_mut().info.name = name.to_owned();
-        self.safe_unwrap_mut().info.display = name.to_owned();
+        self.safe_unwrap_mut()
+            .info
+            .info
+            .handle
+            .push(name.to_lowercase());
+        self.safe_unwrap_mut().info.info.name = name.to_owned();
+        self.safe_unwrap_mut().info.info.display = name.to_owned();
     }
 
     pub fn hurt(&mut self, amt: usize) {

@@ -2,10 +2,11 @@ use serde::{Deserialize, Serialize};
 
 use direction::MapDir;
 
+use crate::describe::Describe;
 use crate::error::EnnuiError;
-use crate::item::handle::{Grabber, Hook};
+use crate::gram_object::{Grabber, Hook};
 use crate::item::list::{Holder, ItemList, ItemListTrout, ListTrait};
-use crate::item::{Attribute, Describe, Description, Item, Quality, YamlItemList};
+use crate::item::{Attribute, Description, Item, Quality, YamlItemList};
 use crate::map::coord::Coord;
 use crate::map::door::DoorList;
 use crate::player::list::PlayerIdList;
@@ -84,7 +85,7 @@ impl Describe for Room {
 
 impl Attribute<Quality> for Room {
     fn attr(&self) -> Vec<Quality> {
-        self.info.attributes.clone()
+        self.info.attr()
     }
 
     fn set_attr(&mut self, q: Quality) {
@@ -177,9 +178,14 @@ impl Room {
         eprintln!("in file {} on line number {}", file!(), line!());
 
         let Room {
-            info: Description {
-                name, description, ..
-            },
+            info:
+                Description {
+                    info:
+                        crate::describe::Description {
+                            name, description, ..
+                        },
+                    ..
+                },
             items,
             ..
         } = self;

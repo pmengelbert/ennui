@@ -58,11 +58,13 @@ impl From<Player> for Item {
         } = other;
 
         let Description {
-            name,
-            mut handle,
-            mut attributes,
+            info: crate::describe::Description {
+                name, mut handle, ..
+            },
             ..
         } = info;
+
+        let mut attributes = vec![];
 
         handle.push("corpse".into());
         let display = format!("The corpse of {} lies here, decomposing", name);
@@ -70,11 +72,13 @@ impl From<Player> for Item {
         attributes.push(Quality::Scenery);
 
         let d = Description {
-            name,
-            display,
-            handle,
-            description,
-            attributes,
+            info: crate::describe::Description {
+                name,
+                display,
+                handle,
+                description,
+            },
+            attr: attributes,
         };
 
         let mut new_items = ItemList::new_with_info(d);

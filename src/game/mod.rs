@@ -19,8 +19,9 @@ use crate::item::list::ListTrait;
 use crate::item::list::{Holder, ItemListTrout};
 use crate::text::channel::DiscreteMessage;
 
-use crate::item::handle::Grabber;
-use crate::item::{Attribute, Describe, Item};
+use crate::describe::Describe;
+use crate::gram_object::Grabber;
+use crate::item::{Attribute, Item};
 use crate::map::direction::MapDir;
 use crate::map::door::{DoorState, GuardState, ObstacleState};
 use crate::map::list::{RoomList, RoomListTrait};
@@ -224,7 +225,10 @@ impl Game {
                     .unwrap_or_default();
                 let res = s.shutdown(std::net::Shutdown::Both);
                 if res.is_err() {
-                    eprintln!("error shutting down socket: {}", std::backtrace::Backtrace::capture());
+                    eprintln!(
+                        "error shutting down socket: {}",
+                        std::backtrace::Backtrace::capture()
+                    );
                 }
             }
         }

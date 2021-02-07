@@ -1,7 +1,7 @@
 use crate::error::CmdErr::ItemNotFound;
 use crate::error::EnnuiError;
 use crate::error::EnnuiError::{Fatal, Simple};
-use crate::item::handle::{Grabber, Hook};
+use crate::gram_object::{Grabber, Hook};
 use crate::item::key::KeyType;
 use crate::item::YamlItem::{Clothing, Container, Edible, Holdable, Key, Scenery, Weapon};
 use crate::item::{Attribute, Describe, Description, Item, Quality, YamlItem, YamlItemList};
@@ -20,7 +20,7 @@ pub trait Holder: Describe {
     fn items_mut(&mut self) -> &mut Self::Kind;
 }
 
-pub trait ListTrait: Describe + Debug {
+pub trait ListTrait: Describe + Debug + Attribute<Quality> {
     type Kind: Debug;
     fn get_item(&self, handle: Grabber) -> Option<&Item>;
     fn get_item_mut(&mut self, handle: Grabber) -> Option<&mut Item>;
@@ -46,7 +46,7 @@ pub trait ListTrait: Describe + Debug {
 #[derive(Default, Debug)]
 pub struct ItemList {
     inner: Vec<Item>,
-    info: YamlItem,
+    info: super::Description,
 }
 
 impl Describe for ItemList {
@@ -126,10 +126,10 @@ impl ItemList {
         }
     }
 
-    pub fn new_with_info(info: Description) -> Self {
+    pub fn new_with_info(info: super::Description) -> Self {
         Self {
             inner: vec![],
-            info: YamlItem::Holdable(info),
+            info,
         }
     }
 }
@@ -187,9 +187,9 @@ impl From<YamlItemList> for ItemList {
     }
 }
 
-fn conv_desc(d: &mut Description, q: Quality) -> Box<dyn Describe> {
+fn conv_desc(d: &mut Description, q: Quality) -> Box<dyn super::Descrippy> {
     let mut new = d.clone();
-    new.attributes.push(q);
+    d.set_attr(q);
     Box::new(new)
 }
 
@@ -208,7 +208,7 @@ fn conv(list: &mut YamlItemList) -> ItemList {
             } => {
                 let mut g: RenaissanceGuard = take(info).into();
                 g.lock = *lock;
-                g.info.attributes.push(Quality::Container);
+                g.set_attr(Quality::Container);
                 Item::Guard(*dir, Box::new(g))
             }
             Key(n, item) => {
@@ -221,6 +221,6 @@ fn conv(list: &mut YamlItemList) -> ItemList {
         };
         ret.push(i);
     }
-    ret.info = Clothing(list.info.clone());
+    ret.info = list.info.clone();
     ret
 }

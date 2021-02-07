@@ -1,8 +1,9 @@
+use crate::describe::Describe;
 use crate::error::EnnuiError;
-use crate::item::handle::{Grabber, Hook};
+use crate::gram_object::{Grabber, Hook};
 use crate::item::key::Key;
 use crate::item::list::{ItemList, ListTrait};
-use crate::item::{Attribute, Describe, Description, Item, Quality};
+use crate::item::{Attribute, Description, Item, Quality};
 use crate::map::coord::Coord;
 use crate::map::direction::MapDir;
 use crate::map::door::DoorState::{Locked, Open};
@@ -121,7 +122,7 @@ impl Describe for RenaissanceGuard {
 
 impl Attribute<Quality> for RenaissanceGuard {
     fn attr(&self) -> Vec<Quality> {
-        self.info.attributes.clone()
+        self.info.attr.clone()
     }
 
     fn set_attr(&mut self, q: Quality) {
