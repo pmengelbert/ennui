@@ -2,6 +2,7 @@
 #![feature(assoc_char_funcs)]
 #![feature(backtrace)]
 
+pub mod attribute;
 mod db;
 pub mod describe;
 pub mod error;

@@ -5,11 +5,12 @@ use serde::{Deserialize, Serialize};
 
 use meter::MeterKind;
 
+use crate::attribute::Attribute;
 use crate::describe::Describe;
 use crate::error::EnnuiError;
 use crate::gram_object::{Grabber, Hook};
 use crate::item::list::{Holder, ItemList, ItemListTrout, ListTrait};
-use crate::item::{Attribute, DescriptionWithQualities, Item, Quality};
+use crate::item::{DescriptionWithQualities, Item, Quality};
 use crate::map::coord::Coord;
 use crate::map::Locate;
 
@@ -252,21 +253,6 @@ impl Describe for Arc<Mutex<PlayerType>> {
     }
 }
 
-impl Attribute<Quality> for Arc<Mutex<PlayerType>> {
-    fn attr(&self) -> Vec<Quality> {
-        let p = self.lock().unwrap();
-        p.attr()
-    }
-
-    fn set_attr(&mut self, q: Quality) {
-        self.lock().unwrap().set_attr(q)
-    }
-
-    fn unset_attr(&mut self, q: Quality) {
-        self.lock().unwrap().unset_attr(q)
-    }
-}
-
 impl Attribute<PlayerStatus> for Arc<Mutex<PlayerType>> {
     fn attr(&self) -> Vec<PlayerStatus> {
         self.lock().unwrap().attr()
@@ -278,20 +264,6 @@ impl Attribute<PlayerStatus> for Arc<Mutex<PlayerType>> {
 
     fn unset_attr(&mut self, q: PlayerStatus) {
         self.lock().unwrap().unset_attr(q);
-    }
-}
-
-impl Attribute<Quality> for PlayerType {
-    fn attr(&self) -> Vec<Quality> {
-        self.safe_unwrap().info.attr.clone()
-    }
-
-    fn set_attr(&mut self, q: Quality) {
-        self.safe_unwrap_mut().info.set_attr(q);
-    }
-
-    fn unset_attr(&mut self, q: Quality) {
-        self.safe_unwrap_mut().info.unset_attr(q);
     }
 }
 

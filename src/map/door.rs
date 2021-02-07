@@ -1,9 +1,10 @@
+use crate::attribute::Attribute;
 use crate::describe::Describe;
 use crate::error::EnnuiError;
 use crate::gram_object::{Grabber, Hook};
 use crate::item::key::Key;
 use crate::item::list::{ItemList, ListTrait};
-use crate::item::{Attribute, DescriptionWithQualities, Item, Quality};
+use crate::item::{DescriptionWithQualities, Item, Quality};
 use crate::map::coord::Coord;
 use crate::map::direction::MapDir;
 use crate::map::door::DoorState::{Locked, Open};
@@ -74,6 +75,8 @@ pub struct RenaissanceGuard {
     pub lock: u64,
     pub info: DescriptionWithQualities,
 }
+
+impl crate::item::GuardDescribe for RenaissanceGuard {}
 
 impl Clone for RenaissanceGuard {
     fn clone(&self) -> Self {

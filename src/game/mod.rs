@@ -19,9 +19,10 @@ use crate::item::list::ListTrait;
 use crate::item::list::{Holder, ItemListTrout};
 use crate::text::channel::DiscreteMessage;
 
+use crate::attribute::Attribute;
 use crate::describe::Describe;
 use crate::gram_object::Grabber;
-use crate::item::{Attribute, Item};
+use crate::item::Item;
 use crate::map::direction::MapDir;
 use crate::map::door::{DoorState, GuardState, ObstacleState};
 use crate::map::list::{RoomList, RoomListTrait};

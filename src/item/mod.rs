@@ -3,6 +3,7 @@ use std::fmt::Debug;
 
 use YamlItem::*;
 
+use crate::attribute::Attribute;
 use crate::describe::{Describe, Description};
 use crate::gram_object::Hook;
 use crate::item::key::Key;
@@ -11,12 +12,15 @@ use crate::item::Item::NoItem;
 use crate::map::direction::MapDir;
 use crate::map::door::{Guard, GuardState};
 
-pub mod error;
 pub mod handle;
 pub mod key;
 pub mod list;
 
 pub trait ItemDescribe: Describe + Attribute<Quality> {}
+pub trait ListDescribe: Describe + Attribute<Quality> + ListTrait {}
+pub trait GuardDescribe: Describe + Attribute<Quality> + Guard {}
+
+impl ListDescribe for ItemList {}
 
 /// YamlItem is a no-frills representation of various objects, wrapped in a primary attribute.
 /// Its primary use is for serialization
@@ -45,8 +49,8 @@ pub enum Item {
     Scenery(Box<dyn ItemDescribe>),
     Edible(Box<dyn ItemDescribe>),
     Holdable(Box<dyn ItemDescribe>),
-    Container(Box<dyn ListTrait<Kind = ItemList>>),
-    Guard(MapDir, Box<dyn Guard<Lock = u64, Kind = ItemList>>),
+    Container(Box<dyn ListDescribe<Kind = ItemList>>),
+    Guard(MapDir, Box<dyn GuardDescribe<Lock = u64, Kind = ItemList>>),
     Key(Box<dyn Key<u64>>),
     NoItem,
 }
@@ -68,26 +72,6 @@ pub enum Quality {
     Container,
     Guard,
     Key,
-}
-
-pub trait Attribute<T: Copy + Eq> {
-    fn attr(&self) -> Vec<T>;
-    fn set_attr(&mut self, q: T);
-    fn unset_attr(&mut self, q: T);
-
-    fn is(&self, a: T) -> bool {
-        self.attr().contains(&a)
-    }
-
-    fn is_all(&self, ats: &[T]) -> bool {
-        for a in ats {
-            if !self.attr().contains(a) {
-                return false;
-            }
-        }
-
-        true
-    }
 }
 
 impl Describe for Item {

@@ -4,9 +4,9 @@ use crate::player::{ConnectionStatus, PlayerType as BarePlayer, Uuid};
 use std::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::{Arc, Mutex};
 
+use crate::attribute::Attribute;
 use crate::describe::Describe;
 use crate::fight::Starter::{Aggressor, Defender};
-use crate::item::Attribute;
 
 use crate::error::CmdErr::PlayerNotFound;
 use crate::error::EnnuiError;

@@ -2,11 +2,12 @@ use serde::{Deserialize, Serialize};
 
 use direction::MapDir;
 
+use crate::attribute::Attribute;
 use crate::describe::Describe;
 use crate::error::EnnuiError;
 use crate::gram_object::{Grabber, Hook};
 use crate::item::list::{Holder, ItemList, ItemListTrout, ListTrait};
-use crate::item::{Attribute, DescriptionWithQualities, Item, Quality, YamlItemList};
+use crate::item::{DescriptionWithQualities, Item, Quality, YamlItemList};
 use crate::map::coord::Coord;
 use crate::map::door::DoorList;
 use crate::player::list::PlayerIdList;

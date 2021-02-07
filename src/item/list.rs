@@ -22,7 +22,7 @@ pub trait Holder: Describe {
     fn items_mut(&mut self) -> &mut Self::Kind;
 }
 
-pub trait ListTrait: Describe + Debug + Attribute<Quality> {
+pub trait ListTrait: Describe + Debug {
     type Kind: Debug;
     fn get_item(&self, handle: Grabber) -> Option<&Item>;
     fn get_item_mut(&mut self, handle: Grabber) -> Option<&mut Item>;
