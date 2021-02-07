@@ -1,3 +1,4 @@
+use serde::{Deserialize, Serialize};
 pub trait Attribute<T: Copy + Eq> {
     fn attr(&self) -> Vec<T>;
     fn set_attr(&mut self, q: T);
@@ -16,4 +17,17 @@ pub trait Attribute<T: Copy + Eq> {
 
         true
     }
+}
+
+/// `Quality` is used to describe extra attributes on players, items and rooms
+#[derive(Copy, Debug, Eq, PartialEq, Clone, Deserialize, Serialize)]
+pub enum Quality {
+    Clothing,
+    Weapon,
+    Scenery,
+    Edible,
+    Holdable,
+    Container,
+    Guard,
+    Key,
 }

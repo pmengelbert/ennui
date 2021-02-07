@@ -12,10 +12,10 @@ pub mod gram_object;
 mod interpreter;
 mod item;
 pub mod map;
+pub mod obstacle;
 pub mod player;
 pub mod text;
 
-//type EnnuiResult = Result<String, EnnuiError>;
 #[macro_export]
 macro_rules! arc_mutex(
     ($wrapped:expr) => {
@@ -24,8 +24,3 @@ macro_rules! arc_mutex(
 );
 
 type WriteResult = std::io::Result<usize>;
-
-pub struct SendError {
-    pub result: std::io::Result<usize>,
-    pub pid: u128,
-}

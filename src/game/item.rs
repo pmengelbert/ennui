@@ -1,8 +1,8 @@
 use crate::game::{fatal, Game};
 
-use crate::attribute::Attribute;
+use crate::attribute::{Attribute, Quality};
 use crate::describe::Describe;
-use crate::item::{Item, Quality};
+use crate::item::Item;
 use crate::map::coord::Coord;
 use crate::map::list::RoomList;
 use crate::player::list::PlayerList;

@@ -2,12 +2,12 @@ use serde::{Deserialize, Serialize};
 
 use direction::MapDir;
 
-use crate::attribute::Attribute;
+use crate::attribute::{Attribute, Quality};
 use crate::describe::Describe;
 use crate::error::EnnuiError;
 use crate::gram_object::{Grabber, Hook};
 use crate::item::list::{Holder, ItemList, ItemListTrout, ListTrait};
-use crate::item::{DescriptionWithQualities, Item, Quality, YamlItemList};
+use crate::item::{DescriptionWithQualities, Item, YamlItemList};
 use crate::map::coord::Coord;
 use crate::map::door::DoorList;
 use crate::player::list::PlayerIdList;
@@ -20,7 +20,7 @@ pub mod direction;
 pub mod door;
 pub mod list;
 
-type StateResult<T> = Result<(), T>;
+pub type StateResult<T> = Result<(), T>;
 
 #[derive(Default, Serialize, Deserialize, Debug)]
 pub struct Room {

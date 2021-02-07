@@ -3,14 +3,14 @@ use std::fmt::Debug;
 
 use YamlItem::*;
 
-use crate::attribute::Attribute;
+use crate::attribute::{Attribute, Quality};
 use crate::describe::{Describe, Description};
 use crate::gram_object::Hook;
-use crate::item::key::Key;
-use crate::item::list::{ItemList, ListTrait};
-use crate::item::Item::NoItem;
 use crate::map::direction::MapDir;
-use crate::map::door::{Guard, GuardState};
+use crate::map::door::GuardState;
+use crate::obstacle::key::{Key, KeyType};
+use list::{Guard, ItemList, ListTrait};
+use Item::NoItem;
 
 pub mod handle;
 pub mod key;
@@ -59,19 +59,6 @@ impl Default for Item {
     fn default() -> Self {
         NoItem
     }
-}
-
-/// `Quality` is used to describe extra attributes on players, items and rooms
-#[derive(Copy, Debug, Eq, PartialEq, Clone, Deserialize, Serialize)]
-pub enum Quality {
-    Clothing,
-    Weapon,
-    Scenery,
-    Edible,
-    Holdable,
-    Container,
-    Guard,
-    Key,
 }
 
 impl Describe for Item {
@@ -339,5 +326,29 @@ impl Describe for YamlItem {
 
     fn handle(&self) -> Hook {
         self.safe_unwrap().handle()
+    }
+}
+
+impl Attribute<Quality> for KeyType {
+    fn attr(&self) -> Vec<Quality> {
+        self.attr.clone()
+    }
+
+    fn set_attr(&mut self, q: Quality) {
+        self.set_attr(q);
+    }
+
+    fn unset_attr(&mut self, q: Quality) {
+        self.unset_attr(q);
+    }
+}
+
+impl From<DescriptionWithQualities> for KeyType {
+    fn from(b: DescriptionWithQualities) -> Self {
+        Self {
+            info: b.info,
+            attr: b.attr,
+            key: 0,
+        }
     }
 }

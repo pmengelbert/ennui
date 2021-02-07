@@ -5,12 +5,12 @@ use serde::{Deserialize, Serialize};
 
 use meter::MeterKind;
 
-use crate::attribute::Attribute;
+use crate::attribute::{Attribute, Quality};
 use crate::describe::Describe;
 use crate::error::EnnuiError;
 use crate::gram_object::{Grabber, Hook};
 use crate::item::list::{Holder, ItemList, ItemListTrout, ListTrait};
-use crate::item::{DescriptionWithQualities, Item, Quality};
+use crate::item::{DescriptionWithQualities, Item};
 use crate::map::coord::Coord;
 use crate::map::Locate;
 

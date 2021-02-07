@@ -1,15 +1,18 @@
+use super::Description;
 use crate::error::CmdErr::ItemNotFound;
 use crate::error::EnnuiError;
 use crate::error::EnnuiError::{Fatal, Simple};
 use crate::gram_object::{Grabber, Hook};
-use crate::item::key::KeyType;
-use crate::item::YamlItem::{Clothing, Container, Edible, Holdable, Key, Scenery, Weapon};
+use crate::item::YamlItem::{Clothing, Container, Edible, Holdable, Scenery, Weapon};
 use crate::item::{
     Attribute, Describe, DescriptionWithQualities, Item, Quality, YamlItem, YamlItemList,
 };
-use crate::map::door::RenaissanceGuard;
+use crate::map::door::{GuardState, Lock, ObstacleState};
+use crate::map::StateResult;
+use crate::obstacle::key::{Key, KeyType};
 use crate::text::message::MessageFormat;
 use crate::text::Color::Green;
+use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 use std::mem::take;
 
@@ -213,7 +216,7 @@ fn conv(list: &mut YamlItemList) -> ItemList {
                 g.set_attr(Quality::Container);
                 Item::Guard(*dir, Box::new(g))
             }
-            Key(n, item) => {
+            YamlItem::Key(n, item) => {
                 let i = take(item);
                 let mut k: KeyType = i.into();
                 k.set_key(*n);
@@ -225,4 +228,145 @@ fn conv(list: &mut YamlItemList) -> ItemList {
     }
     ret.info = list.info.clone();
     ret
+}
+
+pub trait Guard: Lock<GuardState> + ListTrait<Kind = ItemList> {}
+impl Guard for RenaissanceGuard {}
+
+impl ListTrait for RenaissanceGuard {
+    type Kind = ItemList;
+
+    fn get_item(&self, handle: Grabber) -> Option<&Item> {
+        self.items.get_item(handle)
+    }
+
+    fn get_item_mut(&mut self, handle: Grabber) -> Option<&mut Item> {
+        self.items.get_item_mut(handle)
+    }
+
+    fn get_item_owned(&mut self, handle: Grabber) -> Result<Item, EnnuiError> {
+        self.items.get_item_owned(handle)
+    }
+
+    fn insert_item(&mut self, item: Item) -> Result<(), Item> {
+        match &item {
+            Item::Key(k) => match self.unlock(GuardState::Open, Some(&**k)) {
+                Ok(()) => Ok(()),
+                Err(_) => Err(item),
+            },
+            _ => Err(item),
+        }
+    }
+
+    fn list(&self) -> &Self::Kind {
+        self.items.list()
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize, Default)]
+pub struct RenaissanceGuard {
+    #[serde(skip_serializing, skip_deserializing)]
+    pub items: ItemList,
+    #[serde(default)]
+    pub state: GuardState,
+    pub lock: u64,
+    pub info: Description,
+    #[serde(default)]
+    pub attr: Vec<Quality>,
+}
+
+impl crate::item::GuardDescribe for RenaissanceGuard {}
+
+impl Clone for RenaissanceGuard {
+    fn clone(&self) -> Self {
+        Self {
+            info: self.info.clone(),
+            items: ItemList::new(),
+            state: self.state,
+            lock: self.lock,
+            attr: self.attr.clone(),
+        }
+    }
+}
+
+impl Describe for RenaissanceGuard {
+    fn name(&self) -> String {
+        self.info.name()
+    }
+
+    fn display(&self) -> String {
+        self.info.display()
+    }
+
+    fn description(&self) -> String {
+        match self.state() {
+            GuardState::Closed => {
+                self.info.description()
+            }
+            GuardState::Open => {
+                "He seems happy as a clam, and tells you over and over how grateful he is to have warm genitals.".to_owned()
+            }
+        }
+    }
+
+    fn handle(&self) -> Hook {
+        self.info.handle()
+    }
+}
+
+impl Attribute<Quality> for RenaissanceGuard {
+    fn attr(&self) -> Vec<Quality> {
+        self.attr.clone()
+    }
+
+    fn set_attr(&mut self, q: Quality) {
+        self.set_attr(q);
+    }
+
+    fn unset_attr(&mut self, q: Quality) {
+        self.unset_attr(q);
+    }
+}
+
+impl ObstacleState<GuardState> for RenaissanceGuard {
+    fn state(&self) -> GuardState {
+        self.state
+    }
+}
+
+impl Lock<GuardState> for RenaissanceGuard {
+    type Lock = u64;
+
+    fn unlock(
+        &mut self,
+        new_state: GuardState,
+        key: Option<&dyn Key<Self::Lock>>,
+    ) -> StateResult<GuardState> {
+        if let GuardState::Open = new_state {
+            match key {
+                Some(k) if k.key() == self.lock => {
+                    self.state = new_state;
+                    Ok(())
+                }
+                Some(_k) => Err(self.state()),
+                _ => Err(self.state()),
+            }
+        } else {
+            Err(self.state())
+        }
+    }
+
+    fn is_locked(&self) -> bool {
+        self.state == GuardState::Closed
+    }
+}
+
+impl From<DescriptionWithQualities> for RenaissanceGuard {
+    fn from(b: DescriptionWithQualities) -> Self {
+        Self {
+            info: b.info,
+            attr: b.attr,
+            ..Self::default()
+        }
+    }
 }
