@@ -10,7 +10,7 @@ use crate::map::StateResult;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::error::Error;
-use std::fmt::{Debug, Display, Formatter};
+use std::fmt::{Debug, Formatter};
 
 use std::option::NoneError;
 
