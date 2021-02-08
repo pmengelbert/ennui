@@ -192,7 +192,7 @@ impl From<YamlItemList> for ItemList {
 }
 
 fn conv_desc(d: &mut DescriptionWithQualities, q: Quality) -> Box<dyn super::ItemDescribe> {
-    let mut new = d.clone();
+    let new = d.clone();
     d.set_attr(q);
     Box::new(new)
 }

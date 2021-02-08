@@ -54,6 +54,7 @@ impl Description {
 macro_rules! handle {
     ( $( $name:ident ),* ) => {
         {
+            #[allow(unused_mut)]
             let mut h: crate::hook::Hook = crate::hook::Hook(Vec::new());
             $( h.push(stringify!($name).to_owned()); )*
             h

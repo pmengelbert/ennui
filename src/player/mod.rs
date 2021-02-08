@@ -11,8 +11,7 @@ use crate::error::EnnuiError;
 use crate::hook::{Grabber, Hook};
 use crate::item::list::{Holder, ItemList, ItemListTrout, ListTrait};
 use crate::item::{DescriptionWithQualities, Item};
-use crate::location::Coord;
-use crate::map::Locate;
+use crate::location::{Coord, Locate};
 
 use crate::fight::FightMod;
 use crate::fight::FightMod::Leave;

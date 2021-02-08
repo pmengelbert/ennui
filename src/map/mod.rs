@@ -8,10 +8,9 @@ use crate::error::EnnuiError;
 use crate::hook::{Grabber, Hook};
 use crate::item::list::{Holder, ItemList, ItemListTrout, ListTrait};
 use crate::item::{DescriptionWithQualities, Item, YamlItemList};
-use crate::location::Coord;
+use crate::location::{Coord, Locate};
 use crate::obstacle::door::DoorList;
 use crate::player::list::PlayerIdList;
-use crate::player::Uuid;
 use crate::text::message::MessageFormat;
 use crate::text::Color::{Cyan, Green};
 
@@ -36,7 +35,7 @@ pub trait Space: Locate + ListTrait {
     fn players(&self) -> &PlayerIdList;
     fn doors(&mut self) -> &mut DoorList;
     fn players_except(&self, u: u128) -> Vec<u128> {
-        let u = u.uuid();
+        let u = u;
         let mut l = Vec::new();
         for &id in self.players().iter() {
             if id == u {
@@ -127,28 +126,6 @@ impl Locate for Room {
     }
 }
 
-impl Uuid for Room {
-    fn uuid(&self) -> u128 {
-        0
-    }
-
-    fn others(&self) -> Vec<u128> {
-        let mut v = vec![];
-        for id in self.players.iter() {
-            if *id == self.uuid() {
-                continue;
-            }
-            v.push(*id)
-        }
-
-        v
-    }
-}
-
-pub trait Locate {
-    fn loc(&self) -> Coord;
-}
-
 impl Space for Room {
     fn players(&self) -> &PlayerIdList {
         &self.players
@@ -213,7 +190,7 @@ impl Room {
         &mut self.players
     }
 
-    pub fn add_player<P: Uuid>(&mut self, p: &P) -> bool {
-        self.players.insert(p.uuid())
+    pub fn add_player(&mut self, p: u128) -> bool {
+        self.players.insert(p)
     }
 }

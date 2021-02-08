@@ -300,19 +300,6 @@ impl YamlItem {
             YamlItem::Guard { info, .. } => &info,
         }
     }
-
-    fn safe_unwrap_mut(&mut self) -> &mut DescriptionWithQualities {
-        match self {
-            YamlItem::Key(_, item)
-            | YamlItem::Clothing(item)
-            | YamlItem::Weapon(item)
-            | YamlItem::Scenery(item)
-            | YamlItem::Holdable(item)
-            | YamlItem::Edible(item) => item,
-            YamlItem::Container(i) => &mut i.info,
-            YamlItem::Guard { info, .. } => info,
-        }
-    }
 }
 
 impl Describe for YamlItem {

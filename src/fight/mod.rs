@@ -1,4 +1,4 @@
-use crate::map::Locate;
+use crate::location::Locate;
 use crate::player::{ConnectionStatus, PlayerType as BarePlayer, Uuid};
 
 use std::sync::mpsc::{channel, Receiver, Sender};

@@ -23,9 +23,9 @@ use crate::describe::Describe;
 use crate::hook::Grabber;
 use crate::item::Item;
 use crate::location::direction::MapDir;
-use crate::location::Coord;
+use crate::location::{Coord, Locate};
 use crate::map::list::{RoomList, RoomListTrait};
-use crate::map::{Locate, Room, Space};
+use crate::map::{Room, Space};
 use crate::obstacle::door::{DoorState, GuardState, ObstacleState};
 use crate::player::list::{PlayerIdList, PlayerIdListTrait, PlayerList, PlayerListTrait};
 use crate::player::PlayerStatus::{Asleep, Dead, Sitting};
@@ -121,7 +121,7 @@ impl Game {
     }
 
     pub fn add_player(&mut self, p: PlayerType) {
-        self.rooms.entry(p.loc()).or_default().add_player(&p);
+        self.rooms.entry(p.loc()).or_default().add_player(p.uuid());
         self.players.insert(p.uuid(), Arc::new(Mutex::new(p)));
     }
 

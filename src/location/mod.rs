@@ -3,6 +3,10 @@ use direction::MapDir;
 
 use serde::{Deserialize, Serialize};
 
+pub trait Locate {
+    fn loc(&self) -> Coord;
+}
+
 #[derive(Eq, PartialEq, Debug, Deserialize, Serialize, Hash, Default, Clone, Copy)]
 pub struct Coord(pub i64, pub i64);
 
