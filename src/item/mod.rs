@@ -1,8 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 
-use YamlItem::*;
-
 use crate::attribute::{Attribute, Quality};
 use crate::describe::{Describe, Description};
 use crate::gram_object::Hook;
@@ -144,7 +142,7 @@ impl Attribute<Quality> for Item {
 
 impl Default for YamlItem {
     fn default() -> Self {
-        Holdable(DescriptionWithQualities::default())
+        Self::Holdable(DescriptionWithQualities::default())
     }
 }
 
@@ -286,26 +284,26 @@ impl YamlItemList {
 impl YamlItem {
     fn safe_unwrap(&self) -> &DescriptionWithQualities {
         match self {
-            Key(_, item)
-            | Clothing(item)
-            | Weapon(item)
-            | Scenery(item)
-            | Holdable(item)
-            | Edible(item) => item,
-            Container(i) => &i.info,
+            YamlItem::Key(_, item)
+            | YamlItem::Clothing(item)
+            | YamlItem::Weapon(item)
+            | YamlItem::Scenery(item)
+            | YamlItem::Holdable(item)
+            | YamlItem::Edible(item) => item,
+            YamlItem::Container(i) => &i.info,
             YamlItem::Guard { info, .. } => &info,
         }
     }
 
     fn safe_unwrap_mut(&mut self) -> &mut DescriptionWithQualities {
         match self {
-            Key(_, item)
-            | Clothing(item)
-            | Weapon(item)
-            | Scenery(item)
-            | Holdable(item)
-            | Edible(item) => item,
-            Container(i) => &mut i.info,
+            YamlItem::Key(_, item)
+            | YamlItem::Clothing(item)
+            | YamlItem::Weapon(item)
+            | YamlItem::Scenery(item)
+            | YamlItem::Holdable(item)
+            | YamlItem::Edible(item) => item,
+            YamlItem::Container(i) => &mut i.info,
             YamlItem::Guard { info, .. } => info,
         }
     }
