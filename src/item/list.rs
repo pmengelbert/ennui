@@ -320,11 +320,22 @@ impl Attribute<Quality> for RenaissanceGuard {
     }
 
     fn set_attr(&mut self, q: Quality) {
-        self.set_attr(q);
+        self.attr.push(q);
     }
 
     fn unset_attr(&mut self, q: Quality) {
-        self.unset_attr(q);
+        let mut index = 0;
+        for qual in self.attr.iter() {
+            if *qual == q {
+                break;
+            }
+
+            index += 1;
+        }
+
+        if index < self.attr.len() {
+            self.attr.remove(index);
+        }
     }
 }
 

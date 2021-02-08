@@ -228,7 +228,15 @@ impl Attribute<Quality> for YamlItemList {
     }
 
     fn unset_attr(&mut self, q: Quality) {
-        let index = self.info.attr.iter().take_while(|i| **i == q).count();
+        let mut index = 0;
+        for qual in self.info.attr.iter() {
+            if *qual == q {
+                break;
+            }
+
+            index += 1;
+        }
+
         if index < self.info.attr.len() {
             self.info.attr.remove(index);
         }
@@ -333,11 +341,22 @@ impl Attribute<Quality> for KeyType {
     }
 
     fn set_attr(&mut self, q: Quality) {
-        self.set_attr(q);
+        self.attr.push(q);
     }
 
     fn unset_attr(&mut self, q: Quality) {
-        self.unset_attr(q);
+        let mut index = 0;
+        for qual in self.attr.iter() {
+            if *qual == q {
+                break;
+            }
+
+            index += 1;
+        }
+
+        if index < self.attr.len() {
+            self.attr.remove(index);
+        }
     }
 }
 
