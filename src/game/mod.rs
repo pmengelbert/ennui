@@ -20,7 +20,7 @@ use crate::text::channel::DiscreteMessage;
 
 use crate::attribute::Attribute;
 use crate::describe::Describe;
-use crate::gram_object::Grabber;
+use crate::hook::Grabber;
 use crate::item::Item;
 use crate::location::direction::MapDir;
 use crate::location::Coord;

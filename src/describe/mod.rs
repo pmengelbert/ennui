@@ -1,4 +1,4 @@
-use crate::gram_object::Hook;
+use crate::hook::Hook;
 use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 
@@ -47,5 +47,31 @@ impl Description {
             handle,
             display,
         }
+    }
+}
+
+#[macro_export]
+macro_rules! handle {
+    ( $( $name:ident ),* ) => {
+        {
+            let mut h: crate::hook::Hook = crate::hook::Hook(Vec::new());
+            $( h.push(stringify!($name).to_owned()); )*
+            h
+        }
+    }
+}
+
+#[cfg(test)]
+mod handle_test {
+    use super::*;
+
+    #[test]
+    fn handle_test() {
+        let h = handle![sword, rusty];
+        eprintln!("{:#?}", h);
+        eprintln!("in file {} on line number {}", file!(), line!());
+
+        assert_eq!("sword", h);
+        assert_eq!("rusty", h);
     }
 }

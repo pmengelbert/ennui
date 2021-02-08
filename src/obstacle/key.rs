@@ -1,6 +1,6 @@
 use crate::attribute::{Attribute, Quality};
 use crate::describe::{Describe, Description};
-use crate::gram_object::Hook;
+use crate::hook::Hook;
 use std::fmt::Debug;
 
 pub trait Key<T>: Describe + Debug + Attribute<Quality> {

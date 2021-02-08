@@ -8,7 +8,7 @@ pub mod describe;
 pub mod error;
 pub mod fight;
 pub mod game;
-pub mod gram_object;
+pub mod hook;
 mod interpreter;
 mod item;
 pub mod location;

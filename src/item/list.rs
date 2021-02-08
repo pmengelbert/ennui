@@ -2,7 +2,7 @@ use super::Description;
 use crate::error::CmdErr::ItemNotFound;
 use crate::error::EnnuiError;
 use crate::error::EnnuiError::{Fatal, Simple};
-use crate::gram_object::{Grabber, Hook};
+use crate::hook::{Grabber, Hook};
 use crate::item::YamlItem::{Clothing, Container, Edible, Holdable, Scenery, Weapon};
 use crate::item::{
     Attribute, Describe, DescriptionWithQualities, Item, Quality, YamlItem, YamlItemList,

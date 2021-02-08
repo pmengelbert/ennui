@@ -3,7 +3,7 @@ use std::fmt::Debug;
 
 use crate::attribute::{Attribute, Quality};
 use crate::describe::{Describe, Description};
-use crate::gram_object::Hook;
+use crate::hook::Hook;
 use crate::location::direction::MapDir;
 use crate::obstacle::door::GuardState;
 use crate::obstacle::key::{Key, KeyType};

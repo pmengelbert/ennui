@@ -5,7 +5,7 @@ use crate::location::direction::MapDir;
 use crate::attribute::{Attribute, Quality};
 use crate::describe::Describe;
 use crate::error::EnnuiError;
-use crate::gram_object::{Grabber, Hook};
+use crate::hook::{Grabber, Hook};
 use crate::item::list::{Holder, ItemList, ItemListTrout, ListTrait};
 use crate::item::{DescriptionWithQualities, Item, YamlItemList};
 use crate::location::Coord;
@@ -15,9 +15,6 @@ use crate::player::Uuid;
 use crate::text::message::MessageFormat;
 use crate::text::Color::{Cyan, Green};
 
-pub mod coord;
-pub mod direction;
-pub mod door;
 pub mod list;
 
 #[derive(Default, Serialize, Deserialize, Debug)]
