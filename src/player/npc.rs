@@ -206,6 +206,7 @@ impl Npc {
 #[cfg(test)]
 mod npc_test {
     use super::*;
+    use crate::describe::Describe;
     use crate::player::PlayerType;
 
     #[test]
@@ -222,9 +223,9 @@ display:
   Bill is here, just minding his own business
 "#;
         let p: YamlPlayer = serde_yaml::from_str(x).unwrap();
-        assert_eq!(p.info.name, "Bill");
-        assert_eq!(p.info.handle, "bill");
-        assert_eq!(p.info.handle, "guy");
+        assert_eq!(p.info.name(), "Bill");
+        assert_eq!(p.info.handle(), "bill");
+        assert_eq!(p.info.handle(), "guy");
         assert!(matches!(p.ai_type, Some(AI::Talker(_))));
         let r: PlayerType = p.into();
         assert!(matches!(r, PlayerType::Npc(_)));

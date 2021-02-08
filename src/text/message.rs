@@ -165,7 +165,7 @@ impl Message for String {
 #[cfg(test)]
 mod test_message {
     use crate::game::Game;
-    use crate::map::coord::Coord;
+    use crate::location::Coord;
     use crate::map::Space;
 
     use super::*;
