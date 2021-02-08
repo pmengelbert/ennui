@@ -1,4 +1,4 @@
-use crate::map::coord::Coord;
+use crate::location::Coord;
 use crate::map::direction::MapDir;
 use crate::obstacle::key::Key;
 use serde::{Deserialize, Serialize};

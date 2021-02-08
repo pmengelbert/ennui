@@ -1,6 +1,6 @@
 use super::{Player, PlayerType, Quality};
 use crate::item::{list::ItemList, list::ItemListTrout, DescriptionWithQualities, Item};
-use crate::map::coord::Coord;
+use crate::location::Coord;
 use crate::text::message::Broadcast;
 use rand::Rng;
 use serde::{Deserialize, Serialize};

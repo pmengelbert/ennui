@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::map::coord::Coord;
+use crate::location::Coord;
 use crate::map::direction::MapDir;
 use crate::map::Room;
 use crate::player::list::PlayerIdList;

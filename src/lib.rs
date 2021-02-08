@@ -11,6 +11,7 @@ pub mod game;
 pub mod gram_object;
 mod interpreter;
 mod item;
+pub mod location;
 pub mod map;
 pub mod obstacle;
 pub mod player;

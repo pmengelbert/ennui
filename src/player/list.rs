@@ -4,7 +4,8 @@ use crate::player::{PlayerType, Uuid};
 use crate::text::message::{MessageFormat, Messenger};
 
 use crate::describe::Describe;
-use crate::map::{coord::Coord, Locate};
+use crate::location::Coord;
+use crate::map::Locate;
 use crate::text::Color;
 use crate::text::Color::Yellow;
 use std::sync::{Arc, Mutex};
