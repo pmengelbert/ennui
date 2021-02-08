@@ -4,14 +4,12 @@ use std::fmt::Debug;
 use crate::attribute::{Attribute, Quality};
 use crate::describe::{Describe, Description};
 use crate::gram_object::Hook;
-use crate::map::direction::MapDir;
-use crate::map::door::GuardState;
+use crate::location::direction::MapDir;
+use crate::obstacle::door::GuardState;
 use crate::obstacle::key::{Key, KeyType};
 use list::{Guard, ItemList, ListTrait};
 use Item::NoItem;
 
-pub mod handle;
-pub mod key;
 pub mod list;
 
 pub trait ItemDescribe: Describe + Attribute<Quality> {}

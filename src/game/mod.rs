@@ -22,11 +22,11 @@ use crate::attribute::Attribute;
 use crate::describe::Describe;
 use crate::gram_object::Grabber;
 use crate::item::Item;
+use crate::location::direction::MapDir;
 use crate::location::Coord;
-use crate::map::direction::MapDir;
-use crate::map::door::{DoorState, GuardState, ObstacleState};
 use crate::map::list::{RoomList, RoomListTrait};
 use crate::map::{Locate, Room, Space};
+use crate::obstacle::door::{DoorState, GuardState, ObstacleState};
 use crate::player::list::{PlayerIdList, PlayerIdListTrait, PlayerList, PlayerListTrait};
 use crate::player::PlayerStatus::{Asleep, Dead, Sitting};
 use crate::player::{PlayerType, Uuid};
@@ -373,7 +373,7 @@ impl Game {
                 format!("you go {:?}\n\n{}", dir, self.describe_room(u)?).into()
             }
             Err(s) => {
-                use crate::map::door::DoorState::*;
+                use crate::obstacle::door::DoorState::*;
                 terminate = Some(());
                 match s {
                     None => "alas! you cannot go that way...".into(),

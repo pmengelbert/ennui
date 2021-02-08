@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use direction::MapDir;
+use crate::location::direction::MapDir;
 
 use crate::attribute::{Attribute, Quality};
 use crate::describe::Describe;
@@ -9,7 +9,7 @@ use crate::gram_object::{Grabber, Hook};
 use crate::item::list::{Holder, ItemList, ItemListTrout, ListTrait};
 use crate::item::{DescriptionWithQualities, Item, YamlItemList};
 use crate::location::Coord;
-use crate::map::door::DoorList;
+use crate::obstacle::door::DoorList;
 use crate::player::list::PlayerIdList;
 use crate::player::Uuid;
 use crate::text::message::MessageFormat;

@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
+use crate::location::direction::MapDir;
 use crate::location::Coord;
-use crate::map::direction::MapDir;
 use crate::map::Room;
 use crate::player::list::PlayerIdList;
 use crate::player::Uuid;

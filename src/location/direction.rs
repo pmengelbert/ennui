@@ -1,6 +1,6 @@
-use crate::map::direction::MapDir::{NoneFound, South};
 use serde::{Deserialize, Serialize};
 use std::fmt::{Display, Formatter};
+use MapDir::{NoneFound, South};
 
 #[derive(Copy, Clone, Serialize, Deserialize, Eq, PartialEq, Hash)]
 pub enum MapDir {

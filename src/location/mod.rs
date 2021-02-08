@@ -1,4 +1,5 @@
-use crate::map::direction::MapDir;
+pub mod direction;
+use direction::MapDir;
 
 use serde::{Deserialize, Serialize};
 
@@ -27,7 +28,7 @@ impl Coord {
     }
 
     pub fn add(&self, dir: MapDir) -> Option<Self> {
-        use crate::map::direction::MapDir::*;
+        use MapDir::*;
 
         Some(match dir {
             North => self.north(),

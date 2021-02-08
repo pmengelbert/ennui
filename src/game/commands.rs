@@ -5,7 +5,7 @@ use crate::game::util::random_insult;
 // use crate::item::error::Error::*;
 use crate::error::EnnuiError::*;
 use crate::error::{CmdErr, EnnuiError};
-use crate::map::door::{Door, DoorState, Lock, ObstacleState};
+use crate::obstacle::door::{Door, DoorState, Lock, ObstacleState};
 use crate::text::message::{Audience, Msg};
 
 use crate::fight::{BasicFight, Fight, FightInfo, FightMod};
