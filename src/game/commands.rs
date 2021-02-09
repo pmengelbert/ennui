@@ -314,12 +314,13 @@ pub fn fill_interpreter(i: &mut Interpreter) {
         let loc = g.loc_of(u)?;
         let name = g.name_of(u)?;
         let mut other_msg = None;
+
+        let rooms = &mut g.rooms;
+        let room = rooms.get_mut(&loc)?;
+
         let self_msg = match a.len() {
             0 => "ok, what do you want to open?".to_owned(),
             1 => {
-                let rooms = &mut g.rooms;
-                let room = rooms.get_mut(&loc)?;
-
                 if room.doors().len() > 1 {
                     "which door do you want to open?".to_owned()
                 } else {
@@ -332,9 +333,6 @@ pub fn fill_interpreter(i: &mut Interpreter) {
                 }
             }
             2 => {
-                let rooms = &mut g.rooms;
-                let room = rooms.get_mut(&loc)?;
-
                 let dir: MapDir = a[1].into();
                 let door = match room.doors().get_mut(&dir) {
                     Some(d) => d,
@@ -346,7 +344,7 @@ pub fn fill_interpreter(i: &mut Interpreter) {
             _ => "I'm not sure what you're getting at".to_owned(),
         };
 
-        let aud = Audience(u, g.players_in(loc).except(u));
+        let aud = Audience(u, room.players().except(u));
         let msg = Msg {
             s: self_msg,
             o: other_msg,

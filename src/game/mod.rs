@@ -1,3 +1,8 @@
+mod broadcast;
+mod commands;
+mod item;
+mod util;
+
 use std::backtrace::Backtrace;
 use std::borrow::Cow;
 use std::collections::HashMap;
@@ -15,13 +20,12 @@ use crate::fight::FightMessage;
 use crate::game::util::load_rooms;
 use crate::interpreter::CommandQuality::{Awake, Motion};
 use crate::interpreter::{CommandKind, CommandMessage, Interpreter};
-use crate::item::list::ListTrait;
+use crate::item::{list::ListTrait, Item};
 use crate::text::channel::DiscreteMessage;
 
 use crate::attribute::Attribute;
 use crate::describe::Describe;
 use crate::hook::Grabber;
-use crate::item::Item;
 use crate::location::direction::MapDir;
 use crate::location::{Coord, Locate};
 use crate::map::list::{RoomList, RoomListTrait};
@@ -37,11 +41,6 @@ use crate::text::message::{
 use crate::text::Color::{Green, Magenta};
 use std::fmt::Debug;
 use std::mem::take;
-
-mod broadcast;
-mod commands;
-mod item;
-mod util;
 
 pub type GameResult<T> = Result<T, Box<dyn StdError>>;
 pub type GameOutput = (Box<dyn Messenger>, Box<dyn Message>);

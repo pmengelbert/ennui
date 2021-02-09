@@ -5,12 +5,14 @@ use serde::{Deserialize, Serialize};
 
 use meter::MeterKind;
 
-use crate::attribute::{Attribute, Quality};
-use crate::describe::Describe;
+use crate::attribute::Attribute;
+use crate::describe::{Describe, Description};
 use crate::error::EnnuiError;
 use crate::hook::{Grabber, Hook};
-use crate::item::list::{ItemList, ListTrait};
-use crate::item::{DescriptionWithQualities, Item};
+use crate::item::{
+    list::{ItemList, ListTrait},
+    Item,
+};
 use crate::location::{Coord, Locate};
 
 use crate::fight::FightMod;
@@ -79,7 +81,7 @@ impl PlayerType {
 #[derive(Default, Serialize, Deserialize, Debug)]
 pub struct Player {
     uuid: u128,
-    info: DescriptionWithQualities,
+    info: Description,
     loc: Coord,
     #[serde(skip_serializing, skip_deserializing)]
     items: ItemList,
@@ -173,8 +175,7 @@ impl ListTrait for PlayerType {
     }
 
     fn insert_item(&mut self, item: Item) -> Result<(), Item> {
-        self.safe_unwrap_mut().items.insert_item(item);
-        Ok(())
+        self.safe_unwrap_mut().items.insert_item(item)
     }
 
     fn display_items(&self) -> String {
@@ -290,14 +291,11 @@ impl Player {
 
         Self {
             uuid,
-            info: DescriptionWithQualities {
-                info: crate::describe::Description {
-                    description: String::new(),
-                    name: String::new(),
-                    handle: Hook(vec![]),
-                    display: String::new(),
-                },
-                attr: vec![],
+            info: Description {
+                description: String::new(),
+                name: String::new(),
+                handle: Hook(vec![]),
+                display: String::new(),
             },
             loc: Coord(0, 0),
             items: ItemList::new(),
@@ -322,13 +320,9 @@ impl PlayerType {
     }
 
     pub fn set_name(&mut self, name: &str) {
-        self.safe_unwrap_mut()
-            .info
-            .info
-            .handle
-            .push(name.to_lowercase());
-        self.safe_unwrap_mut().info.info.name = name.to_owned();
-        self.safe_unwrap_mut().info.info.display = name.to_owned();
+        self.safe_unwrap_mut().info.handle.push(name.to_lowercase());
+        self.safe_unwrap_mut().info.name = name.to_owned();
+        self.safe_unwrap_mut().info.display = name.to_owned();
     }
 
     pub fn hurt(&mut self, amt: usize) {

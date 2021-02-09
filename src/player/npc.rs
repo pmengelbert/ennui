@@ -1,5 +1,7 @@
-use super::{Player, PlayerType, Quality};
-use crate::item::{list::ListTrait, DescriptionWithQualities, Item};
+use super::{Player, PlayerType};
+use crate::attribute::Quality;
+use crate::describe::Description;
+use crate::item::{list::ListTrait, Item};
 use crate::location::Coord;
 use crate::text::message::Broadcast;
 use rand::Rng;
@@ -18,7 +20,7 @@ pub enum AI {
 #[derive(Deserialize, Serialize)]
 pub struct YamlPlayer {
     #[serde(flatten)]
-    pub info: DescriptionWithQualities,
+    pub info: Description,
     #[serde(default)]
     pub ai_type: Option<AI>,
     #[serde(default)]
@@ -57,11 +59,8 @@ impl From<Player> for Item {
             ..
         } = other;
 
-        let DescriptionWithQualities {
-            info: crate::describe::Description {
-                name, mut handle, ..
-            },
-            ..
+        let Description {
+            name, mut handle, ..
         } = info;
 
         let mut attributes = vec![];
@@ -70,16 +69,6 @@ impl From<Player> for Item {
         let display = format!("The corpse of {} lies here, decomposing", name);
         let description = format!("Where once stood {}, now lies a rotting corpse", name);
         attributes.push(Quality::Scenery);
-
-        let _d = DescriptionWithQualities {
-            info: crate::describe::Description {
-                name,
-                display,
-                handle,
-                description,
-            },
-            attr: attributes,
-        };
 
         let clothing = clothing.into_inner();
 

@@ -160,7 +160,7 @@ impl ItemList {
     pub fn display_items(&self) -> String {
         self.inner
             .iter()
-            .map(|i| crate::text::article(&i.name()))
+            .map(|i| crate::text::article(&i.display()))
             .collect::<Vec<_>>()
             .join("\n")
             .color(Green)
