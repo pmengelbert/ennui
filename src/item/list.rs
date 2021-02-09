@@ -1,12 +1,9 @@
-use super::Description;
-use crate::error::CmdErr::ItemNotFound;
-use crate::error::EnnuiError;
-use crate::error::EnnuiError::{Fatal, Simple};
+use super::{Describe, Description};
+use crate::error::EnnuiError::Fatal;
+use crate::error::{CmdErr, EnnuiError};
 use crate::hook::{Grabber, Hook};
 use crate::item::YamlItem::{Clothing, Container, Edible, Holdable, Scenery, Weapon};
-use crate::item::{
-    Attribute, Describe, DescriptionWithQualities, Item, Quality, YamlItem, YamlItemList,
-};
+use crate::item::{Attribute, DescriptionWithQualities, Item, Quality, YamlItem, YamlItemList};
 use crate::obstacle::door::{GuardState, Lock, ObstacleState, StateResult};
 use crate::obstacle::key::{Key, KeyType};
 use crate::text::message::MessageFormat;
@@ -15,22 +12,14 @@ use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 use std::mem::take;
 
-use std::slice::{Iter, IterMut};
-
-pub trait Holder: Describe {
-    type Kind;
-
-    fn items(&self) -> &Self::Kind;
-    fn items_mut(&mut self) -> &mut Self::Kind;
-}
-
 pub trait ListTrait: Describe + Debug {
-    type Kind: Debug;
+    type Kind: Debug + IntoIterator;
     fn get_item(&self, handle: Grabber) -> Option<&Item>;
     fn get_item_mut(&mut self, handle: Grabber) -> Option<&mut Item>;
     fn get_item_owned(&mut self, handle: Grabber) -> Result<Item, EnnuiError>;
     fn insert_item(&mut self, item: Item) -> Result<(), Item>;
     fn list(&self) -> &Self::Kind;
+    fn display_items(&self) -> String;
 
     fn transfer(
         &mut self,
@@ -51,6 +40,14 @@ pub trait ListTrait: Describe + Debug {
 pub struct ItemList {
     inner: Vec<Item>,
     info: super::DescriptionWithQualities,
+}
+
+impl IntoIterator for ItemList {
+    type Item = Item;
+    type IntoIter = std::vec::IntoIter<Item>;
+    fn into_iter(self) -> Self::IntoIter {
+        self.inner.into_iter()
+    }
 }
 
 impl Describe for ItemList {
@@ -88,19 +85,43 @@ impl Attribute<Quality> for ItemList {
 impl ListTrait for ItemList {
     type Kind = ItemList;
     fn get_item(&self, handle: Grabber) -> Option<&Item> {
-        self.iter()
+        self.inner
+            .iter()
             .filter(|i| i.handle() == handle.handle)
             .nth(handle.index)
     }
 
     fn get_item_mut(&mut self, handle: Grabber) -> Option<&mut Item> {
-        self.iter_mut()
+        self.inner
+            .iter_mut()
             .filter(|i| i.handle() == handle.handle)
             .nth(handle.index)
     }
 
     fn get_item_owned(&mut self, handle: Grabber) -> Result<Item, EnnuiError> {
-        self.get_owned(handle)
+        let index = self
+            .inner
+            .iter()
+            .enumerate()
+            .filter_map(|(i, item)| {
+                if item.handle() == handle.handle {
+                    Some(i)
+                } else {
+                    None
+                }
+            })
+            .nth(handle.index);
+
+        let index = match index {
+            Some(i) => i,
+            None => return Err(EnnuiError::Simple(CmdErr::ItemNotFound)),
+        };
+
+        Ok(self.inner.remove(index))
+    }
+
+    fn display_items(&self) -> String {
+        self.display_items()
     }
 
     fn insert_item(&mut self, item: Item) -> Result<(), Item> {
@@ -111,15 +132,6 @@ impl ListTrait for ItemList {
     fn list(&self) -> &Self::Kind {
         &self
     }
-}
-
-pub trait ItemListTrout {
-    fn get_owned(&mut self, handle: Grabber) -> Result<Item, EnnuiError>;
-    fn display_items(&self) -> String;
-    fn iter(&self) -> Iter<Item>;
-    fn iter_mut(&mut self) -> IterMut<Item>;
-    fn len(&self) -> usize;
-    fn push(&mut self, i: Item);
 }
 
 impl ItemList {
@@ -136,52 +148,22 @@ impl ItemList {
             info,
         }
     }
-}
 
-impl ItemListTrout for ItemList {
-    fn get_owned(&mut self, handle: Grabber) -> Result<Item, EnnuiError> {
-        let Grabber { handle, index } = handle;
-
-        let pos = self
-            .iter()
-            .enumerate()
-            .filter_map(|(idx, item)| {
-                if item.handle() == handle {
-                    Some(idx)
-                } else {
-                    None
-                }
-            })
-            .nth(index)
-            .ok_or_else(|| Simple(ItemNotFound))?;
-        Ok(self.inner.remove(pos))
+    pub fn into_inner(mut self) -> Vec<Item> {
+        take(&mut self.inner)
     }
 
-    fn display_items(&self) -> String {
-        let mut s = String::new();
-
-        for item in self.iter() {
-            s.push('\n');
-            s.push_str(&item.display().color(Green));
-        }
-
-        s
-    }
-
-    fn iter(&self) -> Iter<Item> {
+    pub fn iter(&self) -> std::slice::Iter<Item> {
         self.inner.iter()
     }
 
-    fn iter_mut(&mut self) -> IterMut<Item> {
-        self.inner.iter_mut()
-    }
-
-    fn len(&self) -> usize {
-        self.inner.len()
-    }
-
-    fn push(&mut self, i: Item) {
-        self.inner.push(i);
+    pub fn display_items(&self) -> String {
+        self.inner
+            .iter()
+            .map(|i| crate::text::article(&i.name()))
+            .collect::<Vec<_>>()
+            .join("\n")
+            .color(Green)
     }
 }
 
@@ -223,7 +205,7 @@ fn conv(list: &mut YamlItemList) -> ItemList {
                 Item::Key(Box::new(k))
             }
         };
-        ret.push(i);
+        ret.insert_item(i);
     }
     ret.info = list.info.clone();
     ret
@@ -255,6 +237,10 @@ impl ListTrait for RenaissanceGuard {
             },
             _ => Err(item),
         }
+    }
+
+    fn display_items(&self) -> String {
+        self.items.display_items()
     }
 
     fn list(&self) -> &Self::Kind {

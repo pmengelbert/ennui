@@ -9,7 +9,7 @@ use crate::attribute::{Attribute, Quality};
 use crate::describe::Describe;
 use crate::error::EnnuiError;
 use crate::hook::{Grabber, Hook};
-use crate::item::list::{Holder, ItemList, ItemListTrout, ListTrait};
+use crate::item::list::{ItemList, ListTrait};
 use crate::item::{DescriptionWithQualities, Item};
 use crate::location::{Coord, Locate};
 
@@ -161,11 +161,7 @@ impl ListTrait for PlayerType {
     type Kind = ItemList;
 
     fn get_item(&self, handle: Grabber) -> Option<&Item> {
-        self.safe_unwrap()
-            .items
-            .iter()
-            .filter(|i| i.handle() == handle.handle)
-            .nth(handle.index)
+        self.safe_unwrap().items.get_item(handle)
     }
 
     fn get_item_mut(&mut self, handle: Grabber) -> Option<&mut Item> {
@@ -173,12 +169,16 @@ impl ListTrait for PlayerType {
     }
 
     fn get_item_owned(&mut self, handle: Grabber) -> Result<Item, EnnuiError> {
-        self.safe_unwrap_mut().items.get_owned(handle)
+        self.safe_unwrap_mut().items.get_item_owned(handle)
     }
 
     fn insert_item(&mut self, item: Item) -> Result<(), Item> {
-        self.safe_unwrap_mut().items.push(item);
+        self.safe_unwrap_mut().items.insert_item(item);
         Ok(())
+    }
+
+    fn display_items(&self) -> String {
+        self.safe_unwrap().items.display_items()
     }
 
     fn list(&self) -> &Self::Kind {
@@ -201,18 +201,6 @@ impl Locate for Arc<Mutex<PlayerType>> {
 impl Uuid for PlayerType {
     fn uuid(&self) -> u128 {
         self.safe_unwrap().uuid
-    }
-}
-
-impl Holder for PlayerType {
-    type Kind = ItemList;
-
-    fn items(&self) -> &Self::Kind {
-        &self.safe_unwrap().items
-    }
-
-    fn items_mut(&mut self) -> &mut Self::Kind {
-        &mut self.safe_unwrap_mut().items
     }
 }
 

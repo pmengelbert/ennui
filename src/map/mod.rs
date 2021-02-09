@@ -6,7 +6,7 @@ use crate::attribute::{Attribute, Quality};
 use crate::describe::Describe;
 use crate::error::EnnuiError;
 use crate::hook::{Grabber, Hook};
-use crate::item::list::{Holder, ItemList, ItemListTrout, ListTrait};
+use crate::item::list::{ItemList, ListTrait};
 use crate::item::{DescriptionWithQualities, Item, YamlItemList};
 use crate::location::{Coord, Locate};
 use crate::obstacle::door::DoorList;
@@ -48,18 +48,6 @@ pub trait Space: Locate + ListTrait {
     }
 }
 
-impl Holder for Room {
-    type Kind = ItemList;
-
-    fn items(&self) -> &ItemList {
-        &self.items
-    }
-
-    fn items_mut(&mut self) -> &mut ItemList {
-        &mut self.items
-    }
-}
-
 impl Describe for Room {
     fn name(&self) -> String {
         self.info.name()
@@ -96,10 +84,7 @@ impl ListTrait for Room {
     type Kind = ItemList;
 
     fn get_item(&self, handle: Grabber) -> Option<&Item> {
-        self.items
-            .iter()
-            .filter(|i| i.handle() == handle.handle)
-            .nth(handle.index)
+        self.items.get_item(handle)
     }
 
     fn get_item_mut(&mut self, handle: Grabber) -> Option<&mut Item> {
@@ -107,12 +92,16 @@ impl ListTrait for Room {
     }
 
     fn get_item_owned(&mut self, handle: Grabber) -> Result<Item, EnnuiError> {
-        self.items.get_owned(handle)
+        self.items.get_item_owned(handle)
     }
 
     fn insert_item(&mut self, item: Item) -> Result<(), Item> {
-        self.items.push(item);
+        self.items.insert_item(item);
         Ok(())
+    }
+
+    fn display_items(&self) -> String {
+        self.items.display_items()
     }
 
     fn list(&self) -> &Self::Kind {

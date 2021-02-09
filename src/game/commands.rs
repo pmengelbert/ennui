@@ -1,10 +1,8 @@
 use super::item::Direction;
-// use super::item::TransferResult::*;
 use super::*;
-use crate::game::util::random_insult;
-// use crate::item::error::Error::*;
 use crate::error::EnnuiError::*;
 use crate::error::{CmdErr, EnnuiError};
+use crate::game::util::random_insult;
 use crate::obstacle::door::{Door, DoorState, Lock, ObstacleState};
 use crate::text::message::{Audience, Msg};
 
@@ -76,7 +74,7 @@ pub fn fill_interpreter(i: &mut Interpreter) {
                     Some(c) => {
                         if let Item::Container(cont) = c {
                             use std::result::Result::*;
-                            match cont.get_item(Grabber::from_str(object)) {
+                            match cont.get_item_mut(object.into()) {
                                 Some(_) => match cont
                                     .transfer(player.lock().unwrap().deref_mut(), object)
                                 {
@@ -590,7 +588,7 @@ fn try_door_unlock(
 ) -> String {
     let mut res = None;
 
-    for item in player.lock().unwrap().items_mut().iter_mut() {
+    for item in player.lock().unwrap().list().iter() {
         if let Item::Key(k) = item {
             use std::result::Result::*;
             match door.unlock(DoorState::Closed, Some(k.as_ref())) {

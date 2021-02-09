@@ -12,7 +12,7 @@ use crate::text::article;
 use crate::error::CmdErr::{ItemNotFound, NotClothing, PlayerNotFound, TooHeavy};
 use crate::error::EnnuiError;
 use crate::error::EnnuiError::{Fatal, Msg, Simple};
-use crate::item::list::{Holder, ItemList, ListTrait};
+use crate::item::list::{ItemList, ListTrait};
 use std::ops::DerefMut;
 use std::sync::{Arc, Mutex};
 
@@ -121,10 +121,7 @@ impl Game {
                 .get_mut(&uuid)
                 .ok_or_else(|| Fatal(format!("unable to find player {}", uuid)))?;
 
-            p.lock()
-                .unwrap()
-                .items_mut()
-                .get_item_owned(handle.into())?
+            p.lock().unwrap().get_item_owned(handle.into())?
         };
 
         let item_name = item.name();
@@ -195,13 +192,7 @@ impl Game {
             }
         };
 
-        if other_p
-            .lock()
-            .unwrap()
-            .items_mut()
-            .insert_item(item)
-            .is_err()
-        {
+        if other_p.lock().unwrap().insert_item(item).is_err() {
             return Err(Fatal(format!(
                 "COULD NOT RETURN ITEM {} TO OTHER PLAYER {}",
                 item_name,

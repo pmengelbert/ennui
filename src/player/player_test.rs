@@ -3,8 +3,6 @@ mod player_test {
     use crate::player::meter::Meter;
     use crate::player::meter::MeterKind::*;
 
-    use crate::player::{Player, Uuid};
-
     #[test]
     fn player_test_uuid() {
         // assert_ne!(Player::new().uuid(), 0);

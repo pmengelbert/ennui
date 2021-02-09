@@ -15,7 +15,7 @@ use crate::fight::FightMessage;
 use crate::game::util::load_rooms;
 use crate::interpreter::CommandQuality::{Awake, Motion};
 use crate::interpreter::{CommandKind, CommandMessage, Interpreter};
-use crate::item::list::{Holder, ItemListTrout, ListTrait};
+use crate::item::list::ListTrait;
 use crate::text::channel::DiscreteMessage;
 
 use crate::attribute::Attribute;
@@ -146,13 +146,21 @@ impl Game {
         let mut player = player.lock().unwrap();
         name.push_str(&player.name());
         let room = self.get_room_mut(player.loc())?;
-        let mut items = take(player.items_mut());
+        let (items, clothing) = player.all_items_mut();
+        let items = take(items);
+        let clothing = take(clothing);
 
         let aud = room.players().except(p.uuid());
-        for item in items.iter_mut() {
-            let owned_item = take(item);
-            messages.push(format!("{} drops {}", name, article(&owned_item.name())));
-            if room.insert_item(owned_item).is_err() {
+        for item in items.into_inner().into_iter() {
+            messages.push(format!("{} drops {}", name, article(&item.name())));
+            if room.insert_item(item).is_err() {
+                print_err(lesser("Unable to drop item for player"));
+            };
+        }
+
+        for item in clothing.into_inner().into_iter() {
+            messages.push(format!("{} drops {}", name, article(&item.name())));
+            if room.insert_item(item).is_err() {
                 print_err(lesser("Unable to drop item for player"));
             };
         }
@@ -244,7 +252,7 @@ impl Game {
             room.players_mut().remove(&p.uuid());
 
             let corpse: Item = player.into();
-            room.items_mut().push(corpse);
+            room.insert_item(corpse);
         }
 
         Ok(())
@@ -287,20 +295,12 @@ impl Game {
             let mut s = item.description();
             if let Item::Container(lst) = item {
                 s.push_str(&format!("\nthe {} is holding:\n", item.name()));
-                s.push_str(
-                    &lst.list()
-                        .iter()
-                        .map(|i| article(&i.name()))
-                        .collect::<Vec<_>>()
-                        .join("\n")
-                        .color(Green),
-                );
+                s.push_str(&lst.display_items());
             }
             s
         } else {
             p.lock()
                 .unwrap()
-                .items()
                 .get_item(Grabber::from_str(handle))?
                 .description()
         })
@@ -442,10 +442,7 @@ impl Game {
 
         let item_list_title = format!("\n{} is holding:", p.name());
         let mut item_list = String::new();
-        for item in p.items().iter() {
-            item_list.push('\n');
-            item_list.push_str(&article(&item.name()));
-        }
+        item_list.push_str(&p.display_items());
 
         Some(format!(
             "{}{}{}",
@@ -461,10 +458,9 @@ impl Game {
 
         let player = self.get_player(u.uuid())?;
 
-        for item in player.lock().unwrap().items().iter() {
-            s.push('\n');
-            s.push_str(&article(&item.name()).color(Green))
-        }
+        let items = player.lock().unwrap().display_items();
+
+        s.push_str(&items);
 
         Ok(s)
     }
@@ -554,7 +550,7 @@ impl Game {
     }
 
     fn check_guard(dir: MapDir, src_room: &Room) -> Result<(), DoorState> {
-        let items = src_room.items();
+        let items = src_room.list();
         if let Some((d, g)) = items.iter().find_map(|i| {
             if let Item::Guard(d, g) = i {
                 Some((d, g))

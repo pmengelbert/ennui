@@ -1,5 +1,5 @@
 use super::{Player, PlayerType, Quality};
-use crate::item::{list::ItemList, list::ItemListTrout, DescriptionWithQualities, Item};
+use crate::item::{list::ListTrait, DescriptionWithQualities, Item};
 use crate::location::Coord;
 use crate::text::message::Broadcast;
 use rand::Rng;
@@ -53,7 +53,7 @@ impl From<Player> for Item {
         let Player {
             info,
             mut items,
-            mut clothing,
+            clothing,
             ..
         } = other;
 
@@ -71,7 +71,7 @@ impl From<Player> for Item {
         let description = format!("Where once stood {}, now lies a rotting corpse", name);
         attributes.push(Quality::Scenery);
 
-        let d = DescriptionWithQualities {
+        let _d = DescriptionWithQualities {
             info: crate::describe::Description {
                 name,
                 display,
@@ -81,16 +81,13 @@ impl From<Player> for Item {
             attr: attributes,
         };
 
-        let mut new_items = ItemList::new_with_info(d);
-        for item in items.iter_mut() {
-            let item = std::mem::take(item);
-            new_items.push(item);
+        let clothing = clothing.into_inner();
+
+        for item in clothing.into_iter() {
+            items.insert_item(item);
         }
-        for item in clothing.iter_mut() {
-            let item = std::mem::take(item);
-            new_items.push(item);
-        }
-        Item::Container(Box::new(new_items))
+
+        Item::Container(Box::new(items))
     }
 }
 

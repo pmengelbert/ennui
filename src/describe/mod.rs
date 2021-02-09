@@ -64,7 +64,6 @@ macro_rules! handle {
 
 #[cfg(test)]
 mod handle_test {
-    use super::*;
 
     #[test]
     fn handle_test() {
