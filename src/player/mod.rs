@@ -5,15 +5,14 @@ use serde::{Deserialize, Serialize};
 
 use meter::MeterKind;
 
-use crate::attribute::Attribute;
+use crate::attribute::{Attribute, Quality};
 use crate::describe::{Describe, Description};
 use crate::error::EnnuiError;
 use crate::hook::{Grabber, Hook};
-use crate::item::{
-    list::{ItemList, ListTrait},
-    Item,
-};
+use crate::item::Item;
+use crate::list::{List, ListTrait};
 use crate::location::{Coord, Locate};
+use crate::soul::SoulKind;
 
 use crate::fight::FightMod;
 use crate::fight::FightMod::Leave;
@@ -84,9 +83,11 @@ pub struct Player {
     info: Description,
     loc: Coord,
     #[serde(skip_serializing, skip_deserializing)]
-    items: ItemList,
+    items: List<Item, Quality>,
+    #[serde(skip_deserializing, skip_serializing)]
+    souls: List<SoulKind, Quality>,
     #[serde(skip_serializing, skip_deserializing)]
-    clothing: ItemList,
+    clothing: List<Item, Quality>,
     #[serde(skip_serializing, skip_deserializing)]
     pub stream: Option<TcpStream>,
     stats: Vec<MeterKind>,
@@ -160,7 +161,7 @@ impl Drop for PlayerType {
 }
 
 impl ListTrait for PlayerType {
-    type Kind = ItemList;
+    type Item = Item;
 
     fn get_item(&self, handle: Grabber) -> Option<&Item> {
         self.safe_unwrap().items.get_item(handle)
@@ -182,8 +183,8 @@ impl ListTrait for PlayerType {
         self.safe_unwrap().items.display_items()
     }
 
-    fn list(&self) -> &Self::Kind {
-        &self.safe_unwrap().items
+    fn list(&self) -> Vec<&Self::Item> {
+        self.safe_unwrap().items.list()
     }
 }
 
@@ -298,8 +299,9 @@ impl Player {
                 display: String::new(),
             },
             loc: Coord(0, 0),
-            items: ItemList::new(),
-            clothing: ItemList::new(),
+            items: List::new(),
+            souls: List::new(),
+            clothing: List::new(),
             stream: None,
             fight_sender: None,
             status: vec![],
@@ -350,15 +352,15 @@ impl PlayerType {
         self.safe_unwrap_mut().loc = new_loc;
     }
 
-    pub fn clothing(&self) -> &ItemList {
+    pub fn clothing(&self) -> &List<Item, Quality> {
         &self.safe_unwrap().clothing
     }
 
-    pub fn clothing_mut(&mut self) -> &mut ItemList {
+    pub fn clothing_mut(&mut self) -> &mut List<Item, Quality> {
         &mut self.safe_unwrap_mut().clothing
     }
 
-    pub fn all_items_mut(&mut self) -> (&mut ItemList, &mut ItemList) {
+    pub fn all_items_mut(&mut self) -> (&mut List<Item, Quality>, &mut List<Item, Quality>) {
         let unwrapped = self.safe_unwrap_mut();
         (&mut unwrapped.items, &mut unwrapped.clothing)
     }

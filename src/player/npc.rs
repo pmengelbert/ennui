@@ -1,7 +1,8 @@
 use super::{Player, PlayerType};
 use crate::attribute::Quality;
 use crate::describe::Description;
-use crate::item::{list::ListTrait, Item};
+use crate::item::Item;
+use crate::list::ListTrait;
 use crate::location::Coord;
 use crate::text::message::Broadcast;
 use rand::Rng;

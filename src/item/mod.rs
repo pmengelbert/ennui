@@ -4,19 +4,20 @@ use std::fmt::Debug;
 use crate::attribute::{Attribute, Quality};
 use crate::describe::{Describe, Description};
 use crate::hook::Hook;
+use crate::list::{List, ListTrait};
 use crate::location::direction::MapDir;
 use crate::obstacle::door::GuardState;
 use crate::obstacle::key::{Key, KeyType};
-use list::{Guard, ItemList, ListTrait};
+use list::{Guard, ItemList};
 use Item::NoItem;
 
 pub mod list;
 
 pub trait ItemDescribe: Describe + Attribute<Quality> {}
-pub trait ListDescribe: Describe + Attribute<Quality> + ListTrait {}
+pub trait ListDescribe: Describe + Attribute<Quality> + ListTrait<Item = Item> {}
 pub trait GuardDescribe: Describe + Attribute<Quality> + Guard {}
 
-impl ListDescribe for ItemList {}
+impl ListDescribe for List<Item, Quality> {}
 
 /// YamlItem is a no-frills representation of various objects, wrapped in a primary attribute.
 /// Its primary use is for serialization
@@ -45,8 +46,8 @@ pub enum Item {
     Scenery(Box<dyn ItemDescribe>),
     Edible(Box<dyn ItemDescribe>),
     Holdable(Box<dyn ItemDescribe>),
-    Container(Box<dyn ListDescribe<Kind = ItemList>>),
-    Guard(MapDir, Box<dyn GuardDescribe<Lock = u64, Kind = ItemList>>),
+    Container(Box<dyn ListDescribe>),
+    Guard(MapDir, Box<dyn GuardDescribe<Lock = u64, Item = Item>>),
     Key(Box<dyn Key<u64>>),
     NoItem,
 }

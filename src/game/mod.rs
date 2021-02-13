@@ -20,7 +20,8 @@ use crate::fight::FightMessage;
 use crate::game::util::load_rooms;
 use crate::interpreter::CommandQuality::{Awake, Motion};
 use crate::interpreter::{CommandKind, CommandMessage, Interpreter};
-use crate::item::{list::ListTrait, Item};
+use crate::item::Item;
+use crate::list::{List, ListTrait};
 use crate::text::channel::DiscreteMessage;
 
 use crate::attribute::Attribute;

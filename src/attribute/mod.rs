@@ -30,4 +30,11 @@ pub enum Quality {
     Container,
     Guard,
     Key,
+    Default,
+}
+
+impl Default for Quality {
+    fn default() -> Self {
+        Self::Default
+    }
 }

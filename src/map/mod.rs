@@ -6,8 +6,8 @@ use crate::attribute::{Attribute, Quality};
 use crate::describe::Describe;
 use crate::error::EnnuiError;
 use crate::hook::{Grabber, Hook};
-use crate::item::list::{ItemList, ListTrait};
 use crate::item::{DescriptionWithQualities, Item, YamlItemList};
+use crate::list::{List, ListTrait};
 use crate::location::{Coord, Locate};
 use crate::obstacle::door::DoorList;
 use crate::player::list::PlayerIdList;
@@ -24,7 +24,7 @@ pub struct Room {
     #[serde(default)]
     players: PlayerIdList,
     #[serde(skip_serializing, skip_deserializing)]
-    items: ItemList,
+    items: List<Item, Quality>,
     #[serde(default)]
     inner_items: Option<YamlItemList>,
     #[serde(default)]
@@ -81,7 +81,7 @@ impl Attribute<Quality> for Room {
 }
 
 impl ListTrait for Room {
-    type Kind = ItemList;
+    type Item = Item;
 
     fn get_item(&self, handle: Grabber) -> Option<&Item> {
         self.items.get_item(handle)
@@ -104,8 +104,8 @@ impl ListTrait for Room {
         self.items.display_items()
     }
 
-    fn list(&self) -> &Self::Kind {
-        &self.items
+    fn list(&self) -> Vec<&Self::Item> {
+        self.items.list()
     }
 }
 

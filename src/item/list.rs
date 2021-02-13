@@ -4,6 +4,7 @@ use crate::error::{CmdErr, EnnuiError};
 use crate::hook::{Grabber, Hook};
 use crate::item::YamlItem::{Clothing, Container, Edible, Holdable, Scenery, Weapon};
 use crate::item::{Attribute, DescriptionWithQualities, Item, Quality, YamlItem, YamlItemList};
+use crate::list::{List, ListTrait};
 use crate::obstacle::door::{GuardState, Lock, ObstacleState, StateResult};
 use crate::obstacle::key::{Key, KeyType};
 use crate::text::message::MessageFormat;
@@ -11,31 +12,6 @@ use crate::text::Color::Green;
 use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 use std::mem::take;
-
-pub trait ListTrait: Describe + Debug {
-    type Kind: Debug + IntoIterator;
-
-    fn get_item(&self, handle: Grabber) -> Option<&Item>;
-    fn get_item_mut(&mut self, handle: Grabber) -> Option<&mut Item>;
-    fn get_item_owned(&mut self, handle: Grabber) -> Result<Item, EnnuiError>;
-    fn insert_item(&mut self, item: Item) -> Result<(), Item>;
-    fn list(&self) -> &Self::Kind;
-    fn display_items(&self) -> String;
-
-    fn transfer(
-        &mut self,
-        other: &mut dyn ListTrait<Kind = Self::Kind>,
-        handle: &str,
-    ) -> Result<String, EnnuiError> {
-        let item = self.get_item_owned(handle.into())?;
-
-        let name = item.name();
-        if other.insert_item(item).is_err() {
-            return Err(Fatal("COULD NOT TRANSFER ITEM".into()));
-        };
-        Ok(name)
-    }
-}
 
 #[derive(Default, Debug)]
 pub struct ItemList {
@@ -83,58 +59,6 @@ impl Attribute<Quality> for ItemList {
     }
 }
 
-impl ListTrait for ItemList {
-    type Kind = ItemList;
-    fn get_item(&self, handle: Grabber) -> Option<&Item> {
-        self.inner
-            .iter()
-            .filter(|i| i.handle() == handle.handle)
-            .nth(handle.index)
-    }
-
-    fn get_item_mut(&mut self, handle: Grabber) -> Option<&mut Item> {
-        self.inner
-            .iter_mut()
-            .filter(|i| i.handle() == handle.handle)
-            .nth(handle.index)
-    }
-
-    fn get_item_owned(&mut self, handle: Grabber) -> Result<Item, EnnuiError> {
-        let index = self
-            .inner
-            .iter()
-            .enumerate()
-            .filter_map(|(i, item)| {
-                if item.handle() == handle.handle {
-                    Some(i)
-                } else {
-                    None
-                }
-            })
-            .nth(handle.index);
-
-        let index = match index {
-            Some(i) => i,
-            None => return Err(EnnuiError::Simple(CmdErr::ItemNotFound)),
-        };
-
-        Ok(self.inner.remove(index))
-    }
-
-    fn display_items(&self) -> String {
-        self.display_items()
-    }
-
-    fn insert_item(&mut self, item: Item) -> Result<(), Item> {
-        self.inner.push(item);
-        Ok(())
-    }
-
-    fn list(&self) -> &Self::Kind {
-        &self
-    }
-}
-
 impl ItemList {
     pub fn new() -> Self {
         Self {
@@ -168,7 +92,7 @@ impl ItemList {
     }
 }
 
-impl From<YamlItemList> for ItemList {
+impl From<YamlItemList> for List<Item, Quality> {
     fn from(mut l: YamlItemList) -> Self {
         conv(&mut l)
     }
@@ -180,8 +104,8 @@ fn conv_desc(d: &mut DescriptionWithQualities, q: Quality) -> Box<dyn super::Ite
     Box::new(new)
 }
 
-fn conv(list: &mut YamlItemList) -> ItemList {
-    let mut ret = ItemList::new();
+fn conv(list: &mut YamlItemList) -> List<Item, Quality> {
+    let mut ret = List::new();
     for i in list.inner.iter_mut() {
         let i = match i {
             Clothing(i) => Item::Clothing(conv_desc(i, Quality::Clothing)),
@@ -208,15 +132,16 @@ fn conv(list: &mut YamlItemList) -> ItemList {
         };
         ret.insert_item(i);
     }
-    ret.info = list.info.clone();
+    ret.set_info(list.info.info.clone());
+    ret.set_attr_list(list.info.attr.clone());
     ret
 }
 
-pub trait Guard: Lock<GuardState> + ListTrait<Kind = ItemList> {}
+pub trait Guard: Lock<GuardState> + ListTrait<Item = Item> {}
 impl Guard for RenaissanceGuard {}
 
 impl ListTrait for RenaissanceGuard {
-    type Kind = ItemList;
+    type Item = Item;
 
     fn get_item(&self, handle: Grabber) -> Option<&Item> {
         self.items.get_item(handle)
@@ -244,7 +169,7 @@ impl ListTrait for RenaissanceGuard {
         self.items.display_items()
     }
 
-    fn list(&self) -> &Self::Kind {
+    fn list(&self) -> Vec<&Self::Item> {
         self.items.list()
     }
 }
@@ -252,7 +177,7 @@ impl ListTrait for RenaissanceGuard {
 #[derive(Debug, Serialize, Deserialize, Default)]
 pub struct RenaissanceGuard {
     #[serde(skip_serializing, skip_deserializing)]
-    pub items: ItemList,
+    pub items: List<Item, Quality>,
     #[serde(default)]
     pub state: GuardState,
     pub lock: u64,
@@ -267,7 +192,7 @@ impl Clone for RenaissanceGuard {
     fn clone(&self) -> Self {
         Self {
             info: self.info.clone(),
-            items: ItemList::new(),
+            items: List::new(),
             state: self.state,
             lock: self.lock,
             attr: self.attr.clone(),

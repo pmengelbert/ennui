@@ -12,7 +12,7 @@ use crate::text::article;
 use crate::error::CmdErr::{ItemNotFound, NotClothing, PlayerNotFound, TooHeavy};
 use crate::error::EnnuiError;
 use crate::error::EnnuiError::{Fatal, Msg, Simple};
-use crate::item::list::{ItemList, ListTrait};
+use crate::list::{List, ListTrait};
 use std::ops::DerefMut;
 use std::sync::{Arc, Mutex};
 
@@ -210,7 +210,7 @@ impl Game {
         items.transfer(clothing, handle)
     }
 
-    fn check_if_clothing(handle: &str, items: &mut ItemList) -> Result<(), EnnuiError> {
+    fn check_if_clothing(handle: &str, items: &mut List<Item, Quality>) -> Result<(), EnnuiError> {
         match items.get_item(handle.into()) {
             Some(i) if i.is(Quality::Clothing) => Ok(()),
             None => Err(Simple(ItemNotFound)),

@@ -6,18 +6,24 @@ use std::error::Error;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SoulKind {
+    None = 0,
     Combat = 1,
     Crafting = 2,
     Exploration = 3,
 }
 
-pub type SoulList = Vec<SoulKind>;
+impl Default for SoulKind {
+    fn default() -> Self {
+        Self::None
+    }
+}
 
 impl TryFrom<i32> for SoulKind {
     type Error = Box<dyn Error + Sync + Send>;
 
     fn try_from(o: i32) -> Result<Self, Self::Error> {
         match o {
+            x if x == SoulKind::None as i32 => Ok(SoulKind::Combat),
             x if x == SoulKind::Combat as i32 => Ok(SoulKind::Combat),
             x if x == SoulKind::Crafting as i32 => Ok(SoulKind::Crafting),
             x if x == SoulKind::Exploration as i32 => Ok(SoulKind::Exploration),
@@ -32,6 +38,7 @@ impl Describe for SoulKind {
             SoulKind::Combat => handle![combat, soul, warrior],
             SoulKind::Crafting => handle![crafting, soul, crafter],
             SoulKind::Exploration => handle![exploration, soul, explorer],
+            SoulKind::None => handle![],
         }
     }
 
@@ -40,6 +47,7 @@ impl Describe for SoulKind {
             SoulKind::Combat => "combat soul",
             SoulKind::Crafting => "crafting soul",
             SoulKind::Exploration => "exploration soul",
+            SoulKind::None => "",
         }
         .into()
     }
@@ -51,6 +59,7 @@ impl Describe for SoulKind {
             SoulKind::Exploration => {
                 "An explorer's soul moves gently through every nook and cranny of the room"
             }
+            SoulKind::None => "",
         }
         .into()
     }

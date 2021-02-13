@@ -11,6 +11,7 @@ pub mod game;
 pub mod hook;
 mod interpreter;
 mod item;
+pub mod list;
 pub mod location;
 pub mod map;
 pub mod obstacle;
