@@ -15,5 +15,5 @@ services:
     ports: ['5432:5432']
 
   ennui:
-    image: 'bundle.bar/u/pmengelbert/ennui:latest'
+    image: 'bundle.bar/u/pmengelbert/ennui:${TAG}'
     ports: ['8089:8089']
