@@ -15,6 +15,7 @@ pub mod location;
 pub mod map;
 pub mod obstacle;
 pub mod player;
+pub mod soul;
 pub mod text;
 
 #[macro_export]
