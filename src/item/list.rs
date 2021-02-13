@@ -14,6 +14,7 @@ use std::mem::take;
 
 pub trait ListTrait: Describe + Debug {
     type Kind: Debug + IntoIterator;
+
     fn get_item(&self, handle: Grabber) -> Option<&Item>;
     fn get_item_mut(&mut self, handle: Grabber) -> Option<&mut Item>;
     fn get_item_owned(&mut self, handle: Grabber) -> Result<Item, EnnuiError>;
