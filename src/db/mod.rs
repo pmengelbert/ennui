@@ -1,4 +1,5 @@
 use postgres::{Client, NoTls};
+mod sql;
 
 #[derive(Debug, Clone)]
 pub enum DBError {
