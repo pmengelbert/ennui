@@ -1,3 +1,5 @@
+pub mod recipe;
+
 use crate::describe::Describe;
 use crate::handle;
 use crate::hook::Hook;

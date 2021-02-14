@@ -104,17 +104,6 @@ pub enum PlayerStatus {
     Sitting,
 }
 
-#[cfg(test)]
-mod test_playerstatus {
-    use super::*;
-
-    #[test]
-    fn test_player_status() {
-        eprintln!("{:#?}", PlayerStatus::Asleep as u64);
-        eprintln!("in file {} on line number {}", file!(), line!());
-    }
-}
-
 impl Attribute<PlayerStatus> for PlayerType {
     fn attr(&self) -> Vec<PlayerStatus> {
         self.safe_unwrap().status.clone()

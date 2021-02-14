@@ -53,6 +53,54 @@ impl DB {
     }
 }
 
+pub fn recipe_to_item(r: &crate::soul::recipe::Recipe) -> crate::item::Item {
+    let mut db = DB::new().unwrap();
+
+    let crate::soul::recipe::Recipe {
+        combat_req,
+        crafting_req,
+        exploration_req,
+    } = r;
+
+    let (combat_req, crafting_req, exploration_req) = (
+        *combat_req as i32,
+        *combat_req as i32,
+        *exploration_req as i32,
+    );
+
+    let results = db
+        .conn
+        .query(
+            "\
+        SELECT name, display, description, hook, attributes
+        FROM
+            ennui.item i
+        WHERE
+            i.itemid = (select itemid from ennui.recipe
+            where
+                crafting_req = $1,
+                exploration_req = $2,
+                combat_req = $3,
+            )
+        ",
+            &[&crafting_req, &exploration_req, &combat_req],
+        )
+        .unwrap();
+
+    if results.is_empty() {
+        todo!()
+    }
+
+    let r1 = results.get(1).unwrap();
+    let name: String = r1.get(0);
+    let display: String = r1.get(1);
+    let description: String = r1.get(2);
+    let hook_strings: Vec<String> = r1.get(3);
+    let attr: Vec<i32> = r1.get(4);
+
+    todo!()
+}
+
 #[cfg(test)]
 mod db_test {
     use super::*;
