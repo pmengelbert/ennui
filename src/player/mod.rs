@@ -152,19 +152,19 @@ impl Drop for PlayerType {
 impl ListTrait for PlayerType {
     type Item = Item;
 
-    fn get_item(&self, handle: Grabber) -> Option<&Item> {
+    fn get_item(&self, handle: Grabber) -> Option<&Self::Item> {
         self.safe_unwrap().items.get_item(handle)
     }
 
-    fn get_item_mut(&mut self, handle: Grabber) -> Option<&mut Item> {
+    fn get_item_mut(&mut self, handle: Grabber) -> Option<&mut Self::Item> {
         self.safe_unwrap_mut().items.get_item_mut(handle)
     }
 
-    fn get_item_owned(&mut self, handle: Grabber) -> Result<Item, EnnuiError> {
+    fn get_item_owned(&mut self, handle: Grabber) -> Result<Self::Item, EnnuiError> {
         self.safe_unwrap_mut().items.get_item_owned(handle)
     }
 
-    fn insert_item(&mut self, item: Item) -> Result<(), Item> {
+    fn insert_item(&mut self, item: Self::Item) -> Result<(), Self::Item> {
         self.safe_unwrap_mut().items.insert_item(item)
     }
 
@@ -280,7 +280,8 @@ impl Player {
         let uuid = new_player_id();
 
         let mut souls: List<SoulKind, Quality> = List::new();
-        souls.insert_item(SoulKind::Combat);
+        souls.insert_item(SoulKind::Crafting);
+        souls.insert_item(SoulKind::Exploration);
 
         Self {
             uuid,
@@ -350,6 +351,14 @@ impl PlayerType {
 
     pub fn clothing_mut(&mut self) -> &mut List<Item, Quality> {
         &mut self.safe_unwrap_mut().clothing
+    }
+
+    pub fn souls(&self) -> &List<SoulKind, Quality> {
+        &self.safe_unwrap().souls
+    }
+
+    pub fn souls_mut(&mut self) -> &mut List<SoulKind, Quality> {
+        &mut self.safe_unwrap_mut().souls
     }
 
     pub fn all_items_mut(&mut self) -> (&mut List<Item, Quality>, &mut List<Item, Quality>) {

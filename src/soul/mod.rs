@@ -1,8 +1,10 @@
 pub mod recipe;
 
+use crate::attribute::Quality;
 use crate::describe::Describe;
 use crate::handle;
 use crate::hook::Hook;
+use crate::list::{List, ListTrait};
 use std::convert::TryFrom;
 use std::error::Error;
 
@@ -68,5 +70,50 @@ impl Describe for SoulKind {
 
     fn description(&self) -> String {
         todo!()
+    }
+}
+
+impl List<SoulKind, Quality> {
+    pub fn process_recipe(&mut self, recipe: &recipe::Recipe) -> bool {
+        let list = self.list();
+
+        let crafting = list
+            .iter()
+            .filter(|s| matches!(s, SoulKind::Crafting))
+            .count();
+        let exploration = list
+            .iter()
+            .filter(|s| matches!(s, SoulKind::Exploration))
+            .count();
+        let combat = list
+            .iter()
+            .filter(|s| matches!(s, SoulKind::Combat))
+            .count();
+
+        match recipe {
+            recipe::Recipe {
+                crafting_req,
+                exploration_req,
+                combat_req,
+            } if crafting >= *crafting_req
+                && exploration >= *exploration_req
+                && combat >= *combat_req =>
+            {
+                for _ in 0..*crafting_req {
+                    self.get_item_owned("crafting".into());
+                }
+
+                for _ in 0..*exploration_req {
+                    self.get_item_owned("exploration".into());
+                }
+
+                for _ in 0..*combat_req {
+                    self.get_item_owned("combat".into());
+                }
+
+                true
+            }
+            _ => false,
+        }
     }
 }

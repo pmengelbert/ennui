@@ -58,8 +58,11 @@ impl DB {
     }
 }
 
-pub fn recipe_to_item(r: &crate::soul::recipe::Recipe) -> crate::item::Item {
-    let mut db = DB::new().unwrap();
+pub fn recipe_to_item(r: &crate::soul::recipe::Recipe) -> Option<crate::item::Item> {
+    let mut db = match DB::new() {
+        Ok(db) => db,
+        Err(_) => return None,
+    };
 
     let crate::soul::recipe::Recipe {
         combat_req,
@@ -81,11 +84,11 @@ pub fn recipe_to_item(r: &crate::soul::recipe::Recipe) -> crate::item::Item {
         FROM
             ennui.item i
         WHERE
-            i.itemid = (select itemid from ennui.recipe
-            where
-                crafting_req = $1,
-                exploration_req = $2,
-                combat_req = $3,
+            i.itemid = (SELECT itemid FROM ennui.recipe
+            WHERE
+                crafting_req = $1 AND
+                exploration_req = $2 AND
+                combat_req = $3
             )
         ",
             &[&crafting_req, &exploration_req, &combat_req],
@@ -93,10 +96,10 @@ pub fn recipe_to_item(r: &crate::soul::recipe::Recipe) -> crate::item::Item {
         .unwrap();
 
     if results.is_empty() {
-        todo!()
+        return None;
     }
 
-    let r1 = results.get(1).unwrap();
+    let r1 = results.get(0).unwrap();
     let name: String = r1.get(0);
     let display: String = r1.get(1);
     let description: String = r1.get(2);
@@ -109,7 +112,7 @@ pub fn recipe_to_item(r: &crate::soul::recipe::Recipe) -> crate::item::Item {
     for a in attr {
         match a.try_into() {
             Ok(z) => x.push(z),
-            Err(_) => continue,
+            Err(_) => return None,
         }
     }
 
@@ -125,7 +128,7 @@ pub fn recipe_to_item(r: &crate::soul::recipe::Recipe) -> crate::item::Item {
 
     let z = crate::item::Item::Holdable(Box::new(d));
 
-    z
+    Some(z)
 }
 
 #[cfg(test)]

@@ -43,6 +43,7 @@ pub enum CommandKind {
     Wake,
     Who,
     Help,
+    Souls,
     Combine,
     Quit,
     // not yet implemented
@@ -122,6 +123,7 @@ impl Interpreter {
             s if sw(s, "who") => Who,
             s if sw(s, "help") => Help,
             s if sw(s, "combine") => Combine,
+            s if sw(s, "souls") => Souls,
             s if sw(s, "hit") => Hit,
             s if sw(s, "kill") => Hit,
             s if sw(s, "quit") => Quit,

@@ -7,7 +7,7 @@ pub enum Blank {}
 /// using the `combine` command, the Recipe database is consulted for a matching
 /// item template. This template generates an instance of the item, which is then
 /// given to the player.
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct Recipe {
     pub combat_req: usize,
     pub crafting_req: usize,

@@ -577,21 +577,55 @@ pub fn fill_interpreter(i: &mut Interpreter) {
     i.insert("combine", |g, u, a| {
         let r: Recipe = match a.try_into() {
             Ok(r) => r,
+            Err(_) => return message(u, "see 'help recipe' for more information"),
+        };
+
+        let i = match recipe_to_item(&r) {
+            Some(i) => i,
+            None => return message(u, "that recipe doesn't exist!"),
+        };
+
+        let p = match g.get_player(u) {
+            Ok(p) => p,
             Err(_) => todo!(),
         };
 
-        let i = recipe_to_item(&r);
+        let mut p = p.lock().unwrap();
 
+        let name = i.name();
+        let souls = p.souls_mut();
+        if !souls.process_recipe(&r) {
+            return message(u, "you don't have that combination of souls!");
+        };
+
+        p.insert_item(i);
+
+        message(u, format!("you have created {}", article(&name)))
+    });
+
+    i.insert("souls", |g, u, _| {
         let mut p = match g.get_player(u) {
             Ok(p) => p,
             Err(_) => todo!(),
         };
 
-        let name = i.name();
+        let mut ret = String::with_capacity(512);
 
-        p.lock().unwrap().insert_item(i);
+        let p = p.lock().unwrap();
+        let list = p.souls().list();
 
-        message(u, format!("you have created {}", article(&name)))
+        match list.split_last() {
+            Some((last, list)) => {
+                for s in list {
+                    ret.push_str(&s.name());
+                    ret.push('\n');
+                }
+                ret.push_str(&last.name());
+            }
+            None => (),
+        };
+
+        message(u, ret)
     });
 
     i.insert("", |_, _, _| message(0, ""));
