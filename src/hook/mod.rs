@@ -1,5 +1,4 @@
 use serde::{Deserialize, Serialize};
-
 #[repr(transparent)]
 #[derive(Debug, Serialize, Deserialize, Default, Clone)]
 pub struct Hook(pub Vec<String>);

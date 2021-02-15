@@ -1,34 +1,30 @@
 use serde::{Deserialize, Serialize};
 
-use direction::MapDir;
+use crate::location::direction::MapDir;
 
+use crate::attribute::{Attribute, Quality};
+use crate::describe::Describe;
 use crate::error::EnnuiError;
-use crate::item::handle::{Grabber, Hook};
-use crate::item::list::{Holder, ItemList, ItemListTrout, ListTrait};
-use crate::item::{Attribute, Describe, Description, Item, Quality, YamlItemList};
-use crate::map::coord::Coord;
-use crate::map::door::DoorList;
+use crate::hook::{Grabber, Hook};
+use crate::item::{DescriptionWithQualities, Item, YamlItemList};
+use crate::list::{List, ListTrait};
+use crate::location::{Coord, Locate};
+use crate::obstacle::door::DoorList;
 use crate::player::list::PlayerIdList;
-use crate::player::Uuid;
 use crate::text::message::MessageFormat;
 use crate::text::Color::{Cyan, Green};
 
-pub mod coord;
-pub mod direction;
-pub mod door;
 pub mod list;
-
-type StateResult<T> = Result<(), T>;
 
 #[derive(Default, Serialize, Deserialize, Debug)]
 pub struct Room {
     #[serde(flatten)]
-    info: Description,
+    info: DescriptionWithQualities,
     loc: Coord,
     #[serde(default)]
     players: PlayerIdList,
     #[serde(skip_serializing, skip_deserializing)]
-    items: ItemList,
+    items: List<Item, Quality>,
     #[serde(default)]
     inner_items: Option<YamlItemList>,
     #[serde(default)]
@@ -39,7 +35,7 @@ pub trait Space: Locate + ListTrait {
     fn players(&self) -> &PlayerIdList;
     fn doors(&mut self) -> &mut DoorList;
     fn players_except(&self, u: u128) -> Vec<u128> {
-        let u = u.uuid();
+        let u = u;
         let mut l = Vec::new();
         for &id in self.players().iter() {
             if id == u {
@@ -49,18 +45,6 @@ pub trait Space: Locate + ListTrait {
             l.push(id);
         }
         l
-    }
-}
-
-impl Holder for Room {
-    type Kind = ItemList;
-
-    fn items(&self) -> &ItemList {
-        &self.items
-    }
-
-    fn items_mut(&mut self) -> &mut ItemList {
-        &mut self.items
     }
 }
 
@@ -84,7 +68,7 @@ impl Describe for Room {
 
 impl Attribute<Quality> for Room {
     fn attr(&self) -> Vec<Quality> {
-        self.info.attributes.clone()
+        self.info.attr()
     }
 
     fn set_attr(&mut self, q: Quality) {
@@ -97,13 +81,10 @@ impl Attribute<Quality> for Room {
 }
 
 impl ListTrait for Room {
-    type Kind = ItemList;
+    type Item = Item;
 
     fn get_item(&self, handle: Grabber) -> Option<&Item> {
-        self.items
-            .iter()
-            .filter(|i| i.handle() == handle.handle)
-            .nth(handle.index)
+        self.items.get_item(handle)
     }
 
     fn get_item_mut(&mut self, handle: Grabber) -> Option<&mut Item> {
@@ -111,16 +92,20 @@ impl ListTrait for Room {
     }
 
     fn get_item_owned(&mut self, handle: Grabber) -> Result<Item, EnnuiError> {
-        self.items.get_owned(handle)
+        self.items.get_item_owned(handle)
     }
 
     fn insert_item(&mut self, item: Item) -> Result<(), Item> {
-        self.items.push(item);
+        self.items.insert_item(item);
         Ok(())
     }
 
-    fn list(&self) -> &Self::Kind {
-        &self.items
+    fn display_items(&self) -> String {
+        self.items.display_items()
+    }
+
+    fn list(&self) -> Vec<&Self::Item> {
+        self.items.list()
     }
 }
 
@@ -128,28 +113,6 @@ impl Locate for Room {
     fn loc(&self) -> Coord {
         self.loc
     }
-}
-
-impl Uuid for Room {
-    fn uuid(&self) -> u128 {
-        0
-    }
-
-    fn others(&self) -> Vec<u128> {
-        let mut v = vec![];
-        for id in self.players.iter() {
-            if *id == self.uuid() {
-                continue;
-            }
-            v.push(*id)
-        }
-
-        v
-    }
-}
-
-pub trait Locate {
-    fn loc(&self) -> Coord;
 }
 
 impl Space for Room {
@@ -177,9 +140,14 @@ impl Room {
         eprintln!("in file {} on line number {}", file!(), line!());
 
         let Room {
-            info: Description {
-                name, description, ..
-            },
+            info:
+                DescriptionWithQualities {
+                    info:
+                        crate::describe::Description {
+                            name, description, ..
+                        },
+                    ..
+                },
             items,
             ..
         } = self;
@@ -211,7 +179,7 @@ impl Room {
         &mut self.players
     }
 
-    pub fn add_player<P: Uuid>(&mut self, p: &P) -> bool {
-        self.players.insert(p.uuid())
+    pub fn add_player(&mut self, p: u128) -> bool {
+        self.players.insert(p)
     }
 }

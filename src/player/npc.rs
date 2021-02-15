@@ -1,6 +1,10 @@
-use super::{Player, PlayerType, Quality};
-use crate::item::{list::ItemList, list::ItemListTrout, Description, Item};
-use crate::map::coord::Coord;
+use super::{Player, PlayerType};
+use crate::attribute::Quality;
+use crate::describe::Description;
+use crate::item::Item;
+use crate::list::ListTrait;
+use crate::location::Coord;
+use crate::soul::SoulKind;
 use crate::text::message::Broadcast;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
@@ -22,6 +26,8 @@ pub struct YamlPlayer {
     #[serde(default)]
     pub ai_type: Option<AI>,
     #[serde(default)]
+    pub soul: SoulKind,
+    #[serde(default)]
     pub loc: Coord,
 }
 
@@ -29,6 +35,7 @@ pub struct YamlPlayer {
 pub struct Npc {
     player: Player,
     ai_type: Option<AI>,
+    soul: SoulKind,
     tx: Option<Mutex<Sender<NpcMessage>>>,
 }
 
@@ -53,46 +60,39 @@ impl From<Player> for Item {
         let Player {
             info,
             mut items,
-            mut clothing,
+            clothing,
             ..
         } = other;
 
         let Description {
-            name,
-            mut handle,
-            mut attributes,
-            ..
+            name, mut handle, ..
         } = info;
+
+        let mut attributes = vec![];
 
         handle.push("corpse".into());
         let display = format!("The corpse of {} lies here, decomposing", name);
         let description = format!("Where once stood {}, now lies a rotting corpse", name);
         attributes.push(Quality::Scenery);
 
-        let d = Description {
-            name,
-            display,
-            handle,
-            description,
-            attributes,
-        };
+        let clothing = clothing.into_inner();
 
-        let mut new_items = ItemList::new_with_info(d);
-        for item in items.iter_mut() {
-            let item = std::mem::take(item);
-            new_items.push(item);
+        for item in clothing.into_iter() {
+            items.insert_item(item);
         }
-        for item in clothing.iter_mut() {
-            let item = std::mem::take(item);
-            new_items.push(item);
-        }
-        Item::Container(Box::new(new_items))
+
+        Item::Container(Box::new(items))
     }
 }
 
 impl From<YamlPlayer> for Npc {
     fn from(other: YamlPlayer) -> Self {
-        let YamlPlayer { info, ai_type, loc } = other;
+        let YamlPlayer {
+            info,
+            ai_type,
+            loc,
+            soul,
+        } = other;
 
         let ai_type = ai_type;
         let mut p = Player::new();
@@ -103,6 +103,7 @@ impl From<YamlPlayer> for Npc {
             player: p,
             ai_type,
             tx: None,
+            soul,
         }
     }
 }
@@ -112,12 +113,13 @@ pub enum NpcMessage {
 }
 
 impl Npc {
-    pub fn new(player: Player, ai_type: AI) -> Self {
+    pub fn new(player: Player, ai_type: AI, soul: SoulKind) -> Self {
         let ai_type = Some(ai_type);
         Self {
             player,
             ai_type,
             tx: None,
+            soul,
         }
     }
 
@@ -202,6 +204,7 @@ impl Npc {
 #[cfg(test)]
 mod npc_test {
     use super::*;
+    use crate::describe::Describe;
     use crate::player::PlayerType;
 
     #[test]
@@ -218,9 +221,9 @@ display:
   Bill is here, just minding his own business
 "#;
         let p: YamlPlayer = serde_yaml::from_str(x).unwrap();
-        assert_eq!(p.info.name, "Bill");
-        assert_eq!(p.info.handle, "bill");
-        assert_eq!(p.info.handle, "guy");
+        assert_eq!(p.info.name(), "Bill");
+        assert_eq!(p.info.handle(), "bill");
+        assert_eq!(p.info.handle(), "guy");
         assert!(matches!(p.ai_type, Some(AI::Talker(_))));
         let r: PlayerType = p.into();
         assert!(matches!(r, PlayerType::Npc(_)));

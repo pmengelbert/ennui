@@ -14,6 +14,7 @@
   display:
     The Game Driver is here, casually reading a book while causing you to be.
   loc: [0, 0]
+  soul: Crafting
 
 - ai_type: Walker
   name: An idiot
@@ -23,6 +24,7 @@
   display:
     An idiot is here, wandering around, getting lost.
   loc: [0, 1]
+  soul: Exploration
 
 - ai_type: Walker
   name: Mitchell
@@ -43,3 +45,4 @@
   display:
     Short, dark and handsome, Mitchell the cat is here.
   loc: [0, 1]
+  soul: Combat

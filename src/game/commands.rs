@@ -1,15 +1,16 @@
 use super::item::Direction;
-// use super::item::TransferResult::*;
 use super::*;
-use crate::game::util::random_insult;
-// use crate::item::error::Error::*;
+use crate::db::recipe_to_item;
 use crate::error::EnnuiError::*;
 use crate::error::{CmdErr, EnnuiError};
-use crate::map::door::{Door, DoorState, Lock, ObstacleState};
+use crate::game::util::random_insult;
+use crate::obstacle::door::{Door, DoorState, Lock, ObstacleState};
 use crate::text::message::{Audience, Msg};
 
 use crate::fight::{BasicFight, Fight, FightInfo, FightMod};
+use crate::soul::recipe::Recipe;
 use crate::text::Color::{Green, Red, Yellow};
+use std::convert::TryInto;
 use std::ops::DerefMut;
 use std::sync::mpsc::channel;
 use std::time::Duration;
@@ -76,7 +77,7 @@ pub fn fill_interpreter(i: &mut Interpreter) {
                     Some(c) => {
                         if let Item::Container(cont) = c {
                             use std::result::Result::*;
-                            match cont.get_item(Grabber::from_str(object)) {
+                            match cont.get_item_mut(object.into()) {
                                 Some(_) => match cont
                                     .transfer(player.lock().unwrap().deref_mut(), object)
                                 {
@@ -316,12 +317,13 @@ pub fn fill_interpreter(i: &mut Interpreter) {
         let loc = g.loc_of(u)?;
         let name = g.name_of(u)?;
         let mut other_msg = None;
+
+        let rooms = &mut g.rooms;
+        let room = rooms.get_mut(&loc)?;
+
         let self_msg = match a.len() {
             0 => "ok, what do you want to open?".to_owned(),
             1 => {
-                let rooms = &mut g.rooms;
-                let room = rooms.get_mut(&loc)?;
-
                 if room.doors().len() > 1 {
                     "which door do you want to open?".to_owned()
                 } else {
@@ -334,9 +336,6 @@ pub fn fill_interpreter(i: &mut Interpreter) {
                 }
             }
             2 => {
-                let rooms = &mut g.rooms;
-                let room = rooms.get_mut(&loc)?;
-
                 let dir: MapDir = a[1].into();
                 let door = match room.doors().get_mut(&dir) {
                     Some(d) => d,
@@ -348,7 +347,7 @@ pub fn fill_interpreter(i: &mut Interpreter) {
             _ => "I'm not sure what you're getting at".to_owned(),
         };
 
-        let aud = Audience(u, g.players_in(loc).except(u));
+        let aud = Audience(u, room.players().except(u));
         let msg = Msg {
             s: self_msg,
             o: other_msg,
@@ -575,6 +574,63 @@ pub fn fill_interpreter(i: &mut Interpreter) {
         message(u, s)
     });
 
+    i.insert("combine", |g, u, a| {
+        let r: Recipe = match a.try_into() {
+            Ok(r) => r,
+            Err(_) => return message(u, "see 'help recipe' for more information"),
+        };
+
+        let i = match recipe_to_item(&r) {
+            Ok(i) => i,
+            Err(e) => {
+                print_err(fatal(&format!("{}", e)));
+                return message(u, "that recipe doesn't exist!");
+            }
+        };
+
+        let p = match g.get_player(u) {
+            Ok(p) => p,
+            Err(_) => return Err(fatal("player does not exist")),
+        };
+
+        let mut p = p.lock().unwrap();
+
+        let name = i.name();
+        let souls = p.souls_mut();
+        if !souls.process_recipe(&r) {
+            return message(u, "you don't have that combination of souls!");
+        };
+
+        p.insert_item(i);
+
+        message(u, format!("you have created {}", article(&name)))
+    });
+
+    i.insert("souls", |g, u, _| {
+        let mut p = match g.get_player(u) {
+            Ok(p) => p,
+            Err(_) => todo!(),
+        };
+
+        let mut ret = String::with_capacity(512);
+
+        let p = p.lock().unwrap();
+        let list = p.souls().list();
+
+        match list.split_last() {
+            Some((last, list)) => {
+                for s in list {
+                    ret.push_str(&s.name());
+                    ret.push('\n');
+                }
+                ret.push_str(&last.name());
+            }
+            None => (),
+        };
+
+        message(u, ret)
+    });
+
     i.insert("", |_, _, _| message(0, ""));
 
     i.insert("none", |_, u, _| message(u, random_insult()));
@@ -590,7 +646,7 @@ fn try_door_unlock(
 ) -> String {
     let mut res = None;
 
-    for item in player.lock().unwrap().items_mut().iter_mut() {
+    for item in player.lock().unwrap().list().iter() {
         if let Item::Key(k) = item {
             use std::result::Result::*;
             match door.unlock(DoorState::Closed, Some(k.as_ref())) {

@@ -1,12 +1,10 @@
-use crate::map::direction::MapDir;
+pub mod direction;
+use direction::MapDir;
 
-use crate::player::Uuid;
 use serde::{Deserialize, Serialize};
 
-impl Uuid for Coord {
-    fn uuid(&self) -> u128 {
-        0
-    }
+pub trait Locate {
+    fn loc(&self) -> Coord;
 }
 
 #[derive(Eq, PartialEq, Debug, Deserialize, Serialize, Hash, Default, Clone, Copy)]
@@ -34,7 +32,7 @@ impl Coord {
     }
 
     pub fn add(&self, dir: MapDir) -> Option<Self> {
-        use crate::map::direction::MapDir::*;
+        use MapDir::*;
 
         Some(match dir {
             North => self.north(),

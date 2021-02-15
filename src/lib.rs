@@ -2,17 +2,23 @@
 #![feature(assoc_char_funcs)]
 #![feature(backtrace)]
 
+pub mod attribute;
 mod db;
+pub mod describe;
 pub mod error;
 pub mod fight;
 pub mod game;
+pub mod hook;
 mod interpreter;
 mod item;
+pub mod list;
+pub mod location;
 pub mod map;
+pub mod obstacle;
 pub mod player;
+pub mod soul;
 pub mod text;
 
-//type EnnuiResult = Result<String, EnnuiError>;
 #[macro_export]
 macro_rules! arc_mutex(
     ($wrapped:expr) => {
@@ -21,8 +27,3 @@ macro_rules! arc_mutex(
 );
 
 type WriteResult = std::io::Result<usize>;
-
-pub struct SendError {
-    pub result: std::io::Result<usize>,
-    pub pid: u128,
-}

@@ -1,4 +1,10 @@
+use crate::attribute::Quality;
+use crate::describe::Description;
+use crate::hook::Hook;
+use crate::item::{DescriptionWithQualities, Item};
 use postgres::{Client, NoTls};
+use std::convert::TryInto;
+mod sql;
 
 #[derive(Debug, Clone)]
 pub enum DBError {
@@ -50,6 +56,79 @@ impl DB {
 
         Ok(ret)
     }
+}
+
+pub fn recipe_to_item(r: &crate::soul::recipe::Recipe) -> Result<Item, String> {
+    let mut db = match DB::new() {
+        Ok(db) => db,
+        Err(e) => return Err(format!("{}", e)),
+    };
+
+    let crate::soul::recipe::Recipe {
+        combat_req,
+        crafting_req,
+        exploration_req,
+    } = r;
+
+    let (combat_req, crafting_req, exploration_req) = (
+        *combat_req as i32,
+        *crafting_req as i32,
+        *exploration_req as i32,
+    );
+
+    let results = match db.conn.query(
+        "\
+        SELECT name, display, description, hook, attributes
+        FROM
+            ennui.item i
+        WHERE
+            i.itemid = (SELECT itemid FROM ennui.recipe
+            WHERE
+                crafting_req = $1 AND
+                exploration_req = $2 AND
+                combat_req = $3
+            )
+        ",
+        &[&crafting_req, &exploration_req, &combat_req],
+    ) {
+        Ok(v) => v,
+        Err(e) => return Err(format!("{}", e)),
+    };
+
+    if results.is_empty() {
+        return Err("no recipe found".into());
+    }
+
+    let r1 = results.get(0).unwrap();
+    let name: String = r1.get(0);
+    let display: String = r1.get(1);
+    let description: String = r1.get(2);
+    let handle: Vec<String> = r1.get(3);
+    let handle = Hook(handle);
+    let attrs: Vec<i32> = r1.get(4);
+
+    let mut attr: Vec<Quality> = vec![];
+
+    for a in attrs {
+        match a.try_into() {
+            Ok(z) => attr.push(z),
+            Err(_) => return Err("unable to convert attribute".into()),
+        }
+    }
+
+    let d = DescriptionWithQualities {
+        info: Description {
+            name,
+            display,
+            description,
+            handle,
+        },
+        attr,
+    };
+
+    let z = crate::item::Item::Holdable(Box::new(d));
+
+    Ok(z)
 }
 
 #[cfg(test)]

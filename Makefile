@@ -4,6 +4,8 @@ TARGET = x86_64-unknown-linux-gnu
 MAPFILE = sample.yaml
 NPCFILE = npcs.yaml
 OUTFILE = data/map.cbor
+DOCKER_IMAGE = bundle.bar/u/pmengelbert/ennui
+DOCKER_TAG ?= $(shell scripts/docker-tag.sh)
 
 target/release/ennui: data/map.cbor data/npc.cbor
 	cargo +nightly build --release
@@ -53,14 +55,14 @@ rebuild-map:
 	make target/release/server
 
 build-and-push: docker-build
-	docker push bundle.bar/u/pmengelbert/ennui:latest
+	docker push $(DOCKER_IMAGE):$(DOCKER_TAG)
 
 docker-build:
-	docker build -t bundle.bar/u/pmengelbert/ennui:latest .
+	docker build -t $(DOCKER_IMAGE):$(DOCKER_TAG) .
 
 up: down
-	docker-compose pull ennui
-	scripts/up.sh
+	TAG="$(DOCKER_TAG)" docker-compose pull ennui
+	TAG="$(DOCKER_TAG)" scripts/up.sh
 
 down:
-	docker-compose down
+	TAG="$(DOCKER_TAG)" docker-compose down

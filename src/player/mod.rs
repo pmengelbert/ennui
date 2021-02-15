@@ -5,12 +5,14 @@ use serde::{Deserialize, Serialize};
 
 use meter::MeterKind;
 
+use crate::attribute::{Attribute, Quality};
+use crate::describe::{Describe, Description};
 use crate::error::EnnuiError;
-use crate::item::handle::{Grabber, Hook};
-use crate::item::list::{Holder, ItemList, ItemListTrout, ListTrait};
-use crate::item::{Attribute, Describe, Description, Item, Quality};
-use crate::map::coord::Coord;
-use crate::map::Locate;
+use crate::hook::{Grabber, Hook};
+use crate::item::Item;
+use crate::list::{List, ListTrait};
+use crate::location::{Coord, Locate};
+use crate::soul::SoulKind;
 
 use crate::fight::FightMod;
 use crate::fight::FightMod::Leave;
@@ -44,11 +46,16 @@ impl Default for PlayerType {
 impl From<YamlPlayer> for PlayerType {
     fn from(other: YamlPlayer) -> Self {
         let mut p = Player::new();
-        let YamlPlayer { info, ai_type, loc } = other;
+        let YamlPlayer {
+            info,
+            ai_type,
+            loc,
+            soul,
+        } = other;
         p.info = info;
         p.loc = loc;
         if let Some(t) = ai_type {
-            Self::Npc(npc::Npc::new(p, t))
+            Self::Npc(npc::Npc::new(p, t, soul))
         } else {
             Self::Human(p)
         }
@@ -81,9 +88,11 @@ pub struct Player {
     info: Description,
     loc: Coord,
     #[serde(skip_serializing, skip_deserializing)]
-    items: ItemList,
+    items: List<Item, Quality>,
+    #[serde(skip_deserializing, skip_serializing)]
+    souls: List<SoulKind, Quality>,
     #[serde(skip_serializing, skip_deserializing)]
-    clothing: ItemList,
+    clothing: List<Item, Quality>,
     #[serde(skip_serializing, skip_deserializing)]
     pub stream: Option<TcpStream>,
     stats: Vec<MeterKind>,
@@ -98,17 +107,6 @@ pub enum PlayerStatus {
     Dead,
     Asleep,
     Sitting,
-}
-
-#[cfg(test)]
-mod test_playerstatus {
-    use super::*;
-
-    #[test]
-    fn test_player_status() {
-        eprintln!("{:#?}", PlayerStatus::Asleep as u64);
-        eprintln!("in file {} on line number {}", file!(), line!());
-    }
 }
 
 impl Attribute<PlayerStatus> for PlayerType {
@@ -157,31 +155,30 @@ impl Drop for PlayerType {
 }
 
 impl ListTrait for PlayerType {
-    type Kind = ItemList;
+    type Item = Item;
 
-    fn get_item(&self, handle: Grabber) -> Option<&Item> {
-        self.safe_unwrap()
-            .items
-            .iter()
-            .filter(|i| i.handle() == handle.handle)
-            .nth(handle.index)
+    fn get_item(&self, handle: Grabber) -> Option<&Self::Item> {
+        self.safe_unwrap().items.get_item(handle)
     }
 
-    fn get_item_mut(&mut self, handle: Grabber) -> Option<&mut Item> {
+    fn get_item_mut(&mut self, handle: Grabber) -> Option<&mut Self::Item> {
         self.safe_unwrap_mut().items.get_item_mut(handle)
     }
 
-    fn get_item_owned(&mut self, handle: Grabber) -> Result<Item, EnnuiError> {
-        self.safe_unwrap_mut().items.get_owned(handle)
+    fn get_item_owned(&mut self, handle: Grabber) -> Result<Self::Item, EnnuiError> {
+        self.safe_unwrap_mut().items.get_item_owned(handle)
     }
 
-    fn insert_item(&mut self, item: Item) -> Result<(), Item> {
-        self.safe_unwrap_mut().items.push(item);
-        Ok(())
+    fn insert_item(&mut self, item: Self::Item) -> Result<(), Self::Item> {
+        self.safe_unwrap_mut().items.insert_item(item)
     }
 
-    fn list(&self) -> &Self::Kind {
-        &self.safe_unwrap().items
+    fn display_items(&self) -> String {
+        self.safe_unwrap().items.display_items()
+    }
+
+    fn list(&self) -> Vec<&Self::Item> {
+        self.safe_unwrap().items.list()
     }
 }
 
@@ -200,18 +197,6 @@ impl Locate for Arc<Mutex<PlayerType>> {
 impl Uuid for PlayerType {
     fn uuid(&self) -> u128 {
         self.safe_unwrap().uuid
-    }
-}
-
-impl Holder for PlayerType {
-    type Kind = ItemList;
-
-    fn items(&self) -> &Self::Kind {
-        &self.safe_unwrap().items
-    }
-
-    fn items_mut(&mut self) -> &mut Self::Kind {
-        &mut self.safe_unwrap_mut().items
     }
 }
 
@@ -251,21 +236,6 @@ impl Describe for Arc<Mutex<PlayerType>> {
     }
 }
 
-impl Attribute<Quality> for Arc<Mutex<PlayerType>> {
-    fn attr(&self) -> Vec<Quality> {
-        let p = self.lock().unwrap();
-        p.attr()
-    }
-
-    fn set_attr(&mut self, q: Quality) {
-        self.lock().unwrap().set_attr(q)
-    }
-
-    fn unset_attr(&mut self, q: Quality) {
-        self.lock().unwrap().unset_attr(q)
-    }
-}
-
 impl Attribute<PlayerStatus> for Arc<Mutex<PlayerType>> {
     fn attr(&self) -> Vec<PlayerStatus> {
         self.lock().unwrap().attr()
@@ -277,20 +247,6 @@ impl Attribute<PlayerStatus> for Arc<Mutex<PlayerType>> {
 
     fn unset_attr(&mut self, q: PlayerStatus) {
         self.lock().unwrap().unset_attr(q);
-    }
-}
-
-impl Attribute<Quality> for PlayerType {
-    fn attr(&self) -> Vec<Quality> {
-        self.safe_unwrap().info.attributes.clone()
-    }
-
-    fn set_attr(&mut self, q: Quality) {
-        self.safe_unwrap_mut().info.set_attr(q);
-    }
-
-    fn unset_attr(&mut self, q: Quality) {
-        self.safe_unwrap_mut().info.unset_attr(q);
     }
 }
 
@@ -328,6 +284,10 @@ impl Player {
 
         let uuid = new_player_id();
 
+        let mut souls: List<SoulKind, Quality> = List::new();
+        souls.insert_item(SoulKind::Crafting);
+        souls.insert_item(SoulKind::Exploration);
+
         Self {
             uuid,
             info: Description {
@@ -335,11 +295,11 @@ impl Player {
                 name: String::new(),
                 handle: Hook(vec![]),
                 display: String::new(),
-                attributes: vec![],
             },
             loc: Coord(0, 0),
-            items: ItemList::new(),
-            clothing: ItemList::new(),
+            items: List::new(),
+            souls,
+            clothing: List::new(),
             stream: None,
             fight_sender: None,
             status: vec![],
@@ -390,15 +350,23 @@ impl PlayerType {
         self.safe_unwrap_mut().loc = new_loc;
     }
 
-    pub fn clothing(&self) -> &ItemList {
+    pub fn clothing(&self) -> &List<Item, Quality> {
         &self.safe_unwrap().clothing
     }
 
-    pub fn clothing_mut(&mut self) -> &mut ItemList {
+    pub fn clothing_mut(&mut self) -> &mut List<Item, Quality> {
         &mut self.safe_unwrap_mut().clothing
     }
 
-    pub fn all_items_mut(&mut self) -> (&mut ItemList, &mut ItemList) {
+    pub fn souls(&self) -> &List<SoulKind, Quality> {
+        &self.safe_unwrap().souls
+    }
+
+    pub fn souls_mut(&mut self) -> &mut List<SoulKind, Quality> {
+        &mut self.safe_unwrap_mut().souls
+    }
+
+    pub fn all_items_mut(&mut self) -> (&mut List<Item, Quality>, &mut List<Item, Quality>) {
         let unwrapped = self.safe_unwrap_mut();
         (&mut unwrapped.items, &mut unwrapped.clothing)
     }

@@ -3,8 +3,8 @@ use std::collections::{HashMap, HashSet};
 use crate::player::{PlayerType, Uuid};
 use crate::text::message::{MessageFormat, Messenger};
 
-use crate::item::Describe;
-use crate::map::{coord::Coord, Locate};
+use crate::describe::Describe;
+use crate::location::{Coord, Locate};
 use crate::text::Color;
 use crate::text::Color::Yellow;
 use std::sync::{Arc, Mutex};

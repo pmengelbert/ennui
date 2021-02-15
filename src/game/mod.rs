@@ -1,3 +1,8 @@
+mod broadcast;
+mod commands;
+mod item;
+mod util;
+
 use std::backtrace::Backtrace;
 use std::borrow::Cow;
 use std::collections::HashMap;
@@ -15,16 +20,18 @@ use crate::fight::FightMessage;
 use crate::game::util::load_rooms;
 use crate::interpreter::CommandQuality::{Awake, Motion};
 use crate::interpreter::{CommandKind, CommandMessage, Interpreter};
-use crate::item::list::ListTrait;
-use crate::item::list::{Holder, ItemListTrout};
+use crate::item::Item;
+use crate::list::{List, ListTrait};
 use crate::text::channel::DiscreteMessage;
 
-use crate::item::handle::Grabber;
-use crate::item::{Attribute, Describe, Item};
-use crate::map::direction::MapDir;
-use crate::map::door::{DoorState, GuardState, ObstacleState};
+use crate::attribute::Attribute;
+use crate::describe::Describe;
+use crate::hook::Grabber;
+use crate::location::direction::MapDir;
+use crate::location::{Coord, Locate};
 use crate::map::list::{RoomList, RoomListTrait};
-use crate::map::{coord::Coord, Locate, Room, Space};
+use crate::map::{Room, Space};
+use crate::obstacle::door::{DoorState, GuardState, ObstacleState};
 use crate::player::list::{PlayerIdList, PlayerIdListTrait, PlayerList, PlayerListTrait};
 use crate::player::PlayerStatus::{Asleep, Dead, Sitting};
 use crate::player::{PlayerType, Uuid};
@@ -35,11 +42,6 @@ use crate::text::message::{
 use crate::text::Color::{Green, Magenta};
 use std::fmt::Debug;
 use std::mem::take;
-
-mod broadcast;
-mod commands;
-mod item;
-mod util;
 
 pub type GameResult<T> = Result<T, Box<dyn StdError>>;
 pub type GameOutput = (Box<dyn Messenger>, Box<dyn Message>);
@@ -119,7 +121,7 @@ impl Game {
     }
 
     pub fn add_player(&mut self, p: PlayerType) {
-        self.rooms.entry(p.loc()).or_default().add_player(&p);
+        self.rooms.entry(p.loc()).or_default().add_player(p.uuid());
         self.players.insert(p.uuid(), Arc::new(Mutex::new(p)));
     }
 
@@ -144,13 +146,21 @@ impl Game {
         let mut player = player.lock().unwrap();
         name.push_str(&player.name());
         let room = self.get_room_mut(player.loc())?;
-        let mut items = take(player.items_mut());
+        let (items, clothing) = player.all_items_mut();
+        let items = take(items);
+        let clothing = take(clothing);
 
         let aud = room.players().except(p.uuid());
-        for item in items.iter_mut() {
-            let owned_item = take(item);
-            messages.push(format!("{} drops {}", name, article(&owned_item.name())));
-            if room.insert_item(owned_item).is_err() {
+        for item in items.into_inner().into_iter() {
+            messages.push(format!("{} drops {}", name, article(&item.name())));
+            if room.insert_item(item).is_err() {
+                print_err(lesser("Unable to drop item for player"));
+            };
+        }
+
+        for item in clothing.into_inner().into_iter() {
+            messages.push(format!("{} drops {}", name, article(&item.name())));
+            if room.insert_item(item).is_err() {
                 print_err(lesser("Unable to drop item for player"));
             };
         }
@@ -224,7 +234,10 @@ impl Game {
                     .unwrap_or_default();
                 let res = s.shutdown(std::net::Shutdown::Both);
                 if res.is_err() {
-                    eprintln!("error shutting down socket: {}", std::backtrace::Backtrace::capture());
+                    eprintln!(
+                        "error shutting down socket: {}",
+                        std::backtrace::Backtrace::capture()
+                    );
                 }
             }
         }
@@ -239,7 +252,7 @@ impl Game {
             room.players_mut().remove(&p.uuid());
 
             let corpse: Item = player.into();
-            room.items_mut().push(corpse);
+            room.insert_item(corpse);
         }
 
         Ok(())
@@ -282,20 +295,12 @@ impl Game {
             let mut s = item.description();
             if let Item::Container(lst) = item {
                 s.push_str(&format!("\nthe {} is holding:\n", item.name()));
-                s.push_str(
-                    &lst.list()
-                        .iter()
-                        .map(|i| article(&i.name()))
-                        .collect::<Vec<_>>()
-                        .join("\n")
-                        .color(Green),
-                );
+                s.push_str(&lst.display_items());
             }
             s
         } else {
             p.lock()
                 .unwrap()
-                .items()
                 .get_item(Grabber::from_str(handle))?
                 .description()
         })
@@ -368,7 +373,7 @@ impl Game {
                 format!("you go {:?}\n\n{}", dir, self.describe_room(u)?).into()
             }
             Err(s) => {
-                use crate::map::door::DoorState::*;
+                use crate::obstacle::door::DoorState::*;
                 terminate = Some(());
                 match s {
                     None => "alas! you cannot go that way...".into(),
@@ -437,10 +442,7 @@ impl Game {
 
         let item_list_title = format!("\n{} is holding:", p.name());
         let mut item_list = String::new();
-        for item in p.items().iter() {
-            item_list.push('\n');
-            item_list.push_str(&article(&item.name()));
-        }
+        item_list.push_str(&p.display_items());
 
         Some(format!(
             "{}{}{}",
@@ -456,10 +458,9 @@ impl Game {
 
         let player = self.get_player(u.uuid())?;
 
-        for item in player.lock().unwrap().items().iter() {
-            s.push('\n');
-            s.push_str(&article(&item.name()).color(Green))
-        }
+        let items = player.lock().unwrap().display_items();
+
+        s.push_str(&items);
 
         Ok(s)
     }
@@ -549,7 +550,7 @@ impl Game {
     }
 
     fn check_guard(dir: MapDir, src_room: &Room) -> Result<(), DoorState> {
-        let items = src_room.items();
+        let items = src_room.list();
         if let Some((d, g)) = items.iter().find_map(|i| {
             if let Item::Guard(d, g) = i {
                 Some((d, g))

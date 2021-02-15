@@ -1,7 +1,9 @@
 use crate::game::{fatal, Game};
 
-use crate::item::{Attribute, Describe, Item, Quality};
-use crate::map::coord::Coord;
+use crate::attribute::{Attribute, Quality};
+use crate::describe::Describe;
+use crate::item::Item;
+use crate::location::Coord;
 use crate::map::list::RoomList;
 use crate::player::list::PlayerList;
 use crate::player::{PlayerType, Uuid};
@@ -10,7 +12,7 @@ use crate::text::article;
 use crate::error::CmdErr::{ItemNotFound, NotClothing, PlayerNotFound, TooHeavy};
 use crate::error::EnnuiError;
 use crate::error::EnnuiError::{Fatal, Msg, Simple};
-use crate::item::list::{Holder, ItemList, ListTrait};
+use crate::list::{List, ListTrait};
 use std::ops::DerefMut;
 use std::sync::{Arc, Mutex};
 
@@ -119,10 +121,7 @@ impl Game {
                 .get_mut(&uuid)
                 .ok_or_else(|| Fatal(format!("unable to find player {}", uuid)))?;
 
-            p.lock()
-                .unwrap()
-                .items_mut()
-                .get_item_owned(handle.into())?
+            p.lock().unwrap().get_item_owned(handle.into())?
         };
 
         let item_name = item.name();
@@ -193,13 +192,7 @@ impl Game {
             }
         };
 
-        if other_p
-            .lock()
-            .unwrap()
-            .items_mut()
-            .insert_item(item)
-            .is_err()
-        {
+        if other_p.lock().unwrap().insert_item(item).is_err() {
             return Err(Fatal(format!(
                 "COULD NOT RETURN ITEM {} TO OTHER PLAYER {}",
                 item_name,
@@ -217,7 +210,7 @@ impl Game {
         items.transfer(clothing, handle)
     }
 
-    fn check_if_clothing(handle: &str, items: &mut ItemList) -> Result<(), EnnuiError> {
+    fn check_if_clothing(handle: &str, items: &mut List<Item, Quality>) -> Result<(), EnnuiError> {
         match items.get_item(handle.into()) {
             Some(i) if i.is(Quality::Clothing) => Ok(()),
             None => Err(Simple(ItemNotFound)),
