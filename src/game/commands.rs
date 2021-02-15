@@ -581,13 +581,16 @@ pub fn fill_interpreter(i: &mut Interpreter) {
         };
 
         let i = match recipe_to_item(&r) {
-            Some(i) => i,
-            None => return message(u, "that recipe doesn't exist!"),
+            Ok(i) => i,
+            Err(e) => {
+                print_err(fatal(&format!("{}", e)));
+                return message(u, "that recipe doesn't exist!");
+            }
         };
 
         let p = match g.get_player(u) {
             Ok(p) => p,
-            Err(_) => todo!(),
+            Err(_) => return Err(fatal("player does not exist")),
         };
 
         let mut p = p.lock().unwrap();

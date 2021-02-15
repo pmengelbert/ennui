@@ -1,7 +1,7 @@
 use crate::attribute::Quality;
 use crate::describe::Description;
 use crate::hook::Hook;
-use crate::item::DescriptionWithQualities;
+use crate::item::{DescriptionWithQualities, Item};
 use postgres::{Client, NoTls};
 use std::convert::TryInto;
 mod sql;
@@ -58,10 +58,10 @@ impl DB {
     }
 }
 
-pub fn recipe_to_item(r: &crate::soul::recipe::Recipe) -> Option<crate::item::Item> {
+pub fn recipe_to_item(r: &crate::soul::recipe::Recipe) -> Result<Item, String> {
     let mut db = match DB::new() {
         Ok(db) => db,
-        Err(_) => return None,
+        Err(e) => return Err(format!("{}", e)),
     };
 
     let crate::soul::recipe::Recipe {
@@ -76,10 +76,8 @@ pub fn recipe_to_item(r: &crate::soul::recipe::Recipe) -> Option<crate::item::It
         *exploration_req as i32,
     );
 
-    let results = db
-        .conn
-        .query(
-            "\
+    let results = match db.conn.query(
+        "\
         SELECT name, display, description, hook, attributes
         FROM
             ennui.item i
@@ -91,12 +89,14 @@ pub fn recipe_to_item(r: &crate::soul::recipe::Recipe) -> Option<crate::item::It
                 combat_req = $3
             )
         ",
-            &[&crafting_req, &exploration_req, &combat_req],
-        )
-        .unwrap();
+        &[&crafting_req, &exploration_req, &combat_req],
+    ) {
+        Ok(v) => v,
+        Err(e) => return Err(format!("{}", e)),
+    };
 
     if results.is_empty() {
-        return None;
+        return Err("no recipe found".into());
     }
 
     let r1 = results.get(0).unwrap();
@@ -105,14 +105,14 @@ pub fn recipe_to_item(r: &crate::soul::recipe::Recipe) -> Option<crate::item::It
     let description: String = r1.get(2);
     let handle: Vec<String> = r1.get(3);
     let handle = Hook(handle);
-    let attr: Vec<i32> = r1.get(4);
+    let attrs: Vec<i32> = r1.get(4);
 
-    let mut x: Vec<Quality> = vec![];
+    let mut attr: Vec<Quality> = vec![];
 
-    for a in attr {
+    for a in attrs {
         match a.try_into() {
-            Ok(z) => x.push(z),
-            Err(_) => return None,
+            Ok(z) => attr.push(z),
+            Err(_) => return Err("unable to convert attribute".into()),
         }
     }
 
@@ -123,12 +123,12 @@ pub fn recipe_to_item(r: &crate::soul::recipe::Recipe) -> Option<crate::item::It
             description,
             handle,
         },
-        attr: x,
+        attr,
     };
 
     let z = crate::item::Item::Holdable(Box::new(d));
 
-    Some(z)
+    Ok(z)
 }
 
 #[cfg(test)]
