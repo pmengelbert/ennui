@@ -4,6 +4,7 @@ use crate::describe::Description;
 use crate::item::Item;
 use crate::list::ListTrait;
 use crate::location::Coord;
+use crate::soul::SoulKind;
 use crate::text::message::Broadcast;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
@@ -25,6 +26,8 @@ pub struct YamlPlayer {
     #[serde(default)]
     pub ai_type: Option<AI>,
     #[serde(default)]
+    pub soul: SoulKind,
+    #[serde(default)]
     pub loc: Coord,
 }
 
@@ -32,6 +35,7 @@ pub struct YamlPlayer {
 pub struct Npc {
     player: Player,
     ai_type: Option<AI>,
+    soul: SoulKind,
     tx: Option<Mutex<Sender<NpcMessage>>>,
 }
 
@@ -83,7 +87,12 @@ impl From<Player> for Item {
 
 impl From<YamlPlayer> for Npc {
     fn from(other: YamlPlayer) -> Self {
-        let YamlPlayer { info, ai_type, loc } = other;
+        let YamlPlayer {
+            info,
+            ai_type,
+            loc,
+            soul,
+        } = other;
 
         let ai_type = ai_type;
         let mut p = Player::new();
@@ -94,6 +103,7 @@ impl From<YamlPlayer> for Npc {
             player: p,
             ai_type,
             tx: None,
+            soul,
         }
     }
 }
@@ -103,12 +113,13 @@ pub enum NpcMessage {
 }
 
 impl Npc {
-    pub fn new(player: Player, ai_type: AI) -> Self {
+    pub fn new(player: Player, ai_type: AI, soul: SoulKind) -> Self {
         let ai_type = Some(ai_type);
         Self {
             player,
             ai_type,
             tx: None,
+            soul,
         }
     }
 

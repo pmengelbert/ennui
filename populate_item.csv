@@ -1,2 +1,3 @@
-hat,a hat lies here,an ordinary hat,"{hat}","{0}"
-shoe,a shoe lies here,an ordinary shoe,"{shoe}","{0}"
+hat,a hat lies here,an ordinary hat,"{hat}","{1}"
+shoe,a shoe lies here,an ordinary shoe,"{shoe}","{1}"
+cumberbund,a cumberbund lies here,it's a cumberbund,"{cumberbund, belt}","{1}"

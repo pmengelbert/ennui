@@ -5,10 +5,11 @@ use crate::describe::Describe;
 use crate::handle;
 use crate::hook::Hook;
 use crate::list::{List, ListTrait};
+use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
 use std::error::Error;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum SoulKind {
     None = 0,
     Combat = 1,

@@ -46,11 +46,16 @@ impl Default for PlayerType {
 impl From<YamlPlayer> for PlayerType {
     fn from(other: YamlPlayer) -> Self {
         let mut p = Player::new();
-        let YamlPlayer { info, ai_type, loc } = other;
+        let YamlPlayer {
+            info,
+            ai_type,
+            loc,
+            soul,
+        } = other;
         p.info = info;
         p.loc = loc;
         if let Some(t) = ai_type {
-            Self::Npc(npc::Npc::new(p, t))
+            Self::Npc(npc::Npc::new(p, t, soul))
         } else {
             Self::Human(p)
         }
