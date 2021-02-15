@@ -279,6 +279,9 @@ impl Player {
 
         let uuid = new_player_id();
 
+        let mut souls: List<SoulKind, Quality> = List::new();
+        souls.insert_item(SoulKind::Combat);
+
         Self {
             uuid,
             info: Description {
@@ -289,7 +292,7 @@ impl Player {
             },
             loc: Coord(0, 0),
             items: List::new(),
-            souls: List::new(),
+            souls,
             clothing: List::new(),
             stream: None,
             fight_sender: None,

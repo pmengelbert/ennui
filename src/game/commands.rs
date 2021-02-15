@@ -1,5 +1,6 @@
 use super::item::Direction;
 use super::*;
+use crate::db::recipe_to_item;
 use crate::error::EnnuiError::*;
 use crate::error::{CmdErr, EnnuiError};
 use crate::game::util::random_insult;
@@ -7,7 +8,9 @@ use crate::obstacle::door::{Door, DoorState, Lock, ObstacleState};
 use crate::text::message::{Audience, Msg};
 
 use crate::fight::{BasicFight, Fight, FightInfo, FightMod};
+use crate::soul::recipe::Recipe;
 use crate::text::Color::{Green, Red, Yellow};
+use std::convert::TryInto;
 use std::ops::DerefMut;
 use std::sync::mpsc::channel;
 use std::time::Duration;
@@ -569,6 +572,26 @@ pub fn fill_interpreter(i: &mut Interpreter) {
         };
 
         message(u, s)
+    });
+
+    i.insert("combine", |g, u, a| {
+        let r: Recipe = match a.try_into() {
+            Ok(r) => r,
+            Err(_) => todo!(),
+        };
+
+        let i = recipe_to_item(&r);
+
+        let mut p = match g.get_player(u) {
+            Ok(p) => p,
+            Err(_) => todo!(),
+        };
+
+        let name = i.name();
+
+        p.lock().unwrap().insert_item(i);
+
+        message(u, format!("you have created {}", article(&name)))
     });
 
     i.insert("", |_, _, _| message(0, ""));

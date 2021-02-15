@@ -1,4 +1,9 @@
+use crate::attribute::Quality;
+use crate::describe::Description;
+use crate::hook::Hook;
+use crate::item::DescriptionWithQualities;
 use postgres::{Client, NoTls};
+use std::convert::TryInto;
 mod sql;
 
 #[derive(Debug, Clone)]
@@ -64,7 +69,7 @@ pub fn recipe_to_item(r: &crate::soul::recipe::Recipe) -> crate::item::Item {
 
     let (combat_req, crafting_req, exploration_req) = (
         *combat_req as i32,
-        *combat_req as i32,
+        *crafting_req as i32,
         *exploration_req as i32,
     );
 
@@ -95,10 +100,32 @@ pub fn recipe_to_item(r: &crate::soul::recipe::Recipe) -> crate::item::Item {
     let name: String = r1.get(0);
     let display: String = r1.get(1);
     let description: String = r1.get(2);
-    let hook_strings: Vec<String> = r1.get(3);
+    let handle: Vec<String> = r1.get(3);
+    let handle = Hook(handle);
     let attr: Vec<i32> = r1.get(4);
 
-    todo!()
+    let mut x: Vec<Quality> = vec![];
+
+    for a in attr {
+        match a.try_into() {
+            Ok(z) => x.push(z),
+            Err(_) => continue,
+        }
+    }
+
+    let d = DescriptionWithQualities {
+        info: Description {
+            name,
+            display,
+            description,
+            handle,
+        },
+        attr: x,
+    };
+
+    let z = crate::item::Item::Holdable(Box::new(d));
+
+    z
 }
 
 #[cfg(test)]
