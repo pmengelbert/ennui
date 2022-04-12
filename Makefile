@@ -6,9 +6,11 @@ NPCFILE = npcs.yaml
 OUTFILE = data/map.cbor
 DOCKER_IMAGE = bundle.bar/u/pmengelbert/ennui
 DOCKER_TAG ?= $(shell scripts/docker-tag.sh)
+CARGO_VERSION = nightly-2021-01-16
+CARGO = cargo +$(CARGO_VERSION)
 
 target/release/ennui: data/map.cbor data/npc.cbor
-	cargo +nightly build --release
+	$(CARGO) build --release
 
 ennui: target/release/ennui
 
@@ -23,7 +25,7 @@ convert: target/release/convert
 target/release/convert:
 	if ! test -f data/map.cbor; then touch data/map.cbor; fi
 	if ! test -f data/npc.cbor; then touch data/npc.cbor; fi
-	cargo +nightly build --release --bin convert
+	$(CARGO) build --release --bin convert
 
 data/map.cbor: data target/release/convert
 	target/release/convert map $(MAPFILE) $(OUTFILE)
@@ -37,10 +39,10 @@ data:
 server: target/release/server
 
 target/release/server: data/map.cbor data/npc.cbor
-	cargo +nightly build --release --bin server
+	$(CARGO) build --release --bin server
 
 pi: data/map.cbor
-	cargo +nightly build --release --target armv7-unknown-linux-gnueabihf
+	$(CARGO) build --release --target armv7-unknown-linux-gnueabihf
 
 wasmserver: web/node_modules data/map.cbor
 	cd web && npm run build
@@ -58,7 +60,7 @@ build-and-push: docker-build
 	docker push $(DOCKER_IMAGE):$(DOCKER_TAG)
 
 docker-build:
-	docker build -t $(DOCKER_IMAGE):$(DOCKER_TAG) .
+	docker build --build-arg=CARGO_VERSION="$(CARGO_VERSION)" -t $(DOCKER_IMAGE):$(DOCKER_TAG) .
 
 up: down
 	TAG="$(DOCKER_TAG)" docker-compose pull ennui

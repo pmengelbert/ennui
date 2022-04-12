@@ -1,7 +1,9 @@
 FROM messense/rust-musl-cross:x86_64-musl as builder
+
+ARG CARGO_VERSION=nightly
 RUN apt update && apt install -y make tree
-RUN rustup update nightly && \
-        rustup target add --toolchain nightly x86_64-unknown-linux-musl
+RUN rustup install "$CARGO_VERSION"
+RUN rustup target add --toolchain "$CARGO_VERSION" x86_64-unknown-linux-musl
 
 COPY src/ /home/rust/src/src
 WORKDIR /home/rust/src
