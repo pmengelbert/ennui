@@ -62,6 +62,9 @@ build-and-push: docker-build
 docker-build:
 	docker build --build-arg=CARGO_VERSION="$(CARGO_VERSION)" -t $(DOCKER_IMAGE):$(DOCKER_TAG) .
 
+buildx:
+	docker buildx build --platform=linux/arm64 --output=type=local,dest=/tmp/butts --target=builder -t xxx:yyy -f Dockerfile2 .
+
 up: down
 	TAG="$(DOCKER_TAG)" docker-compose pull ennui
 	TAG="$(DOCKER_TAG)" scripts/up.sh

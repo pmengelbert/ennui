@@ -1,0 +1,22 @@
+FROM --platform=$TARGETPLATFORM rust:1-alpine3.15 as builder
+
+ARG CARGO_VERSION=nightly-2021-01-16
+RUN apk add musl-dev make
+
+RUN rustup install "$CARGO_VERSION"
+RUN rustup target add --toolchain "$CARGO_VERSION" aarch64-unknown-linux-musl
+
+WORKDIR /workspace
+COPY Cargo.toml Cargo.lock ./
+RUN mkdir -p ./src/bin && touch src/lib.rs && echo 'fn main() { println!("Dummy!"); }' > ./src/main.rs && echo 'fn main() { println!("Dummy!"); }' > ./src/bin/server.rs && echo 'fn main() { println!("Dummy!"); }' > ./src/bin/convert.rs
+RUN cargo build --release
+
+RUN rm -rf src
+COPY src src
+COPY data data
+RUN cargo +${CARGO_VERSION} build --release --bin server
+
+# FROM --platform=$TARGETPLATFORM scratch as final
+# COPY --from=builder /home/rust/src/target/release/server /server
+# ENTRYPOINT ["/server"]
+# EXPOSE 8089
